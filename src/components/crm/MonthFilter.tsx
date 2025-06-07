@@ -15,7 +15,7 @@ export function MonthFilter({ selectedMonth, onMonthChange, monthlyGroups }: Mon
           <SelectValue placeholder="Filter by month" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">All months</SelectItem>
+          <SelectItem value="all">All months</SelectItem>
           {Object.keys(monthlyGroups).map((month) => (
             <SelectItem key={month} value={month}>
               {month} ({monthlyGroups[month].length})
