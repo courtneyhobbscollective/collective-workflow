@@ -14,34 +14,33 @@ interface ProjectValidationProps {
   project: Project;
 }
 
+export const canMoveToStageOne = (project: Project) => {
+  if (project.current_stage !== 'incoming') return true;
+  
+  // Check if staff is assigned
+  if (!project.assigned_staff_id) return false;
+  
+  // Check if contract is signed
+  if (!project.contract_signed) return false;
+  
+  // Check if PO is provided (if required)
+  if (project.po_required && !project.po_number) return false;
+  
+  return true;
+};
+
+export const getValidationIssues = (project: Project) => {
+  const issues = [];
+  
+  if (!project.assigned_staff_id) issues.push("No staff assigned");
+  if (!project.contract_signed) issues.push("Contract not signed");
+  if (project.po_required && !project.po_number) issues.push("PO number required");
+  
+  return issues;
+};
+
 export function ProjectValidation({ project }: ProjectValidationProps) {
-  const canMoveToStageOne = (project: Project) => {
-    if (project.current_stage !== 'incoming') return true;
-    
-    // Check if staff is assigned
-    if (!project.assigned_staff_id) return false;
-    
-    // Check if contract is signed
-    if (!project.contract_signed) return false;
-    
-    // Check if PO is provided (if required)
-    if (project.po_required && !project.po_number) return false;
-    
-    return true;
-  };
-
-  const getValidationIssues = (project: Project) => {
-    const issues = [];
-    
-    if (!project.assigned_staff_id) issues.push("No staff assigned");
-    if (!project.contract_signed) issues.push("Contract not signed");
-    if (project.po_required && !project.po_number) issues.push("PO number required");
-    
-    return issues;
-  };
-
   const validationIssues = getValidationIssues(project);
-  const canProgress = canMoveToStageOne(project);
 
   if (project.current_stage !== 'incoming' || validationIssues.length === 0) {
     return null;
@@ -61,5 +60,3 @@ export function ProjectValidation({ project }: ProjectValidationProps) {
     </div>
   );
 }
-
-export { canMoveToStageOne, getValidationIssues };
