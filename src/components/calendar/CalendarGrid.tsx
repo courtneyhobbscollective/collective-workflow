@@ -84,22 +84,22 @@ export function CalendarGrid({
 
   if (view === "week") {
     return (
-      <div className="space-y-4">
+      <div className="space-y-2 lg:space-y-4 min-w-[600px]">
         {/* Time slots for week view */}
-        <div className="grid grid-cols-8 gap-2">
-          <div className="font-medium text-sm">Time</div>
+        <div className="grid grid-cols-8 gap-1 lg:gap-2">
+          <div className="font-medium text-xs lg:text-sm">Time</div>
           {days.map((day) => (
             <div key={day.toISOString()} className="text-center">
-              <div className="font-medium">{format(day, 'EEE')}</div>
-              <div className="text-sm text-muted-foreground">{format(day, 'd')}</div>
+              <div className="font-medium text-xs lg:text-sm">{format(day, 'EEE')}</div>
+              <div className="text-xs text-muted-foreground">{format(day, 'd')}</div>
             </div>
           ))}
         </div>
 
         {/* Time slots from 9 AM to 5 PM */}
         {Array.from({ length: 9 }, (_, i) => i + 9).map((hour) => (
-          <div key={hour} className="grid grid-cols-8 gap-2 min-h-[60px]">
-            <div className="text-sm text-muted-foreground">
+          <div key={hour} className="grid grid-cols-8 gap-1 lg:gap-2 min-h-[40px] lg:min-h-[60px]">
+            <div className="text-xs lg:text-sm text-muted-foreground">
               {hour}:00
             </div>
             {days.map((day) => {
@@ -109,7 +109,7 @@ export function CalendarGrid({
               });
 
               return (
-                <div key={`${day.toISOString()}-${hour}`} className="border rounded-lg p-1 min-h-[50px]">
+                <div key={`${day.toISOString()}-${hour}`} className="border rounded-lg p-1 min-h-[35px] lg:min-h-[50px]">
                   {dayBookings.map((booking) => {
                     const staffMember = staff.find(s => s.id === booking.staff_id);
                     return (
@@ -118,7 +118,7 @@ export function CalendarGrid({
                         className={cn("text-xs mb-1 block", getStatusColor(booking.status))}
                         title={`${booking.project.title} - ${staffMember?.name}`}
                       >
-                        <div className="truncate">
+                        <div className="truncate text-xs">
                           {booking.project.title}
                         </div>
                         {selectedStaff === "all" && (
@@ -138,10 +138,10 @@ export function CalendarGrid({
 
   // Month view
   return (
-    <div className="grid grid-cols-7 gap-2">
+    <div className="grid grid-cols-7 gap-1 lg:gap-2 min-w-[320px]">
       {/* Day headers */}
       {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
-        <div key={day} className="text-center font-medium text-sm p-2">
+        <div key={day} className="text-center font-medium text-xs lg:text-sm p-1 lg:p-2">
           {day}
         </div>
       ))}
@@ -155,19 +155,19 @@ export function CalendarGrid({
           <div
             key={day.toISOString()}
             className={cn(
-              "border rounded-lg p-2 min-h-[100px]",
+              "border rounded-lg p-1 lg:p-2 min-h-[60px] lg:min-h-[100px]",
               isToday && "bg-blue-50 border-blue-200"
             )}
           >
             <div className={cn(
-              "text-sm font-medium mb-2",
+              "text-xs lg:text-sm font-medium mb-1 lg:mb-2",
               isToday && "text-blue-600"
             )}>
               {format(day, 'd')}
             </div>
             
             <div className="space-y-1">
-              {dayBookings.slice(0, 3).map((booking) => {
+              {dayBookings.slice(0, 2).map((booking) => {
                 const staffMember = staff.find(s => s.id === booking.staff_id);
                 return (
                   <Badge
@@ -175,15 +175,15 @@ export function CalendarGrid({
                     className={cn("text-xs block", getStatusColor(booking.status))}
                     title={`${booking.project.title} - ${staffMember?.name}`}
                   >
-                    <div className="truncate">
+                    <div className="truncate text-xs">
                       {booking.project.title}
                     </div>
                   </Badge>
                 );
               })}
-              {dayBookings.length > 3 && (
+              {dayBookings.length > 2 && (
                 <div className="text-xs text-muted-foreground">
-                  +{dayBookings.length - 3} more
+                  +{dayBookings.length - 2} more
                 </div>
               )}
             </div>

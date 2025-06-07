@@ -36,7 +36,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background w-full">
       <TopNavigation activeSection={activeSection} onSectionChange={setActiveSection} />
-      <main className="p-6">
+      <main className="p-3 sm:p-4 lg:p-6">
         {renderContent()}
       </main>
     </div>

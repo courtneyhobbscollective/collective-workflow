@@ -141,11 +141,11 @@ export function CalendarView() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 lg:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-foreground">Calendar</h2>
-          <p className="text-muted-foreground">Manage staff availability and project scheduling</p>
+          <h2 className="text-2xl lg:text-3xl font-bold text-foreground">Calendar</h2>
+          <p className="text-sm text-muted-foreground">Manage staff availability and project scheduling</p>
         </div>
         
         <div className="flex items-center space-x-4">
@@ -161,8 +161,8 @@ export function CalendarView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-1 space-y-4">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 lg:gap-6">
+        <div className="xl:col-span-1 space-y-4">
           <StaffFilter
             staff={staff}
             selectedStaff={selectedStaff}
@@ -171,8 +171,8 @@ export function CalendarView() {
           
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Clock className="w-5 h-5" />
+              <CardTitle className="flex items-center space-x-2 text-base">
+                <Clock className="w-4 h-4" />
                 <span>Unscheduled Projects</span>
               </CardTitle>
             </CardHeader>
@@ -197,12 +197,12 @@ export function CalendarView() {
           </Card>
         </div>
 
-        <div className="lg:col-span-3">
+        <div className="xl:col-span-3">
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle className="flex items-center space-x-2">
-                  <Calendar className="w-5 h-5" />
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                <CardTitle className="flex items-center space-x-2 text-base lg:text-lg">
+                  <Calendar className="w-4 h-4 lg:w-5 lg:h-5" />
                   <span>
                     {currentDate.toLocaleDateString('en-US', { 
                       month: 'long', 
@@ -224,7 +224,7 @@ export function CalendarView() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-x-auto">
               <CalendarGrid
                 currentDate={currentDate}
                 view={view}
