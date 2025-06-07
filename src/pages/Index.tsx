@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { TopNavigation } from "@/components/layout/TopNavigation";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { StaffManagement } from "@/components/staff/StaffManagement";
 import { ClientManagement } from "@/components/clients/ClientManagement";
@@ -31,9 +31,9 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex w-full">
-      <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
-      <main className="flex-1 p-6 overflow-auto">
+    <div className="min-h-screen bg-background w-full">
+      <TopNavigation activeSection={activeSection} onSectionChange={setActiveSection} />
+      <main className="p-6">
         {renderContent()}
       </main>
     </div>
