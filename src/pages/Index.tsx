@@ -6,6 +6,7 @@ import { StaffManagement } from "@/components/staff/StaffManagement";
 import { ClientManagement } from "@/components/clients/ClientManagement";
 import { BriefManagement } from "@/components/briefs/BriefManagement";
 import { WorkflowBoard } from "@/components/workflow/WorkflowBoard";
+import { CRMDashboard } from "@/components/crm/CRMDashboard";
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState("dashboard");
@@ -22,6 +23,8 @@ const Index = () => {
         return <BriefManagement />;
       case "workflow":
         return <WorkflowBoard />;
+      case "crm":
+        return <CRMDashboard />;
       default:
         return <Dashboard />;
     }

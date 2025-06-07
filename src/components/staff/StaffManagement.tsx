@@ -1,11 +1,12 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Staff {
   id: string;
@@ -13,14 +14,12 @@ interface Staff {
   email: string;
   role: string;
   department: string;
+  is_active: boolean;
 }
 
 export function StaffManagement() {
-  const [staff, setStaff] = useState<Staff[]>([
-    { id: "1", name: "John Smith", email: "john@agency.com", role: "Creative Director", department: "Design" },
-    { id: "2", name: "Sarah Johnson", email: "sarah@agency.com", role: "Account Manager", department: "Client Services" },
-  ]);
-  
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -30,7 +29,33 @@ export function StaffManagement() {
   });
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    loadStaff();
+  }, []);
+
+  const loadStaff = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('staff')
+        .select('*')
+        .eq('is_active', true)
+        .order('name');
+
+      if (error) throw error;
+      setStaff(data || []);
+    } catch (error) {
+      console.error('Error loading staff:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load staff members",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.role || !formData.department) {
       toast({
@@ -41,20 +66,34 @@ export function StaffManagement() {
       return;
     }
 
-    const newStaff: Staff = {
-      id: Date.now().toString(),
-      ...formData,
-    };
+    try {
+      const { error } = await supabase
+        .from('staff')
+        .insert([formData]);
 
-    setStaff([...staff, newStaff]);
-    setFormData({ name: "", email: "", role: "", department: "" });
-    setShowForm(false);
-    
-    toast({
-      title: "Success",
-      description: "Staff member added successfully",
-    });
+      if (error) throw error;
+
+      setFormData({ name: "", email: "", role: "", department: "" });
+      setShowForm(false);
+      await loadStaff();
+      
+      toast({
+        title: "Success",
+        description: "Staff member added successfully",
+      });
+    } catch (error) {
+      console.error('Error adding staff:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add staff member. Email might already exist.",
+        variant: "destructive",
+      });
+    }
   };
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">

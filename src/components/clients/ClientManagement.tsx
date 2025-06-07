@@ -1,54 +1,70 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Plus, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Client {
   id: string;
   name: string;
-  organisation: string;
   email: string;
+  company: string;
+  contact_person: string;
   phone: string;
-  isRetainer: boolean;
-  retainerAmount?: number;
-  retainerHours?: number;
+  address: string;
+  is_retainer: boolean;
+  is_active: boolean;
 }
 
 export function ClientManagement() {
-  const [clients, setClients] = useState<Client[]>([
-    {
-      id: "1",
-      name: "Alice Cooper",
-      organisation: "Tech Corp Ltd",
-      email: "alice@techcorp.com",
-      phone: "+44 123 456 7890",
-      isRetainer: true,
-      retainerAmount: 5000,
-      retainerHours: 40,
-    },
-  ]);
-  
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
-    organisation: "",
+    company: "",
     email: "",
     phone: "",
-    isRetainer: false,
-    retainerAmount: "",
-    retainerHours: "",
+    contact_person: "",
+    address: "",
+    is_retainer: false,
   });
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    loadClients();
+  }, []);
+
+  const loadClients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('is_active', true)
+        .order('company');
+
+      if (error) throw error;
+      setClients(data || []);
+    } catch (error) {
+      console.error('Error loading clients:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load clients",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.organisation || !formData.email || !formData.phone) {
+    if (!formData.name || !formData.company || !formData.email || !formData.phone) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -57,43 +73,42 @@ export function ClientManagement() {
       return;
     }
 
-    if (formData.isRetainer && (!formData.retainerAmount || !formData.retainerHours)) {
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .insert([formData]);
+
+      if (error) throw error;
+
+      setFormData({
+        name: "",
+        company: "",
+        email: "",
+        phone: "",
+        contact_person: "",
+        address: "",
+        is_retainer: false,
+      });
+      setShowForm(false);
+      await loadClients();
+      
+      toast({
+        title: "Success",
+        description: "Client onboarded successfully",
+      });
+    } catch (error) {
+      console.error('Error adding client:', error);
       toast({
         title: "Error",
-        description: "Please fill in retainer amount and hours",
+        description: "Failed to onboard client",
         variant: "destructive",
       });
-      return;
     }
-
-    const newClient: Client = {
-      id: Date.now().toString(),
-      name: formData.name,
-      organisation: formData.organisation,
-      email: formData.email,
-      phone: formData.phone,
-      isRetainer: formData.isRetainer,
-      retainerAmount: formData.isRetainer ? Number(formData.retainerAmount) : undefined,
-      retainerHours: formData.isRetainer ? Number(formData.retainerHours) : undefined,
-    };
-
-    setClients([...clients, newClient]);
-    setFormData({
-      name: "",
-      organisation: "",
-      email: "",
-      phone: "",
-      isRetainer: false,
-      retainerAmount: "",
-      retainerHours: "",
-    });
-    setShowForm(false);
-    
-    toast({
-      title: "Success",
-      description: "Client onboarded successfully",
-    });
   };
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -126,12 +141,12 @@ export function ClientManagement() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="organisation">Organisation Name *</Label>
+                  <Label htmlFor="company">Company Name *</Label>
                   <Input
-                    id="organisation"
-                    value={formData.organisation}
-                    onChange={(e) => setFormData({ ...formData, organisation: e.target.value })}
-                    placeholder="Enter organisation name"
+                    id="company"
+                    value={formData.company}
+                    onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                    placeholder="Enter company name"
                   />
                 </div>
                 <div>
@@ -153,41 +168,34 @@ export function ClientManagement() {
                     placeholder="Enter phone number"
                   />
                 </div>
+                <div>
+                  <Label htmlFor="contact_person">Contact Person</Label>
+                  <Input
+                    id="contact_person"
+                    value={formData.contact_person}
+                    onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                    placeholder="Primary contact person"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    placeholder="Company address"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center space-x-2">
                 <Switch
                   id="retainer"
-                  checked={formData.isRetainer}
-                  onCheckedChange={(checked) => setFormData({ ...formData, isRetainer: checked })}
+                  checked={formData.is_retainer}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_retainer: checked })}
                 />
                 <Label htmlFor="retainer">Is this a retainer client?</Label>
               </div>
-
-              {formData.isRetainer && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-accent rounded-lg">
-                  <div>
-                    <Label htmlFor="retainerAmount">Monthly Retainer Amount (£)</Label>
-                    <Input
-                      id="retainerAmount"
-                      type="number"
-                      value={formData.retainerAmount}
-                      onChange={(e) => setFormData({ ...formData, retainerAmount: e.target.value })}
-                      placeholder="e.g., 5000"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="retainerHours">Monthly Hours Included</Label>
-                    <Input
-                      id="retainerHours"
-                      type="number"
-                      value={formData.retainerHours}
-                      onChange={(e) => setFormData({ ...formData, retainerHours: e.target.value })}
-                      placeholder="e.g., 40"
-                    />
-                  </div>
-                </div>
-              )}
 
               <div className="flex space-x-2">
                 <Button type="submit">Onboard Client</Button>
@@ -211,13 +219,15 @@ export function ClientManagement() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <p className="text-sm font-medium">{client.organisation}</p>
+                <p className="text-sm font-medium">{client.company}</p>
                 <p className="text-sm text-muted-foreground">{client.email}</p>
                 <p className="text-sm text-muted-foreground">{client.phone}</p>
-                {client.isRetainer ? (
+                {client.contact_person && (
+                  <p className="text-sm text-muted-foreground">Contact: {client.contact_person}</p>
+                )}
+                {client.is_retainer ? (
                   <div className="p-2 bg-green-50 rounded-md">
                     <p className="text-sm font-medium text-green-800">Retainer Client</p>
-                    <p className="text-xs text-green-600">£{client.retainerAmount}/month - {client.retainerHours}h</p>
                   </div>
                 ) : (
                   <div className="p-2 bg-blue-50 rounded-md">

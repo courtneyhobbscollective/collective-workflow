@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,19 +8,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Briefcase } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
-interface Brief {
+interface Client {
   id: string;
-  clientName: string;
-  isRetainer: boolean;
-  workType: string;
-  deliverables: number;
-  dueDate: string;
-  poNumber: string;
+  name: string;
+  company: string;
+  is_retainer: boolean;
+}
+
+interface Project {
+  id: string;
+  title: string;
   description: string;
-  estimatedHours: number;
-  status: string;
-  assignedStaff?: string;
+  client_id: string;
+  work_type: string;
+  deliverables: number;
+  due_date: string;
+  po_number: string;
+  estimated_hours: number;
+  is_retainer: boolean;
+  current_stage: string;
+  client: Client;
 }
 
 const workTypes = [
@@ -35,25 +44,13 @@ const workTypes = [
 ];
 
 export function BriefManagement() {
-  const [briefs, setBriefs] = useState<Brief[]>([
-    {
-      id: "1",
-      clientName: "Tech Corp Ltd",
-      isRetainer: true,
-      workType: "Website Development",
-      deliverables: 3,
-      dueDate: "2024-06-15",
-      poNumber: "PO-2024-001",
-      description: "Redesign company website with modern UI/UX",
-      estimatedHours: 40,
-      status: "incoming",
-    },
-  ]);
-  
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
-    clientName: "",
-    isRetainer: "",
+    title: "",
+    clientId: "",
     workType: "",
     deliverables: "",
     dueDate: "",
@@ -63,15 +60,50 @@ export function BriefManagement() {
   });
   const { toast } = useToast();
 
-  // Mock clients data
-  const clients = [
-    { name: "Tech Corp Ltd", isRetainer: true },
-    { name: "Design Studio Inc", isRetainer: false },
-  ];
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const loadData = async () => {
+    try {
+      // Load clients
+      const { data: clientsData, error: clientsError } = await supabase
+        .from('clients')
+        .select('id, name, company, is_retainer')
+        .eq('is_active', true)
+        .order('company');
+
+      if (clientsError) throw clientsError;
+
+      // Load projects (briefs)
+      const { data: projectsData, error: projectsError } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          client:clients(id, name, company, is_retainer)
+        `)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (projectsError) throw projectsError;
+
+      setClients(clientsData || []);
+      setProjects(projectsData || []);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.clientName || !formData.workType || !formData.deliverables || !formData.dueDate) {
+    if (!formData.title || !formData.clientId || !formData.workType || !formData.deliverables || !formData.dueDate) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -80,39 +112,83 @@ export function BriefManagement() {
       return;
     }
 
-    const selectedClient = clients.find(c => c.name === formData.clientName);
+    const selectedClient = clients.find(c => c.id === formData.clientId);
     
-    const newBrief: Brief = {
-      id: Date.now().toString(),
-      clientName: formData.clientName,
-      isRetainer: selectedClient?.isRetainer || false,
-      workType: formData.workType,
-      deliverables: Number(formData.deliverables),
-      dueDate: formData.dueDate,
-      poNumber: formData.poNumber,
-      description: formData.description,
-      estimatedHours: Number(formData.estimatedHours),
-      status: "incoming",
-    };
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .insert([{
+          title: formData.title,
+          client_id: formData.clientId,
+          work_type: formData.workType,
+          deliverables: parseInt(formData.deliverables),
+          due_date: formData.dueDate,
+          po_number: formData.poNumber || null,
+          description: formData.description || null,
+          estimated_hours: formData.estimatedHours ? parseInt(formData.estimatedHours) : null,
+          is_retainer: selectedClient?.is_retainer || false,
+          current_stage: 'incoming',
+          status: 'active'
+        }]);
 
-    setBriefs([...briefs, newBrief]);
-    setFormData({
-      clientName: "",
-      isRetainer: "",
-      workType: "",
-      deliverables: "",
-      dueDate: "",
-      poNumber: "",
-      description: "",
-      estimatedHours: "",
-    });
-    setShowForm(false);
-    
-    toast({
-      title: "Success",
-      description: "Brief created successfully",
-    });
+      if (error) throw error;
+
+      setFormData({
+        title: "",
+        clientId: "",
+        workType: "",
+        deliverables: "",
+        dueDate: "",
+        poNumber: "",
+        description: "",
+        estimatedHours: "",
+      });
+      setShowForm(false);
+      await loadData();
+      
+      toast({
+        title: "Success",
+        description: "Brief created successfully",
+      });
+    } catch (error) {
+      console.error('Error creating brief:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create brief",
+        variant: "destructive",
+      });
+    }
   };
+
+  const getStatusColor = (stage: string) => {
+    const colors = {
+      'incoming': 'bg-orange-100 text-orange-800',
+      'stage01': 'bg-blue-100 text-blue-800',
+      'stage02': 'bg-yellow-100 text-yellow-800',
+      'stage03': 'bg-purple-100 text-purple-800',
+      'stage04': 'bg-red-100 text-red-800',
+      'stage05': 'bg-green-100 text-green-800',
+      'stage06': 'bg-gray-100 text-gray-800',
+    };
+    return colors[stage as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getStageDisplayName = (stage: string) => {
+    const names = {
+      'incoming': 'Incoming Brief',
+      'stage01': 'Pre-Production',
+      'stage02': 'Production',
+      'stage03': 'Amend 1',
+      'stage04': 'Amend 2',
+      'stage05': 'Final Delivery',
+      'stage06': 'Client Submission',
+    };
+    return names[stage as keyof typeof names] || stage;
+  };
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-64">Loading...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -136,15 +212,24 @@ export function BriefManagement() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
+                  <Label htmlFor="title">Project Title *</Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="Enter project title"
+                  />
+                </div>
+                <div>
                   <Label htmlFor="client">Client *</Label>
-                  <Select value={formData.clientName} onValueChange={(value) => setFormData({ ...formData, clientName: value })}>
+                  <Select value={formData.clientId} onValueChange={(value) => setFormData({ ...formData, clientId: value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a client" />
                     </SelectTrigger>
                     <SelectContent>
                       {clients.map((client) => (
-                        <SelectItem key={client.name} value={client.name}>
-                          {client.name} {client.isRetainer ? "(Retainer)" : "(Project)"}
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.company} {client.is_retainer ? "(Retainer)" : "(Project)"}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -193,7 +278,7 @@ export function BriefManagement() {
                     placeholder="e.g., PO-2024-001"
                   />
                 </div>
-                <div>
+                <div className="md:col-span-2">
                   <Label htmlFor="estimatedHours">Estimated Hours</Label>
                   <Input
                     id="estimatedHours"
@@ -226,27 +311,39 @@ export function BriefManagement() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {briefs.map((brief) => (
-          <Card key={brief.id}>
+        {projects.map((project) => (
+          <Card key={project.id}>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Briefcase className="w-5 h-5" />
-                <span>{brief.workType}</span>
+                <span>{project.title}</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <p className="text-sm font-medium">{brief.clientName}</p>
-                <p className="text-sm text-muted-foreground">{brief.description}</p>
+                <p className="text-sm font-medium">{project.client?.company || project.client?.name}</p>
+                <p className="text-sm text-muted-foreground">{project.work_type}</p>
+                {project.description && (
+                  <p className="text-sm text-muted-foreground">{project.description}</p>
+                )}
                 <div className="flex justify-between items-center text-xs">
-                  <span>Deliverables: {brief.deliverables}</span>
-                  <span>Due: {brief.dueDate}</span>
+                  <span>Deliverables: {project.deliverables}</span>
+                  <span>Due: {new Date(project.due_date).toLocaleDateString()}</span>
                 </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span>Hours: {brief.estimatedHours}</span>
-                  <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded">
-                    {brief.status}
+                {project.estimated_hours && (
+                  <div className="text-xs">
+                    <span>Est. Hours: {project.estimated_hours}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center">
+                  <span className={`text-xs px-2 py-1 rounded ${getStatusColor(project.current_stage)}`}>
+                    {getStageDisplayName(project.current_stage)}
                   </span>
+                  {project.is_retainer && (
+                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                      Retainer
+                    </span>
+                  )}
                 </div>
               </div>
             </CardContent>
