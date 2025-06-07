@@ -1,5 +1,5 @@
 
-import { Users, UserPlus, Briefcase, Workflow, BarChart3, DollarSign } from "lucide-react";
+import { Users, UserPlus, Briefcase, Workflow, BarChart3, DollarSign, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TopNavigationProps {
@@ -13,6 +13,7 @@ const navigationItems = [
   { id: "clients", label: "Client Management", icon: UserPlus },
   { id: "briefs", label: "Brief Management", icon: Briefcase },
   { id: "workflow", label: "Workflow Board", icon: Workflow },
+  { id: "calendar", label: "Calendar", icon: Calendar },
   { id: "crm", label: "CRM Dashboard", icon: DollarSign },
 ];
 

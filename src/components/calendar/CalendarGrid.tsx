@@ -1,0 +1,195 @@
+
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { format, startOfWeek, addDays, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
+
+interface Staff {
+  id: string;
+  name: string;
+  role: string;
+  department: string;
+}
+
+interface ProjectBooking {
+  id: string;
+  project_id: string;
+  staff_id: string;
+  booking_date: string;
+  start_time: string;
+  end_time: string;
+  hours_booked: number;
+  status: string;
+  project: {
+    title: string;
+    client: {
+      company: string;
+    };
+  };
+}
+
+interface CalendarGridProps {
+  currentDate: Date;
+  view: "week" | "month";
+  bookings: ProjectBooking[];
+  staff: Staff[];
+  selectedStaff: string;
+  onBookingUpdate: () => void;
+}
+
+export function CalendarGrid({ 
+  currentDate, 
+  view, 
+  bookings, 
+  staff, 
+  selectedStaff,
+  onBookingUpdate 
+}: CalendarGridProps) {
+  const getWeekDays = () => {
+    const start = startOfWeek(currentDate, { weekStartsOn: 1 }); // Monday start
+    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  };
+
+  const getMonthDays = () => {
+    const start = startOfMonth(currentDate);
+    const end = endOfMonth(currentDate);
+    return eachDayOfInterval({ start, end });
+  };
+
+  const getDays = () => view === "week" ? getWeekDays() : getMonthDays();
+
+  const getBookingsForDay = (date: Date) => {
+    return bookings.filter(booking => 
+      isSameDay(new Date(booking.booking_date), date)
+    );
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'scheduled':
+        return 'bg-blue-100 text-blue-800';
+      case 'in_progress':
+        return 'bg-orange-100 text-orange-800';
+      case 'completed':
+        return 'bg-green-100 text-green-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const days = getDays();
+
+  if (view === "week") {
+    return (
+      <div className="space-y-4">
+        {/* Time slots for week view */}
+        <div className="grid grid-cols-8 gap-2">
+          <div className="font-medium text-sm">Time</div>
+          {days.map((day) => (
+            <div key={day.toISOString()} className="text-center">
+              <div className="font-medium">{format(day, 'EEE')}</div>
+              <div className="text-sm text-muted-foreground">{format(day, 'd')}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Time slots from 9 AM to 5 PM */}
+        {Array.from({ length: 9 }, (_, i) => i + 9).map((hour) => (
+          <div key={hour} className="grid grid-cols-8 gap-2 min-h-[60px]">
+            <div className="text-sm text-muted-foreground">
+              {hour}:00
+            </div>
+            {days.map((day) => {
+              const dayBookings = getBookingsForDay(day).filter(booking => {
+                const startHour = parseInt(booking.start_time.split(':')[0]);
+                return startHour === hour;
+              });
+
+              return (
+                <div key={`${day.toISOString()}-${hour}`} className="border rounded-lg p-1 min-h-[50px]">
+                  {dayBookings.map((booking) => {
+                    const staffMember = staff.find(s => s.id === booking.staff_id);
+                    return (
+                      <Badge
+                        key={booking.id}
+                        className={cn("text-xs mb-1 block", getStatusColor(booking.status))}
+                        title={`${booking.project.title} - ${staffMember?.name}`}
+                      >
+                        <div className="truncate">
+                          {booking.project.title}
+                        </div>
+                        {selectedStaff === "all" && (
+                          <div className="text-xs">{staffMember?.name}</div>
+                        )}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Month view
+  return (
+    <div className="grid grid-cols-7 gap-2">
+      {/* Day headers */}
+      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
+        <div key={day} className="text-center font-medium text-sm p-2">
+          {day}
+        </div>
+      ))}
+      
+      {/* Calendar days */}
+      {days.map((day) => {
+        const dayBookings = getBookingsForDay(day);
+        const isToday = isSameDay(day, new Date());
+        
+        return (
+          <div
+            key={day.toISOString()}
+            className={cn(
+              "border rounded-lg p-2 min-h-[100px]",
+              isToday && "bg-blue-50 border-blue-200"
+            )}
+          >
+            <div className={cn(
+              "text-sm font-medium mb-2",
+              isToday && "text-blue-600"
+            )}>
+              {format(day, 'd')}
+            </div>
+            
+            <div className="space-y-1">
+              {dayBookings.slice(0, 3).map((booking) => {
+                const staffMember = staff.find(s => s.id === booking.staff_id);
+                return (
+                  <Badge
+                    key={booking.id}
+                    className={cn("text-xs block", getStatusColor(booking.status))}
+                    title={`${booking.project.title} - ${staffMember?.name}`}
+                  >
+                    <div className="truncate">
+                      {booking.project.title}
+                    </div>
+                  </Badge>
+                );
+              })}
+              {dayBookings.length > 3 && (
+                <div className="text-xs text-muted-foreground">
+                  +{dayBookings.length - 3} more
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

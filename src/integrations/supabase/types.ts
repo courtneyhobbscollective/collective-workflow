@@ -137,6 +137,63 @@ export type Database = {
           },
         ]
       }
+      project_bookings: {
+        Row: {
+          booking_date: string
+          created_at: string
+          end_time: string
+          hours_booked: number
+          id: string
+          notes: string | null
+          project_id: string
+          staff_id: string
+          start_time: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          booking_date: string
+          created_at?: string
+          end_time: string
+          hours_booked: number
+          id?: string
+          notes?: string | null
+          project_id: string
+          staff_id: string
+          start_time: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          booking_date?: string
+          created_at?: string
+          end_time?: string
+          hours_booked?: number
+          id?: string
+          notes?: string | null
+          project_id?: string
+          staff_id?: string
+          start_time?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_bookings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_bookings_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_stage_history: {
         Row: {
           changed_at: string
@@ -337,6 +394,47 @@ export type Database = {
           role?: string
         }
         Relationships: []
+      }
+      staff_availability: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          is_available: boolean
+          staff_id: string
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_available?: boolean
+          staff_id: string
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_available?: boolean
+          staff_id?: string
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_availability_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
