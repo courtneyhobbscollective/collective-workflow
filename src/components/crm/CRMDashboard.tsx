@@ -69,7 +69,14 @@ export function CRMDashboard() {
             is_retainer,
             treat_as_oneoff,
             po_number,
-            client:clients(company, name)
+            client:clients(
+              company, 
+              name, 
+              email, 
+              phone, 
+              contact_person, 
+              address
+            )
           ),
           stage:project_stages(name)
         `)

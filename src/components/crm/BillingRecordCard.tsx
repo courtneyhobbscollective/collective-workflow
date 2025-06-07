@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, FileText, Clock, CheckCircle, Plus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { DollarSign, FileText, Clock, CheckCircle, Plus, User } from "lucide-react";
 
 interface BillingRecord {
   id: string;
@@ -25,6 +26,10 @@ interface BillingRecord {
     client: {
       company: string;
       name: string;
+      email?: string;
+      phone?: string;
+      contact_person?: string;
+      address?: string;
     };
   };
   stage: {
@@ -64,7 +69,7 @@ export function BillingRecordCard({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-orange-100 text-orange-800';
+        return 'bg-orange-100 text-orange-800 hover:bg-orange-200 cursor-pointer';
       case 'invoiced':
         return 'bg-green-100 text-green-800';
       case 'paid':
@@ -114,6 +119,14 @@ export function BillingRecordCard({
     setEditInvoiceNumber(record.invoice_number || "");
   };
 
+  const handleStatusClick = (record: BillingRecord) => {
+    if (record.invoice_status === 'pending') {
+      const calculatedAmount = calculateBillingAmount(record);
+      const defaultInvoiceNumber = `INV-${record.project.title.substring(0, 3).toUpperCase()}-${Date.now()}`;
+      onUpdate(record.id, record.amount || calculatedAmount, defaultInvoiceNumber, 'invoiced');
+    }
+  };
+
   const calculatedAmount = calculateBillingAmount(record);
 
   return (
@@ -122,11 +135,60 @@ export function BillingRecordCard({
         <div className="flex justify-between items-start">
           <div>
             <CardTitle className="text-lg">{record.project.title}</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {record.project.client.company} • {record.stage.name} • {record.billing_percentage}%
+            <div className="flex items-center space-x-2">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <button className="text-sm text-blue-600 hover:text-blue-800 underline flex items-center space-x-1">
+                    <User className="w-3 h-3" />
+                    <span>{record.project.client.company}</span>
+                  </button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Client Information</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Company</label>
+                      <p className="text-lg font-semibold">{record.project.client.company}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Contact Name</label>
+                      <p>{record.project.client.name}</p>
+                    </div>
+                    {record.project.client.email && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Email</label>
+                        <p>{record.project.client.email}</p>
+                      </div>
+                    )}
+                    {record.project.client.phone && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Phone</label>
+                        <p>{record.project.client.phone}</p>
+                      </div>
+                    )}
+                    {record.project.client.contact_person && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Contact Person</label>
+                        <p>{record.project.client.contact_person}</p>
+                      </div>
+                    )}
+                    {record.project.client.address && (
+                      <div>
+                        <label className="text-sm font-medium text-gray-600">Address</label>
+                        <p>{record.project.client.address}</p>
+                      </div>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+              <span className="text-sm text-muted-foreground">• {record.stage.name} • {record.billing_percentage}%</span>
+            </div>
+            <div className="mt-1 text-sm text-muted-foreground">
               {record.project.is_retainer && !record.project.treat_as_oneoff && " (Retainer)"}
               {record.project.treat_as_oneoff && " (One-off Upsell)"}
-            </p>
+            </div>
             {record.project.po_number && (
               <p className="text-sm font-medium text-purple-600">
                 PO: {record.project.po_number}
@@ -144,7 +206,10 @@ export function BillingRecordCard({
               </p>
             )}
           </div>
-          <Badge className={getStatusColor(record.invoice_status)}>
+          <Badge 
+            className={getStatusColor(record.invoice_status)}
+            onClick={() => handleStatusClick(record)}
+          >
             <div className="flex items-center space-x-1">
               {getStatusIcon(record.invoice_status)}
               <span>{getStatusText(record.invoice_status)}</span>
