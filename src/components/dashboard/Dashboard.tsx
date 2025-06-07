@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserPlus, Briefcase, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function Dashboard() {
   // Mock data for demo
