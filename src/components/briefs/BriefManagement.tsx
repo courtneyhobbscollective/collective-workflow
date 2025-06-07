@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Plus, Briefcase } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +30,8 @@ interface Project {
   estimated_hours: number;
   is_retainer: boolean;
   current_stage: string;
+  project_value: number | null;
+  treat_as_oneoff: boolean;
   client: Client;
 }
 
@@ -57,8 +60,13 @@ export function BriefManagement() {
     poNumber: "",
     description: "",
     estimatedHours: "",
+    projectValue: "",
+    treatAsOneoff: false,
   });
   const { toast } = useToast();
+
+  const selectedClient = clients.find(c => c.id === formData.clientId);
+  const showProjectValue = !selectedClient?.is_retainer || formData.treatAsOneoff;
 
   useEffect(() => {
     loadData();
@@ -112,6 +120,16 @@ export function BriefManagement() {
       return;
     }
 
+    // Validate project value for non-retainer or one-off projects
+    if (showProjectValue && !formData.projectValue) {
+      toast({
+        title: "Error",
+        description: "Project value is required for this type of project",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const selectedClient = clients.find(c => c.id === formData.clientId);
     
     try {
@@ -128,7 +146,9 @@ export function BriefManagement() {
           estimated_hours: formData.estimatedHours ? parseInt(formData.estimatedHours) : null,
           is_retainer: selectedClient?.is_retainer || false,
           current_stage: 'incoming',
-          status: 'active'
+          status: 'active',
+          project_value: showProjectValue && formData.projectValue ? parseFloat(formData.projectValue) : null,
+          treat_as_oneoff: formData.treatAsOneoff
         }]);
 
       if (error) throw error;
@@ -142,6 +162,8 @@ export function BriefManagement() {
         poNumber: "",
         description: "",
         estimatedHours: "",
+        projectValue: "",
+        treatAsOneoff: false,
       });
       setShowForm(false);
       await loadData();
@@ -235,6 +257,20 @@ export function BriefManagement() {
                     </SelectContent>
                   </Select>
                 </div>
+                
+                {selectedClient?.is_retainer && (
+                  <div className="md:col-span-2">
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="treatAsOneoff"
+                        checked={formData.treatAsOneoff}
+                        onCheckedChange={(checked) => setFormData({ ...formData, treatAsOneoff: checked })}
+                      />
+                      <Label htmlFor="treatAsOneoff">One-off Upsell (bill separately from retainer)</Label>
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <Label htmlFor="workType">Type of Work *</Label>
                   <Select value={formData.workType} onValueChange={(value) => setFormData({ ...formData, workType: value })}>
@@ -260,6 +296,21 @@ export function BriefManagement() {
                     placeholder="e.g., 3"
                   />
                 </div>
+                
+                {showProjectValue && (
+                  <div>
+                    <Label htmlFor="projectValue">Project Value (£) *</Label>
+                    <Input
+                      id="projectValue"
+                      type="number"
+                      step="0.01"
+                      value={formData.projectValue}
+                      onChange={(e) => setFormData({ ...formData, projectValue: e.target.value })}
+                      placeholder="e.g., 5000.00"
+                    />
+                  </div>
+                )}
+
                 <div>
                   <Label htmlFor="dueDate">Due Date *</Label>
                   <Input
@@ -278,7 +329,7 @@ export function BriefManagement() {
                     placeholder="e.g., PO-2024-001"
                   />
                 </div>
-                <div className="md:col-span-2">
+                <div>
                   <Label htmlFor="estimatedHours">Estimated Hours</Label>
                   <Input
                     id="estimatedHours"
@@ -335,15 +386,27 @@ export function BriefManagement() {
                     <span>Est. Hours: {project.estimated_hours}</span>
                   </div>
                 )}
+                {project.project_value && (
+                  <div className="text-xs font-medium">
+                    <span>Value: £{project.project_value.toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center">
                   <span className={`text-xs px-2 py-1 rounded ${getStatusColor(project.current_stage)}`}>
                     {getStageDisplayName(project.current_stage)}
                   </span>
-                  {project.is_retainer && (
-                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                      Retainer
-                    </span>
-                  )}
+                  <div className="flex space-x-1">
+                    {project.is_retainer && (
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                        Retainer
+                      </span>
+                    )}
+                    {project.treat_as_oneoff && (
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        One-off
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>

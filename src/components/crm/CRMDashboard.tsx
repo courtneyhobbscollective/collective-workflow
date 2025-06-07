@@ -21,6 +21,9 @@ interface BillingRecord {
   processed_at: string | null;
   project: {
     title: string;
+    project_value: number | null;
+    is_retainer: boolean;
+    treat_as_oneoff: boolean;
     client: {
       company: string;
       name: string;
@@ -51,6 +54,9 @@ export function CRMDashboard() {
           *,
           project:projects(
             title,
+            project_value,
+            is_retainer,
+            treat_as_oneoff,
             client:clients(company, name)
           ),
           stage:project_stages(name)
@@ -130,11 +136,22 @@ export function CRMDashboard() {
     }
   };
 
+  const calculateBillingAmount = (record: BillingRecord) => {
+    if (record.project.project_value) {
+      return (record.project.project_value * record.billing_percentage) / 100;
+    }
+    return 0;
+  };
+
   const startEditing = (record: BillingRecord) => {
     setEditingRecord(record.id);
-    setEditAmount(record.amount?.toString() || "");
+    const calculatedAmount = calculateBillingAmount(record);
+    setEditAmount(record.amount?.toString() || calculatedAmount.toString());
     setEditInvoiceNumber(record.invoice_number || "");
   };
+
+  const totalProjectValue = billingRecords.reduce((sum, r) => sum + (r.project.project_value || 0), 0);
+  const totalBillingAmount = billingRecords.reduce((sum, r) => sum + (r.amount || calculateBillingAmount(r)), 0);
 
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
@@ -160,21 +177,21 @@ export function CRMDashboard() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Invoiced</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Project Value</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {billingRecords.filter(r => r.invoice_status === 'invoiced').length}
+              £{totalProjectValue.toLocaleString()}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Amount</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Billing Amount</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              £{billingRecords.reduce((sum, r) => sum + (r.amount || 0), 0).toLocaleString()}
+              £{totalBillingAmount.toLocaleString()}
             </div>
           </CardContent>
         </Card>
@@ -191,100 +208,112 @@ export function CRMDashboard() {
       </div>
 
       <div className="space-y-4">
-        {billingRecords.map((record) => (
-          <Card key={record.id}>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-lg">{record.project.title}</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    {record.project.client.company} • {record.stage.name} • {record.billing_percentage}%
-                  </p>
-                </div>
-                <Badge className={getStatusColor(record.invoice_status)}>
-                  <div className="flex items-center space-x-1">
-                    {getStatusIcon(record.invoice_status)}
-                    <span className="capitalize">{record.invoice_status}</span>
+        {billingRecords.map((record) => {
+          const calculatedAmount = calculateBillingAmount(record);
+          return (
+            <Card key={record.id}>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg">{record.project.title}</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      {record.project.client.company} • {record.stage.name} • {record.billing_percentage}%
+                      {record.project.is_retainer && !record.project.treat_as_oneoff && " (Retainer)"}
+                      {record.project.treat_as_oneoff && " (One-off Upsell)"}
+                    </p>
+                    {record.project.project_value && (
+                      <p className="text-sm font-medium text-blue-600">
+                        Project Value: £{record.project.project_value.toLocaleString()} 
+                        → Billing Amount: £{calculatedAmount.toLocaleString()}
+                      </p>
+                    )}
                   </div>
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {editingRecord === record.id ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-sm font-medium">Amount (£)</label>
-                      <Input
-                        type="number"
-                        value={editAmount}
-                        onChange={(e) => setEditAmount(e.target.value)}
-                        placeholder="Enter amount"
-                      />
+                  <Badge className={getStatusColor(record.invoice_status)}>
+                    <div className="flex items-center space-x-1">
+                      {getStatusIcon(record.invoice_status)}
+                      <span className="capitalize">{record.invoice_status}</span>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium">Invoice Number</label>
-                      <Input
-                        value={editInvoiceNumber}
-                        onChange={(e) => setEditInvoiceNumber(e.target.value)}
-                        placeholder="Enter invoice number"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Status</label>
-                      <div className="flex space-x-2 mt-2">
-                        <Button
-                          size="sm"
-                          onClick={() => updateBillingRecord(record.id, parseFloat(editAmount) || 0, editInvoiceNumber, 'invoiced')}
-                        >
-                          Mark as Invoiced
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setEditingRecord(null)}
-                        >
-                          Cancel
-                        </Button>
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {editingRecord === record.id ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-sm font-medium">Amount (£)</label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={editAmount}
+                          onChange={(e) => setEditAmount(e.target.value)}
+                          placeholder="Enter amount"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Invoice Number</label>
+                        <Input
+                          value={editInvoiceNumber}
+                          onChange={(e) => setEditInvoiceNumber(e.target.value)}
+                          placeholder="Enter invoice number"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">Status</label>
+                        <div className="flex space-x-2 mt-2">
+                          <Button
+                            size="sm"
+                            onClick={() => updateBillingRecord(record.id, parseFloat(editAmount) || 0, editInvoiceNumber, 'invoiced')}
+                          >
+                            Mark as Invoiced
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditingRecord(null)}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex justify-between items-center">
-                  <div className="space-y-1">
-                    <p className="text-sm">
-                      <span className="font-medium">Amount:</span> {record.amount ? `£${record.amount.toLocaleString()}` : 'Not set'}
-                    </p>
-                    <p className="text-sm">
-                      <span className="font-medium">Invoice #:</span> {record.invoice_number || 'Not assigned'}
-                    </p>
-                    <p className="text-sm">
-                      <span className="font-medium">Created:</span> {new Date(record.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => startEditing(record)}
-                    >
-                      Edit
-                    </Button>
-                    {record.invoice_status === 'invoiced' && (
+                ) : (
+                  <div className="flex justify-between items-center">
+                    <div className="space-y-1">
+                      <p className="text-sm">
+                        <span className="font-medium">Amount:</span> {record.amount ? `£${record.amount.toLocaleString()}` : `£${calculatedAmount.toLocaleString()} (calculated)`}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Invoice #:</span> {record.invoice_number || 'Not assigned'}
+                      </p>
+                      <p className="text-sm">
+                        <span className="font-medium">Created:</span> {new Date(record.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="space-x-2">
                       <Button
                         size="sm"
-                        onClick={() => updateBillingRecord(record.id, record.amount || 0, record.invoice_number || '', 'paid')}
+                        variant="outline"
+                        onClick={() => startEditing(record)}
                       >
-                        Mark as Paid
+                        Edit
                       </Button>
-                    )}
+                      {record.invoice_status === 'invoiced' && (
+                        <Button
+                          size="sm"
+                          onClick={() => updateBillingRecord(record.id, record.amount || calculatedAmount, record.invoice_number || '', 'paid')}
+                        >
+                          Mark as Paid
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

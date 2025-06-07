@@ -195,8 +195,10 @@ export type Database = {
           id: string
           is_retainer: boolean | null
           po_number: string | null
+          project_value: number | null
           status: string | null
           title: string
+          treat_as_oneoff: boolean | null
           updated_at: string
           work_type: string
         }
@@ -212,8 +214,10 @@ export type Database = {
           id?: string
           is_retainer?: boolean | null
           po_number?: string | null
+          project_value?: number | null
           status?: string | null
           title: string
+          treat_as_oneoff?: boolean | null
           updated_at?: string
           work_type: string
         }
@@ -229,8 +233,10 @@ export type Database = {
           id?: string
           is_retainer?: boolean | null
           po_number?: string | null
+          project_value?: number | null
           status?: string | null
           title?: string
+          treat_as_oneoff?: boolean | null
           updated_at?: string
           work_type?: string
         }
