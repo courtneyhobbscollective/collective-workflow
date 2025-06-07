@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,6 +61,7 @@ export function BriefManagement() {
     estimatedHours: "",
     projectValue: "",
     treatAsOneoff: false,
+    contractSigned: false,
   });
   const { toast } = useToast();
 
@@ -111,48 +111,33 @@ export function BriefManagement() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.clientId || !formData.workType || !formData.deliverables || !formData.dueDate) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!formData.clientId || !formData.title || !formData.workType) return;
 
-    // Validate project value for non-retainer or one-off projects
-    if (showProjectValue && !formData.projectValue) {
-      toast({
-        title: "Error",
-        description: "Project value is required for this type of project",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const selectedClient = clients.find(c => c.id === formData.clientId);
-    
+    setLoading(true);
     try {
+      const projectData = {
+        client_id: formData.clientId,
+        title: formData.title,
+        description: formData.description,
+        work_type: formData.workType,
+        deliverables: parseInt(formData.deliverables),
+        due_date: formData.dueDate || null,
+        estimated_hours: formData.estimatedHours ? parseInt(formData.estimatedHours) : null,
+        po_number: formData.poNumber || null,
+        project_value: showProjectValue && formData.projectValue ? parseFloat(formData.projectValue) : null,
+        is_retainer: selectedClient?.is_retainer || false,
+        treat_as_oneoff: formData.treatAsOneoff,
+        contract_signed: formData.contractSigned,
+        po_required: true, // Default to requiring PO for new projects
+      };
+
       const { error } = await supabase
         .from('projects')
-        .insert([{
-          title: formData.title,
-          client_id: formData.clientId,
-          work_type: formData.workType,
-          deliverables: parseInt(formData.deliverables),
-          due_date: formData.dueDate,
-          po_number: formData.poNumber || null,
-          description: formData.description || null,
-          estimated_hours: formData.estimatedHours ? parseInt(formData.estimatedHours) : null,
-          is_retainer: selectedClient?.is_retainer || false,
-          current_stage: 'incoming',
-          status: 'active',
-          project_value: showProjectValue && formData.projectValue ? parseFloat(formData.projectValue) : null,
-          treat_as_oneoff: formData.treatAsOneoff
-        }]);
+        .insert(projectData);
 
       if (error) throw error;
 
+      // Reset form
       setFormData({
         title: "",
         clientId: "",
@@ -164,6 +149,7 @@ export function BriefManagement() {
         estimatedHours: "",
         projectValue: "",
         treatAsOneoff: false,
+        contractSigned: false,
       });
       setShowForm(false);
       await loadData();
@@ -179,6 +165,8 @@ export function BriefManagement() {
         description: "Failed to create brief",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 

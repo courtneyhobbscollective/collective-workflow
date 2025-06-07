@@ -99,6 +99,44 @@ export type Database = {
           },
         ]
       }
+      expenses: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          date: string
+          description: string
+          id: string
+          project_id: string
+        }
+        Insert: {
+          amount: number
+          category?: string
+          created_at?: string
+          date?: string
+          description: string
+          id?: string
+          project_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_stage_history: {
         Row: {
           changed_at: string
@@ -186,6 +224,7 @@ export type Database = {
         Row: {
           assigned_staff_id: string | null
           client_id: string
+          contract_signed: boolean | null
           created_at: string
           current_stage: string | null
           deliverables: number | null
@@ -195,6 +234,7 @@ export type Database = {
           id: string
           is_retainer: boolean | null
           po_number: string | null
+          po_required: boolean | null
           project_value: number | null
           status: string | null
           title: string
@@ -205,6 +245,7 @@ export type Database = {
         Insert: {
           assigned_staff_id?: string | null
           client_id: string
+          contract_signed?: boolean | null
           created_at?: string
           current_stage?: string | null
           deliverables?: number | null
@@ -214,6 +255,7 @@ export type Database = {
           id?: string
           is_retainer?: boolean | null
           po_number?: string | null
+          po_required?: boolean | null
           project_value?: number | null
           status?: string | null
           title: string
@@ -224,6 +266,7 @@ export type Database = {
         Update: {
           assigned_staff_id?: string | null
           client_id?: string
+          contract_signed?: boolean | null
           created_at?: string
           current_stage?: string | null
           deliverables?: number | null
@@ -233,6 +276,7 @@ export type Database = {
           id?: string
           is_retainer?: boolean | null
           po_number?: string | null
+          po_required?: boolean | null
           project_value?: number | null
           status?: string | null
           title?: string
