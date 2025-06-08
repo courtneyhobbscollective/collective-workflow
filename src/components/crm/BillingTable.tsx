@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { MessageSquare } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 import { ClientInfoModal } from "./ClientInfoModal";
 import { CommentsModal } from "./CommentsModal";
@@ -89,11 +90,13 @@ export function BillingTable({
               <TableHead>Project Name</TableHead>
               <TableHead>Company</TableHead>
               <TableHead>Client Name</TableHead>
+              <TableHead className="w-12 text-center">
+                <MessageSquare className="w-4 h-4 mx-auto" />
+              </TableHead>
               <TableHead>Stage</TableHead>
               <TableHead>Expenses</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Deal Value</TableHead>
-              <TableHead>Comments</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -118,6 +121,14 @@ export function BillingTable({
                   
                   <TableCell>
                     <ClientInfoModal client={record.project.client} />
+                  </TableCell>
+                  
+                  <TableCell className="text-center">
+                    <CommentsModal 
+                      recordId={record.id}
+                      comments={comments}
+                      onCommentsUpdate={handleCommentsUpdate}
+                    />
                   </TableCell>
                   
                   <TableCell>
@@ -152,14 +163,6 @@ export function BillingTable({
                         of £{record.project.project_value.toLocaleString()}
                       </div>
                     )}
-                  </TableCell>
-                  
-                  <TableCell>
-                    <CommentsModal 
-                      recordId={record.id}
-                      comments={comments}
-                      onCommentsUpdate={handleCommentsUpdate}
-                    />
                   </TableCell>
                 </TableRow>
               );

@@ -42,13 +42,13 @@ export function StatusBadge({ record, onStatusChange }: StatusBadgeProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-green-100 text-green-800 hover:bg-green-200 cursor-pointer';
+        return 'bg-green-100 text-green-800 hover:bg-green-200';
       case 'invoiced':
-        return 'bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer';
+        return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
       case 'on_hold':
-        return 'bg-orange-100 text-orange-800 hover:bg-orange-200 cursor-pointer';
+        return 'bg-orange-100 text-orange-800 hover:bg-orange-200';
       default:
-        return 'bg-gray-100 text-gray-800 hover:bg-gray-200 cursor-pointer';
+        return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
     }
   };
 
@@ -68,11 +68,13 @@ export function StatusBadge({ record, onStatusChange }: StatusBadgeProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Badge className={getStatusColor(record.invoice_status)}>
-          {getStatusText(record.invoice_status)}
-        </Badge>
+        <div className="cursor-pointer">
+          <Badge className={getStatusColor(record.invoice_status)}>
+            {getStatusText(record.invoice_status)}
+          </Badge>
+        </div>
       </PopoverTrigger>
-      <PopoverContent className="w-48 bg-background border shadow-md">
+      <PopoverContent className="w-48 p-3">
         <div className="space-y-2">
           <h4 className="font-medium text-sm">Change Status</h4>
           <div className="space-y-1">
