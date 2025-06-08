@@ -2,9 +2,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserPlus, Briefcase, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { StaffDashboard } from "@/components/staff/StaffDashboard";
 
 export function Dashboard() {
-  // Mock data for demo
+  // Mock data for demo - in a real app this would come from authentication
+  const isStaffMember = true; // This would be determined by user role/auth
+
+  if (isStaffMember) {
+    return <StaffDashboard />;
+  }
+
+  // Admin/Manager dashboard
   const stats = [
     { title: "Active Staff", value: "12", icon: Users, color: "text-blue-600" },
     { title: "Total Clients", value: "24", icon: UserPlus, color: "text-green-600" },

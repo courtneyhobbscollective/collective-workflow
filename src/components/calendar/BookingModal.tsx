@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle, Calendar as CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { format, addHours, parseISO } from "date-fns";
@@ -65,6 +67,8 @@ export function BookingModal({
   const [customHours, setCustomHours] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [capacityWarning, setCapacityWarning] = useState<string | null>(null);
+  const [alternativeStaff, setAlternativeStaff] = useState<Staff[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -73,13 +77,39 @@ export function BookingModal({
     }
   }, [selectedDate, project]);
 
+  useEffect(() => {
+    if (project && staff.length > 0) {
+      findAlternativeStaff();
+    }
+  }, [project, staff]);
+
+  const findAlternativeStaff = async () => {
+    if (!project) return;
+
+    try {
+      // Find staff members with similar roles/departments who might be available
+      const assignedStaff = staff.find(s => s.id === project.assigned_staff_id);
+      const alternatives = staff.filter(s => 
+        s.id !== project.assigned_staff_id && 
+        s.department === assignedStaff?.department
+      );
+      
+      setAlternativeStaff(alternatives);
+    } catch (error) {
+      console.error('Error finding alternative staff:', error);
+    }
+  };
+
   const findAvailableSlots = async () => {
     if (!selectedDate || !project) return;
 
     setLoadingSlots(true);
+    setCapacityWarning(null);
+    
     try {
       const dayOfWeek = selectedDate.getDay();
-      const adjustedDay = dayOfWeek === 0 ? 7 : dayOfWeek; // Convert Sunday from 0 to 7
+      const adjustedDay = dayOfWeek === 0 ? 7 : dayOfWeek;
+      const hoursNeeded = customHours ? parseFloat(customHours) : project.estimated_hours;
 
       // Get staff availability for the selected day
       const { data: availability, error: availError } = await supabase
@@ -90,6 +120,12 @@ export function BookingModal({
         .eq('is_available', true);
 
       if (availError) throw availError;
+
+      if (!availability || availability.length === 0) {
+        setCapacityWarning(`Staff member is not available on ${selectedDate.toLocaleDateString()}`);
+        setAvailableSlots([]);
+        return;
+      }
 
       // Get existing bookings for the selected date
       const { data: existingBookings, error: bookingError } = await supabase
@@ -102,12 +138,26 @@ export function BookingModal({
 
       // Calculate available time slots
       const slots: TimeSlot[] = [];
-      const hoursNeeded = project.estimated_hours;
 
       availability?.forEach((avail) => {
         const startHour = parseInt(avail.start_time.split(':')[0]);
         const endHour = parseInt(avail.end_time.split(':')[0]);
+        const totalAvailableHours = endHour - startHour;
         
+        // Calculate booked hours for this day
+        const bookedHours = existingBookings?.reduce((total, booking) => {
+          return total + booking.hours_booked;
+        }, 0) || 0;
+
+        const remainingHours = totalAvailableHours - bookedHours;
+
+        if (remainingHours < hoursNeeded) {
+          setCapacityWarning(
+            `Staff member only has ${remainingHours} hours available but needs ${hoursNeeded} hours. Please choose another staff member or reduce the hours.`
+          );
+          return;
+        }
+
         // Check each possible starting hour
         for (let hour = startHour; hour <= endHour - hoursNeeded; hour++) {
           const slotStart = `${hour.toString().padStart(2, '0')}:00`;
@@ -130,6 +180,12 @@ export function BookingModal({
           }
         }
       });
+
+      if (slots.length === 0 && !capacityWarning) {
+        setCapacityWarning(
+          `No available slots found for ${hoursNeeded} hours on ${selectedDate.toLocaleDateString()}. This staff member is at capacity.`
+        );
+      }
 
       setAvailableSlots(slots);
     } catch (error) {
@@ -188,6 +244,7 @@ export function BookingModal({
     setAvailableSlots([]);
     setSelectedSlot(null);
     setCustomHours("");
+    setCapacityWarning(null);
   };
 
   const staffMember = project ? staff.find(s => s.id === project.assigned_staff_id) : null;
@@ -222,6 +279,27 @@ export function BookingModal({
               </div>
             </div>
 
+            {capacityWarning && (
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  {capacityWarning}
+                  {alternativeStaff.length > 0 && (
+                    <div className="mt-2">
+                      <p className="font-medium">Alternative staff members available:</p>
+                      <ul className="mt-1 space-y-1">
+                        {alternativeStaff.map(staff => (
+                          <li key={staff.id} className="text-sm">
+                            • {staff.name} ({staff.role})
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <Label>Select Date</Label>
@@ -253,9 +331,12 @@ export function BookingModal({
                         </Button>
                       ))
                     ) : (
-                      <p className="text-sm text-muted-foreground">
-                        No available slots for {project.estimated_hours} hours on this date.
-                      </p>
+                      <div className="text-center py-4">
+                        <CalendarIcon className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                        <p className="text-sm text-muted-foreground">
+                          {capacityWarning ? "Staff member at capacity" : "No available slots"}
+                        </p>
+                      </div>
                     )}
                   </div>
                 ) : (
@@ -269,7 +350,7 @@ export function BookingModal({
             <div className="flex space-x-2">
               <Button 
                 onClick={handleBooking} 
-                disabled={!selectedSlot || loading}
+                disabled={!selectedSlot || loading || !!capacityWarning}
                 className="flex-1"
               >
                 {loading ? "Creating Booking..." : "Create Booking"}
