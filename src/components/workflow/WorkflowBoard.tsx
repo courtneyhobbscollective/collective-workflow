@@ -1,12 +1,14 @@
-
+import { useState } from "react";
 import { StageColumn } from "./StageColumn";
 import { ChaseUpAlerts } from "./ChaseUpAlerts";
+import { WorkflowHeader } from "./WorkflowHeader";
 import { useWorkflowData } from "@/hooks/useWorkflowData";
 import { useProjectOperations } from "@/utils/projectOperations";
 import { useToast } from "@/hooks/use-toast";
 
 export function WorkflowBoard() {
   const { projects, stages, staff, loading, loadData } = useWorkflowData();
+  const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const { 
     assignStaff, 
     updateContractStatus, 
@@ -17,7 +19,6 @@ export function WorkflowBoard() {
   const { toast } = useToast();
 
   const handleBookingCreated = () => {
-    // Refresh data when a booking is created
     loadData();
     toast({
       title: "Success",
@@ -25,8 +26,14 @@ export function WorkflowBoard() {
     });
   };
 
-  const getProjectsForStage = (stageId: string) => {
-    return projects.filter(project => project.current_stage === stageId);
+  const getFilteredProjects = (stageId: string) => {
+    const stageProjects = projects.filter(project => project.current_stage === stageId);
+    
+    if (selectedStaff === "all") {
+      return stageProjects;
+    }
+    
+    return stageProjects.filter(project => project.assigned_staff_id === selectedStaff);
   };
 
   const handleUpdateProjectStatus = (projectId: string, status: string, picterLink?: string) => {
@@ -41,21 +48,26 @@ export function WorkflowBoard() {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
   }
 
+  // Find incoming stage and other stages
+  const incomingStage = stages?.find(stage => stage.id === 'incoming');
+  const otherStages = stages?.filter(stage => stage.id !== 'incoming') || [];
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold text-foreground">Workflow Board</h2>
-        <p className="text-muted-foreground">Track projects through your creative workflow with staff assignments and project gates</p>
-      </div>
+      <WorkflowHeader
+        staff={staff}
+        selectedStaff={selectedStaff}
+        onStaffChange={setSelectedStaff}
+      />
 
       <ChaseUpAlerts />
 
-      <div className="grid grid-cols-1 lg:grid-cols-7 gap-4 overflow-x-auto">
-        {stages?.map((stage) => (
+      {/* Incoming Briefs - Full Width Row */}
+      {incomingStage && (
+        <div className="mb-6">
           <StageColumn
-            key={stage.id}
-            stage={stage}
-            projects={getProjectsForStage(stage.id)}
+            stage={incomingStage}
+            projects={getFilteredProjects(incomingStage.id)}
             staff={staff}
             stages={stages}
             onAssignStaff={assignStaff}
@@ -64,13 +76,35 @@ export function WorkflowBoard() {
             onMoveProject={handleMoveProject}
             onUpdateStatus={handleUpdateProjectStatus}
             onBookingCreated={handleBookingCreated}
+            isIncomingStage={true}
           />
-        )) || (
-          <div className="col-span-7 text-center text-muted-foreground">
-            No workflow stages configured
-          </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Other Stages - 2 Column Grid */}
+      {otherStages.length > 0 ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {otherStages.map((stage) => (
+            <StageColumn
+              key={stage.id}
+              stage={stage}
+              projects={getFilteredProjects(stage.id)}
+              staff={staff}
+              stages={stages}
+              onAssignStaff={assignStaff}
+              onUpdateContract={updateContractStatus}
+              onUpdatePoNumber={updatePoNumber}
+              onMoveProject={handleMoveProject}
+              onUpdateStatus={handleUpdateProjectStatus}
+              onBookingCreated={handleBookingCreated}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center text-muted-foreground">
+          No workflow stages configured
+        </div>
+      )}
     </div>
   );
 }

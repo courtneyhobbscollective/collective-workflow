@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ProjectCard } from "./ProjectCard";
+import { CollapsibleProjectCard } from "./CollapsibleProjectCard";
 import type { Staff } from "@/types/staff";
 
 interface ProjectStage {
@@ -50,6 +50,7 @@ interface StageColumnProps {
   onMoveProject: (projectId: string, newStageId: string) => void;
   onUpdateStatus: (projectId: string, status: string, picterLink?: string) => void;
   onBookingCreated?: () => void;
+  isIncomingStage?: boolean;
 }
 
 export function StageColumn({
@@ -62,10 +63,11 @@ export function StageColumn({
   onUpdatePoNumber,
   onMoveProject,
   onUpdateStatus,
-  onBookingCreated = () => {}
+  onBookingCreated = () => {},
+  isIncomingStage = false
 }: StageColumnProps) {
   return (
-    <Card className="min-w-[300px]">
+    <Card className={`${isIncomingStage ? 'w-full' : 'min-w-[300px]'}`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">{stage.name}</CardTitle>
@@ -89,7 +91,7 @@ export function StageColumn({
           </p>
         ) : (
           projects.map((project) => (
-            <ProjectCard
+            <CollapsibleProjectCard
               key={project.id}
               project={project}
               staff={staff}

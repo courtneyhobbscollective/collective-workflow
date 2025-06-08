@@ -82,8 +82,21 @@ export function useWorkflowData() {
       if (staffResponse.error) throw staffResponse.error;
       if (stagesResponse.error) throw stagesResponse.error;
 
-      setProjects(projectsResponse.data || []);
-      setStaff(staffResponse.data || []);
+      // Transform data to match interface
+      const transformedProjects = (projectsResponse.data || []).map((project: any) => ({
+        ...project,
+        start_date: project.start_date || null,
+        end_date: project.end_date || null,
+        stage_status: project.stage_status || 'in_progress'
+      }));
+
+      const transformedStaff = (staffResponse.data || []).map((staff: any) => ({
+        ...staff,
+        invitation_status: staff.invitation_status as 'pending' | 'invited' | 'accepted'
+      }));
+
+      setProjects(transformedProjects);
+      setStaff(transformedStaff);
       setStages(stagesResponse.data || []);
     } catch (err) {
       console.error('Error loading workflow data:', err);
