@@ -1,11 +1,13 @@
 
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, User, Building, Target, Edit, Trash2 } from "lucide-react";
+import { Calendar, Clock, User, Building, Target, Edit2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { BookingReassignmentModal } from "./BookingReassignmentModal";
 
 interface ProjectBooking {
   id: string;
@@ -48,6 +50,7 @@ export function BookingDetailsModal({
   staff,
   onBookingUpdate
 }: BookingDetailsModalProps) {
+  const [showReassignModal, setShowReassignModal] = useState(false);
   const { toast } = useToast();
 
   if (!booking) return null;
@@ -95,135 +98,123 @@ export function BookingDetailsModal({
     }
   };
 
-  const handleDeleteBooking = async () => {
-    if (!confirm('Are you sure you want to delete this booking?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('project_bookings')
-        .delete()
-        .eq('id', booking.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Booking deleted successfully",
-      });
-      
-      onBookingUpdate();
-      onClose();
-    } catch (error) {
-      console.error('Error deleting booking:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete booking",
-        variant: "destructive",
-      });
-    }
+  const handleReassignComplete = () => {
+    setShowReassignModal(false);
+    onBookingUpdate();
+    onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">
-            Booking Details
-          </DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold">
+              Booking Details
+            </DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <div>
-            <h3 className="font-medium text-base mb-2">{booking.project.title}</h3>
-            <Badge className={getStatusColor(booking.status)}>
-              {booking.status.replace('_', ' ')}
-            </Badge>
-          </div>
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-medium text-base mb-2">{booking.project.title}</h3>
+              <Badge className={getStatusColor(booking.status)}>
+                {booking.status.replace('_', ' ')}
+              </Badge>
+            </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2 text-sm">
-              <Building className="w-4 h-4 text-muted-foreground" />
-              <span>{booking.project.client.company}</span>
-            </div>
-            
-            <div className="flex items-center space-x-2 text-sm">
-              <User className="w-4 h-4 text-muted-foreground" />
-              <span>{staffMember?.name} ({staffMember?.role})</span>
-            </div>
-            
-            <div className="flex items-center space-x-2 text-sm">
-              <Calendar className="w-4 h-4 text-muted-foreground" />
-              <span>{format(new Date(booking.booking_date), 'EEEE, MMM d, yyyy')}</span>
-            </div>
-            
-            <div className="flex items-center space-x-2 text-sm">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <span>{booking.start_time} - {booking.end_time} ({booking.hours_booked}h)</span>
-            </div>
-            
-            {booking.project.estimated_hours && (
+            <div className="space-y-3">
               <div className="flex items-center space-x-2 text-sm">
-                <Target className="w-4 h-4 text-muted-foreground" />
-                <span>Total project: {booking.project.estimated_hours}h estimated</span>
+                <Building className="w-4 h-4 text-muted-foreground" />
+                <span>{booking.project.client.company}</span>
               </div>
-            )}
-
-            {booking.notes && (
-              <div className="text-sm">
-                <p className="font-medium text-muted-foreground mb-1">Notes:</p>
-                <p className="text-gray-700">{booking.notes}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2 pt-4 border-t">
-            <div className="flex flex-wrap gap-2">
-              {booking.status !== 'completed' && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleStatusUpdate('completed')}
-                  className="text-green-600 hover:text-green-700"
-                >
-                  Mark Complete
-                </Button>
-              )}
               
-              {booking.status === 'scheduled' && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleStatusUpdate('in_progress')}
-                  className="text-orange-600 hover:text-orange-700"
-                >
-                  Start Work
-                </Button>
+              <div className="flex items-center space-x-2 text-sm">
+                <User className="w-4 h-4 text-muted-foreground" />
+                <span>{staffMember?.name} ({staffMember?.role})</span>
+              </div>
+              
+              <div className="flex items-center space-x-2 text-sm">
+                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <span>{format(new Date(booking.booking_date), 'EEEE, MMM d, yyyy')}</span>
+              </div>
+              
+              <div className="flex items-center space-x-2 text-sm">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span>{booking.start_time} - {booking.end_time} ({booking.hours_booked}h)</span>
+              </div>
+              
+              {booking.project.estimated_hours && (
+                <div className="flex items-center space-x-2 text-sm">
+                  <Target className="w-4 h-4 text-muted-foreground" />
+                  <span>Total project: {booking.project.estimated_hours}h estimated</span>
+                </div>
               )}
 
-              {booking.status !== 'cancelled' && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleStatusUpdate('cancelled')}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  Cancel
-                </Button>
+              {booking.notes && (
+                <div className="text-sm">
+                  <p className="font-medium text-muted-foreground mb-1">Notes:</p>
+                  <p className="text-gray-700">{booking.notes}</p>
+                </div>
               )}
             </div>
 
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={handleDeleteBooking}
-              className="w-full"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete Booking
-            </Button>
+            <div className="space-y-2 pt-4 border-t">
+              <div className="flex flex-wrap gap-2">
+                {booking.status !== 'completed' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleStatusUpdate('completed')}
+                    className="text-green-600 hover:text-green-700"
+                  >
+                    Mark Complete
+                  </Button>
+                )}
+                
+                {booking.status === 'scheduled' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleStatusUpdate('in_progress')}
+                    className="text-orange-600 hover:text-orange-700"
+                  >
+                    Start Work
+                  </Button>
+                )}
+
+                {booking.status !== 'cancelled' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleStatusUpdate('cancelled')}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </div>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowReassignModal(true)}
+                className="w-full"
+              >
+                <Edit2 className="w-4 h-4 mr-2" />
+                Reassign Booking
+              </Button>
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <BookingReassignmentModal
+        booking={booking}
+        isOpen={showReassignModal}
+        onClose={() => setShowReassignModal(false)}
+        staff={staff}
+        onBookingUpdate={handleReassignComplete}
+      />
+    </>
   );
 }
