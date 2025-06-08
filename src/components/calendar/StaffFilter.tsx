@@ -2,14 +2,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, User } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 interface Staff {
   id: string;
   name: string;
   email: string;
   role: string;
-  department: string;
 }
 
 interface StaffFilterProps {

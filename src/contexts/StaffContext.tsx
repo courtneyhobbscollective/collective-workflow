@@ -6,8 +6,7 @@ interface Staff {
   id: string;
   name: string;
   email: string;
-  role: string;
-  department: string;
+  role: 'Admin' | 'Staff';
   profile_picture_url: string | null;
 }
 
@@ -16,6 +15,7 @@ interface StaffContextType {
   setCurrentStaff: (staff: Staff | null) => void;
   allStaff: Staff[];
   loadStaff: () => Promise<void>;
+  updateStaff: (id: string, updates: Partial<Staff>) => Promise<void>;
 }
 
 const StaffContext = createContext<StaffContextType | undefined>(undefined);
@@ -44,6 +44,23 @@ export function StaffProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateStaff = async (id: string, updates: Partial<Staff>) => {
+    try {
+      const { error } = await supabase
+        .from('staff')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      // Reload staff to reflect changes
+      await loadStaff();
+    } catch (error) {
+      console.error('Error updating staff:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     loadStaff();
   }, []);
@@ -53,7 +70,8 @@ export function StaffProvider({ children }: { children: React.ReactNode }) {
       currentStaff,
       setCurrentStaff,
       allStaff,
-      loadStaff
+      loadStaff,
+      updateStaff
     }}>
       {children}
     </StaffContext.Provider>

@@ -7,7 +7,6 @@ interface Staff {
   name: string;
   email: string;
   role: string;
-  department: string;
 }
 
 interface AssignedStaff {
@@ -15,7 +14,6 @@ interface AssignedStaff {
   name: string;
   email: string;
   role: string;
-  department: string;
 }
 
 interface ProjectStaffSectionProps {

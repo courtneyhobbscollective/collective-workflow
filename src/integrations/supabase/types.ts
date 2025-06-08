@@ -730,33 +730,30 @@ export type Database = {
       staff: {
         Row: {
           created_at: string
-          department: string
           email: string
           id: string
           is_active: boolean | null
           name: string
           profile_picture_url: string | null
-          role: string
+          role: Database["public"]["Enums"]["staff_role"]
         }
         Insert: {
           created_at?: string
-          department: string
           email: string
           id?: string
           is_active?: boolean | null
           name: string
           profile_picture_url?: string | null
-          role: string
+          role: Database["public"]["Enums"]["staff_role"]
         }
         Update: {
           created_at?: string
-          department?: string
           email?: string
           id?: string
           is_active?: boolean | null
           name?: string
           profile_picture_url?: string | null
-          role?: string
+          role?: Database["public"]["Enums"]["staff_role"]
         }
         Relationships: []
       }
@@ -865,7 +862,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      staff_role: "Admin" | "Staff"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -980,6 +977,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      staff_role: ["Admin", "Staff"],
+    },
   },
 } as const

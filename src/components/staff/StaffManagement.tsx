@@ -4,18 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Plus, Users } from "lucide-react";
+import { Plus, Users, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ProfilePictureUpload } from "./ProfilePictureUpload";
+import { EditStaffModal } from "./EditStaffModal";
 
 interface Staff {
   id: string;
   name: string;
   email: string;
-  role: string;
-  department: string;
+  role: 'Admin' | 'Staff';
   is_active: boolean;
   profile_picture_url: string | null;
 }
@@ -24,11 +25,11 @@ export function StaffManagement() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    role: "",
-    department: "",
+    role: "Staff" as 'Admin' | 'Staff',
     profile_picture_url: "",
   });
   const { toast } = useToast();
@@ -61,10 +62,10 @@ export function StaffManagement() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.role || !formData.department) {
+    if (!formData.name || !formData.email || !formData.role) {
       toast({
         title: "Error",
-        description: "Please fill in all fields",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
@@ -77,7 +78,7 @@ export function StaffManagement() {
 
       if (error) throw error;
 
-      setFormData({ name: "", email: "", role: "", department: "", profile_picture_url: "" });
+      setFormData({ name: "", email: "", role: "Staff", profile_picture_url: "" });
       setShowForm(false);
       await loadStaff();
       
@@ -92,6 +93,21 @@ export function StaffManagement() {
         description: "Failed to add staff member. Email might already exist.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleUpdate = async (id: string, updates: Partial<Staff>) => {
+    try {
+      const { error } = await supabase
+        .from('staff')
+        .update(updates)
+        .eq('id', id);
+
+      if (error) throw error;
+      await loadStaff();
+    } catch (error) {
+      console.error('Error updating staff:', error);
+      throw error;
     }
   };
 
@@ -131,41 +147,37 @@ export function StaffManagement() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="name">Full Name *</Label>
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Enter full name"
+                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="email">Email Address</Label>
+                  <Label htmlFor="email">Email Address *</Label>
                   <Input
                     id="email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="Enter email address"
+                    required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="role">Role</Label>
-                  <Input
-                    id="role"
-                    value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    placeholder="e.g., Designer, Developer, Account Manager"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="department">Department</Label>
-                  <Input
-                    id="department"
-                    value={formData.department}
-                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    placeholder="e.g., Design, Development, Client Services"
-                  />
+                <div className="md:col-span-2">
+                  <Label htmlFor="role">Role *</Label>
+                  <Select value={formData.role} onValueChange={(value: 'Admin' | 'Staff') => setFormData({ ...formData, role: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="Staff">Staff</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="flex space-x-2">
@@ -183,29 +195,54 @@ export function StaffManagement() {
         {staff.map((member) => (
           <Card key={member.id}>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-3">
-                <Avatar className="w-10 h-10">
-                  <AvatarImage src={member.profile_picture_url || undefined} />
-                  <AvatarFallback>
-                    {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex items-center space-x-2">
-                  <Users className="w-5 h-5" />
-                  <span>{member.name}</span>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={member.profile_picture_url || undefined} />
+                    <AvatarFallback>
+                      {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex items-center space-x-2">
+                    <Users className="w-5 h-5" />
+                    <span>{member.name}</span>
+                  </div>
                 </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setEditingStaff(member)}
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">{member.email}</p>
-                <p className="text-sm font-medium">{member.role}</p>
-                <p className="text-sm text-muted-foreground">{member.department}</p>
+                <div className="flex items-center space-x-2">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    member.role === 'Admin' 
+                      ? 'bg-purple-100 text-purple-800' 
+                      : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {member.role}
+                  </span>
+                </div>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {editingStaff && (
+        <EditStaffModal
+          staff={editingStaff}
+          open={!!editingStaff}
+          onOpenChange={(open) => !open && setEditingStaff(null)}
+          onUpdate={handleUpdate}
+        />
+      )}
     </div>
   );
 }
