@@ -87,16 +87,16 @@ export function BillingTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Project Name</TableHead>
-              <TableHead>Company</TableHead>
-              <TableHead>Client Name</TableHead>
-              <TableHead className="w-12 text-center">
-                <MessageSquare className="w-4 h-4 mx-auto" />
+              <TableHead className="text-left">Project Name</TableHead>
+              <TableHead className="text-left">Company</TableHead>
+              <TableHead className="text-left">Client Name</TableHead>
+              <TableHead className="w-12 text-left">
+                <MessageSquare className="w-4 h-4" />
               </TableHead>
-              <TableHead>Stage</TableHead>
-              <TableHead>Expenses</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Deal Value</TableHead>
+              <TableHead className="text-left">Stage</TableHead>
+              <TableHead className="text-left">Expenses</TableHead>
+              <TableHead className="text-left">Status</TableHead>
+              <TableHead className="text-left">Deal Value</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -106,7 +106,7 @@ export function BillingTable({
               
               return (
                 <TableRow key={record.id}>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium text-left">
                     <div>
                       <div>{record.project.title}</div>
                       {record.project.po_number && (
@@ -117,13 +117,13 @@ export function BillingTable({
                     </div>
                   </TableCell>
                   
-                  <TableCell>{record.project.client.company}</TableCell>
+                  <TableCell className="text-left">{record.project.client.company}</TableCell>
                   
-                  <TableCell>
+                  <TableCell className="text-left">
                     <ClientInfoModal client={record.project.client} />
                   </TableCell>
                   
-                  <TableCell className="text-center">
+                  <TableCell className="text-left">
                     <CommentsModal 
                       recordId={record.id}
                       comments={comments}
@@ -131,7 +131,7 @@ export function BillingTable({
                     />
                   </TableCell>
                   
-                  <TableCell>
+                  <TableCell className="text-left">
                     <div title={record.stage.name}>
                       {truncateText(record.stage.name, 9)}
                     </div>
@@ -140,21 +140,21 @@ export function BillingTable({
                     </div>
                   </TableCell>
                   
-                  <TableCell>
+                  <TableCell className="text-left">
                     <ExpenseCell 
                       totalExpenses={totalProjectExpenses}
                       onOpenExpenseModal={() => onOpenExpenseModal(record.project_id)}
                     />
                   </TableCell>
                   
-                  <TableCell>
+                  <TableCell className="text-left">
                     <StatusBadge 
                       record={record}
                       onStatusChange={handleStatusChange}
                     />
                   </TableCell>
                   
-                  <TableCell>
+                  <TableCell className="text-left">
                     <div className="font-medium">
                       £{(record.amount || calculatedAmount).toLocaleString()}
                     </div>
