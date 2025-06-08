@@ -84,25 +84,22 @@ export function MessageList({ messages, currentUser, allStaff = [] }: MessageLis
   };
 
   const renderMessage = (message: Message) => {
-    const isOwnMessage = message.sender_email === currentUser.email;
     const reactions = Array.isArray(message.reactions) ? message.reactions : [];
     const profilePictureUrl = getStaffProfilePicture(message.sender_email);
     
     return (
       <div
         key={message.id}
-        className={`group flex items-start space-x-3 p-2 hover:bg-muted/50 rounded-lg ${
-          isOwnMessage ? 'flex-row-reverse space-x-reverse' : ''
-        }`}
+        className="group flex items-start space-x-3 p-2 hover:bg-muted/50 rounded-lg w-full"
       >
-        <Avatar className="w-8 h-8">
+        <Avatar className="w-8 h-8 flex-shrink-0">
           <AvatarImage src={profilePictureUrl || undefined} />
           <AvatarFallback className="text-xs">
             {message.sender_name.split(' ').map(n => n[0]).join('').toUpperCase()}
           </AvatarFallback>
         </Avatar>
         
-        <div className={`flex-1 ${isOwnMessage ? 'text-right' : ''}`}>
+        <div className="flex-1 min-w-0">
           <div className="flex items-center space-x-2 mb-1">
             <span className="font-medium text-sm">{getFirstName(message.sender_name)}</span>
             <span className="text-xs text-muted-foreground">
@@ -110,7 +107,7 @@ export function MessageList({ messages, currentUser, allStaff = [] }: MessageLis
             </span>
           </div>
           
-          <div className={`relative ${isOwnMessage ? 'flex justify-end' : ''}`}>
+          <div className="relative w-full">
             {message.message_type === 'gif' ? (
               <img 
                 src={message.content} 
@@ -119,12 +116,9 @@ export function MessageList({ messages, currentUser, allStaff = [] }: MessageLis
                 style={{ maxHeight: '200px' }}
               />
             ) : (
-              <div className={`inline-block p-3 rounded-lg max-w-xs lg:max-w-md ${
-                isOwnMessage 
-                  ? 'bg-primary text-primary-foreground' 
-                  : 'bg-muted'
-              }`}>
+              <div className="w-full">
                 <div 
+                  className="text-sm break-words"
                   dangerouslySetInnerHTML={{ 
                     __html: formatMessageContent(message.content, allStaff) 
                   }}
