@@ -81,6 +81,10 @@ export function BillingTable({
     setComments(newComments);
   };
 
+  const getProjectExpenses = (projectId: string) => {
+    return expenses.filter(expense => expense.project_id === projectId);
+  };
+
   return (
     <ScrollArea className="w-full">
       <div className="min-w-[800px] rounded-md border">
@@ -103,6 +107,7 @@ export function BillingTable({
             {records.map((record) => {
               const totalProjectExpenses = getTotalExpenses(record.project_id);
               const calculatedAmount = calculateBillingAmount(record);
+              const projectExpenses = getProjectExpenses(record.project_id);
               
               return (
                 <TableRow key={record.id}>
@@ -120,7 +125,9 @@ export function BillingTable({
                   <TableCell className="text-left">{record.project.client.company}</TableCell>
                   
                   <TableCell className="text-left">
-                    <ClientInfoModal client={record.project.client} />
+                    <div className="text-left">
+                      <ClientInfoModal client={record.project.client} />
+                    </div>
                   </TableCell>
                   
                   <TableCell className="text-left">
@@ -143,6 +150,7 @@ export function BillingTable({
                   <TableCell className="text-left">
                     <ExpenseCell 
                       totalExpenses={totalProjectExpenses}
+                      expenses={projectExpenses}
                       onOpenExpenseModal={() => onOpenExpenseModal(record.project_id)}
                     />
                   </TableCell>
