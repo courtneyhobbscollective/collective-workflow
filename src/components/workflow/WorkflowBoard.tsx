@@ -1,314 +1,19 @@
 
-import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { StageColumn } from "./StageColumn";
-import { getValidationIssues, canMoveToStageOne } from "./ProjectValidation";
-
-interface ProjectStage {
-  id: string;
-  name: string;
-  order_index: number;
-  billing_percentage: number;
-  description: string;
-}
-
-interface Staff {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  department: string;
-}
-
-interface Client {
-  id: string;
-  name: string;
-  company: string;
-  is_retainer: boolean;
-}
-
-interface Project {
-  id: string;
-  title: string;
-  description: string;
-  client_id: string;
-  assigned_staff_id: string | null;
-  current_stage: string;
-  work_type: string;
-  deliverables: number;
-  due_date: string;
-  po_number: string;
-  estimated_hours: number;
-  is_retainer: boolean;
-  status: string;
-  contract_signed: boolean;
-  po_required: boolean;
-  stage_status?: string;
-  picter_link?: string;
-  internal_review_completed?: boolean;
-  google_review_link?: string;
-  client: Client;
-  assigned_staff: Staff | null;
-}
+import { useWorkflowData } from "@/hooks/useWorkflowData";
+import { useProjectOperations } from "@/utils/projectOperations";
+import { useToast } from "@/hooks/use-toast";
 
 export function WorkflowBoard() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [stages, setStages] = useState<ProjectStage[]>([]);
-  const [staff, setStaff] = useState<Staff[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { projects, stages, staff, loading, loadData } = useWorkflowData();
+  const { 
+    assignStaff, 
+    updateContractStatus, 
+    updatePoNumber, 
+    updateProjectStatus, 
+    moveProject 
+  } = useProjectOperations(loadData, stages);
   const { toast } = useToast();
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      // Load stages
-      const { data: stagesData, error: stagesError } = await supabase
-        .from('project_stages')
-        .select('*')
-        .order('order_index');
-
-      if (stagesError) throw stagesError;
-
-      // Load projects with related data
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select(`
-          *,
-          client:clients(*),
-          assigned_staff:staff(*)
-        `)
-        .eq('status', 'active');
-
-      if (projectsError) throw projectsError;
-
-      // Load staff
-      const { data: staffData, error: staffError } = await supabase
-        .from('staff')
-        .select('*')
-        .eq('is_active', true);
-
-      if (staffError) throw staffError;
-
-      setStages(stagesData || []);
-      setProjects(projectsData || []);
-      setStaff(staffData || []);
-    } catch (error) {
-      console.error('Error loading data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load project data",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const assignStaff = async (projectId: string, staffId: string) => {
-    try {
-      const { error } = await supabase
-        .from('projects')
-        .update({ assigned_staff_id: staffId })
-        .eq('id', projectId);
-
-      if (error) throw error;
-
-      await loadData();
-      toast({
-        title: "Success",
-        description: "Staff member assigned successfully",
-      });
-    } catch (error) {
-      console.error('Error assigning staff:', error);
-      toast({
-        title: "Error",
-        description: "Failed to assign staff member",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const updateContractStatus = async (projectId: string, signed: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('projects')
-        .update({ contract_signed: signed })
-        .eq('id', projectId);
-
-      if (error) throw error;
-
-      await loadData();
-      toast({
-        title: "Success",
-        description: `Contract marked as ${signed ? 'signed' : 'not signed'}`,
-      });
-    } catch (error) {
-      console.error('Error updating contract status:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update contract status",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const updatePoNumber = async (projectId: string, poNumber: string) => {
-    try {
-      const { error } = await supabase
-        .from('projects')
-        .update({ po_number: poNumber })
-        .eq('id', projectId);
-
-      if (error) throw error;
-
-      await loadData();
-      toast({
-        title: "Success",
-        description: "PO number updated successfully",
-      });
-    } catch (error) {
-      console.error('Error updating PO number:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update PO number",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const updateProjectStatus = async (projectId: string, status: string, picterLink?: string) => {
-    try {
-      const project = projects.find(p => p.id === projectId);
-      if (!project) return;
-
-      const updateData: any = { stage_status: status };
-      
-      if (picterLink) {
-        updateData.picter_link = picterLink;
-        updateData.internal_review_completed = true;
-      }
-
-      if (status === "ready_to_send_client") {
-        updateData.internal_review_completed = true;
-      }
-
-      if (status === "closed") {
-        updateData.status = "completed";
-      }
-
-      const { error } = await supabase
-        .from('projects')
-        .update(updateData)
-        .eq('id', projectId);
-
-      if (error) throw error;
-
-      // Create status history record
-      await supabase
-        .from('project_status_history')
-        .insert({
-          project_id: projectId,
-          stage_id: project.current_stage,
-          old_status: project.stage_status || 'in_progress',
-          new_status: status,
-          picter_link: picterLink
-        });
-
-      // Create admin notification for internal review
-      if (status === "ready_for_internal_review" && picterLink) {
-        await supabase
-          .from('admin_notifications')
-          .insert({
-            project_id: projectId,
-            notification_type: 'internal_review',
-            title: `Internal Review Required: ${project.title}`,
-            description: `Project is ready for internal review in ${stages.find(s => s.id === project.current_stage)?.name}`,
-            picter_link: picterLink
-          });
-      }
-
-      // Create admin notification for project closure
-      if (status === "closed") {
-        await supabase
-          .from('admin_notifications')
-          .insert({
-            project_id: projectId,
-            notification_type: 'send_final_email',
-            title: `Send Final Email: ${project.title}`,
-            description: `Project is closed and ready for final client email`
-          });
-      }
-
-      await loadData();
-
-      toast({
-        title: "Success",
-        description: `Project status updated to ${status}`,
-      });
-    } catch (error) {
-      console.error('Error updating project status:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update project status",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const moveProject = async (projectId: string, newStageId: string) => {
-    const project = projects.find(p => p.id === projectId);
-    
-    if (!project) return;
-
-    // Check validation for moving from incoming to stage01
-    if (project.current_stage === 'incoming' && !canMoveToStageOne(project)) {
-      const issues = getValidationIssues(project);
-      toast({
-        title: "Cannot Move Project",
-        description: `Please resolve: ${issues.join(', ')}`,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const { error } = await supabase
-        .from('projects')
-        .update({ current_stage: newStageId })
-        .eq('id', projectId);
-
-      if (error) throw error;
-
-      await loadData();
-
-      // Show billing notification for non-retainer projects
-      if (!project.is_retainer) {
-        const stage = stages.find(s => s.id === newStageId);
-        if (stage && stage.billing_percentage > 0) {
-          toast({
-            title: "Billing Triggered",
-            description: `${stage.billing_percentage}% invoice generated for one-off project`,
-          });
-        }
-      }
-
-      toast({
-        title: "Success",
-        description: `Project moved to ${stages.find(s => s.id === newStageId)?.name}`,
-      });
-    } catch (error) {
-      console.error('Error moving project:', error);
-      toast({
-        title: "Error",
-        description: "Failed to move project",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleBookingCreated = () => {
     // Refresh data when a booking is created
@@ -321,6 +26,14 @@ export function WorkflowBoard() {
 
   const getProjectsForStage = (stageId: string) => {
     return projects.filter(project => project.current_stage === stageId);
+  };
+
+  const handleUpdateProjectStatus = (projectId: string, status: string, picterLink?: string) => {
+    updateProjectStatus(projectId, status, picterLink, projects);
+  };
+
+  const handleMoveProject = (projectId: string, newStageId: string) => {
+    moveProject(projectId, newStageId, projects);
   };
 
   if (loading) {
@@ -345,8 +58,8 @@ export function WorkflowBoard() {
             onAssignStaff={assignStaff}
             onUpdateContract={updateContractStatus}
             onUpdatePoNumber={updatePoNumber}
-            onMoveProject={moveProject}
-            onUpdateStatus={updateProjectStatus}
+            onMoveProject={handleMoveProject}
+            onUpdateStatus={handleUpdateProjectStatus}
             onBookingCreated={handleBookingCreated}
           />
         ))}
