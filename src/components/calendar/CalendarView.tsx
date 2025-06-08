@@ -141,7 +141,7 @@ export function CalendarView() {
   }
 
   return (
-    <div className="space-y-4 lg:space-y-6">
+    <div className="space-y-4 lg:space-y-6 max-w-full">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h2 className="text-2xl lg:text-3xl font-bold text-foreground">Calendar</h2>
@@ -161,8 +161,8 @@ export function CalendarView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 lg:gap-6">
-        <div className="xl:col-span-1 space-y-4">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 lg:gap-6 max-w-full">
+        <div className="xl:col-span-1 space-y-4 min-w-0">
           <StaffFilter
             staff={staff}
             selectedStaff={selectedStaff}
@@ -177,11 +177,11 @@ export function CalendarView() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-96 overflow-y-auto">
                 {filteredProjects.filter(p => !bookings.some(b => b.project_id === p.id)).map((project) => (
                   <div key={project.id} className="p-3 border rounded-lg">
-                    <h4 className="font-medium text-sm">{project.title}</h4>
-                    <p className="text-xs text-muted-foreground">{project.client.company}</p>
+                    <h4 className="font-medium text-sm line-clamp-2">{project.title}</h4>
+                    <p className="text-xs text-muted-foreground truncate">{project.client.company}</p>
                     <p className="text-xs text-blue-600">{project.estimated_hours}h estimated</p>
                     <Button
                       size="sm"
@@ -197,7 +197,7 @@ export function CalendarView() {
           </Card>
         </div>
 
-        <div className="xl:col-span-3">
+        <div className="xl:col-span-4 min-w-0">
           <Card>
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -224,7 +224,7 @@ export function CalendarView() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="overflow-x-auto">
+            <CardContent className="p-2 lg:p-6">
               <CalendarGrid
                 currentDate={currentDate}
                 view={view}
