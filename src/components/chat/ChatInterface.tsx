@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -56,7 +57,7 @@ export function ChatInterface() {
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { currentStaff } = useStaff();
+  const { currentStaff, allStaff } = useStaff();
 
   useEffect(() => {
     loadChannels();
@@ -65,6 +66,7 @@ export function ChatInterface() {
 
   useEffect(() => {
     if (activeChannel) {
+      console.log('Active channel changed to:', activeChannel.id);
       loadMessages(activeChannel.id);
       
       // Subscribe to new messages for this channel
@@ -79,17 +81,29 @@ export function ChatInterface() {
             filter: `channel_id=eq.${activeChannel.id}`
           },
           (payload) => {
+            console.log('Real-time message received:', payload);
             const newMsg = {
               ...payload.new,
               reactions: payload.new.reactions || []
             } as Message;
-            setMessages(prev => [...prev, newMsg]);
+            setMessages(prev => {
+              // Avoid duplicates
+              if (prev.some(msg => msg.id === newMsg.id)) {
+                console.log('Message already exists, skipping');
+                return prev;
+              }
+              console.log('Adding new message to state');
+              return [...prev, newMsg];
+            });
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Realtime subscription status:', status);
+        });
 
       // Cleanup function to remove the subscription
       return () => {
+        console.log('Cleaning up realtime subscription');
         supabase.removeChannel(channel);
       };
     }
@@ -117,6 +131,7 @@ export function ChatInterface() {
 
       if (error) throw error;
       
+      console.log('Loaded channels:', data?.length);
       setChannels(data || []);
       if (data && data.length > 0) {
         setActiveChannel(data[0]);
@@ -150,6 +165,7 @@ export function ChatInterface() {
 
   const loadMessages = async (channelId: string) => {
     try {
+      console.log('Loading messages for channel:', channelId);
       const { data, error } = await supabase
         .from('messages')
         .select('*')
@@ -158,6 +174,7 @@ export function ChatInterface() {
         .limit(100);
 
       if (error) throw error;
+      console.log('Loaded messages:', data?.length);
       // Convert the data to match our Message interface
       const formattedMessages: Message[] = (data || []).map(msg => ({
         ...msg,
@@ -172,6 +189,7 @@ export function ChatInterface() {
   const sendMessage = async () => {
     if (!newMessage.trim() || !activeChannel || !currentStaff) return;
 
+    console.log('Sending message:', newMessage);
     try {
       const { error } = await supabase
         .from('messages')
@@ -185,6 +203,7 @@ export function ChatInterface() {
 
       if (error) throw error;
 
+      console.log('Message sent successfully');
       setNewMessage("");
       setShowEmojiPicker(false);
       setShowGifPicker(false);
@@ -324,11 +343,15 @@ export function ChatInterface() {
 
               {/* Messages */}
               <ScrollArea className="flex-1 p-4">
-                <MessageList messages={messages} currentUser={{
-                  name: currentStaff.name,
-                  email: currentStaff.email,
-                  profile_picture_url: currentStaff.profile_picture_url
-                }} />
+                <MessageList 
+                  messages={messages} 
+                  currentUser={{
+                    name: currentStaff.name,
+                    email: currentStaff.email,
+                    profile_picture_url: currentStaff.profile_picture_url
+                  }}
+                  allStaff={allStaff}
+                />
                 <div ref={messagesEndRef} />
               </ScrollArea>
 

@@ -25,10 +25,17 @@ interface MessageListProps {
     email: string;
     profile_picture_url?: string | null;
   };
+  allStaff?: Array<{
+    name: string;
+    email: string;
+    profile_picture_url?: string | null;
+  }>;
 }
 
-export function MessageList({ messages, currentUser }: MessageListProps) {
+export function MessageList({ messages, currentUser, allStaff = [] }: MessageListProps) {
   const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null);
+
+  console.log('MessageList rendering with messages:', messages.length);
 
   const addReaction = async (messageId: string, emoji: string) => {
     try {
@@ -54,10 +61,16 @@ export function MessageList({ messages, currentUser }: MessageListProps) {
     return fullName.split(' ')[0];
   };
 
+  const getStaffProfilePicture = (senderEmail: string) => {
+    const staff = allStaff.find(s => s.email === senderEmail);
+    return staff?.profile_picture_url || null;
+  };
+
   const renderMessage = (message: Message) => {
     const isOwnMessage = message.sender_email === currentUser.email;
     // Safely handle reactions - convert Json to array
     const reactions = Array.isArray(message.reactions) ? message.reactions : [];
+    const profilePictureUrl = getStaffProfilePicture(message.sender_email);
     
     return (
       <div
@@ -67,7 +80,7 @@ export function MessageList({ messages, currentUser }: MessageListProps) {
         }`}
       >
         <Avatar className="w-8 h-8">
-          <AvatarImage src={undefined} />
+          <AvatarImage src={profilePictureUrl || undefined} />
           <AvatarFallback className="text-xs">
             {message.sender_name.split(' ').map(n => n[0]).join('').toUpperCase()}
           </AvatarFallback>
@@ -141,6 +154,14 @@ export function MessageList({ messages, currentUser }: MessageListProps) {
       </div>
     );
   };
+
+  if (messages.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-32 text-muted-foreground">
+        No messages yet. Start the conversation!
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-1">
