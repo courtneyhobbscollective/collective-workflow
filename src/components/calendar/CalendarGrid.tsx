@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { format, startOfWeek, addDays, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { ProjectDetailsPopover } from "./ProjectDetailsPopover";
@@ -104,77 +103,79 @@ export function CalendarGrid({
 
   if (view === "week") {
     return (
-      <div className="space-y-2 lg:space-y-4 w-full overflow-x-auto">
-        {/* Time slots for week view */}
-        <div className="grid grid-cols-8 gap-1 lg:gap-2 min-w-[800px]">
-          <div className="font-medium text-xs lg:text-sm p-2">Time</div>
+      <div className="w-full overflow-hidden">
+        {/* Week header */}
+        <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
           {days.map((day) => (
-            <div key={day.toISOString()} className="text-center p-2">
-              <div className="font-medium text-xs lg:text-sm">{format(day, 'EEE')}</div>
-              <div className="text-xs text-muted-foreground">{format(day, 'd')}</div>
+            <div key={day.toISOString()} className="text-center p-2 border-b">
+              <div className="font-medium text-sm">{format(day, 'EEE')}</div>
+              <div className="text-lg font-semibold">{format(day, 'd')}</div>
+              <div className="text-xs text-muted-foreground">{format(day, 'MMM')}</div>
             </div>
           ))}
         </div>
 
-        {/* Time slots from 9 AM to 5 PM */}
-        <div className="min-w-[800px]">
-          {Array.from({ length: 9 }, (_, i) => i + 9).map((hour) => (
-            <div key={hour} className="grid grid-cols-8 gap-1 lg:gap-2 min-h-[50px] lg:min-h-[70px] mb-1">
-              <div className="text-xs lg:text-sm text-muted-foreground p-2 flex items-center">
-                {hour}:00
-              </div>
-              {days.map((day) => {
-                const dayBookings = getBookingsForDay(day).filter(booking => {
-                  const startHour = parseInt(booking.start_time.split(':')[0]);
-                  return startHour === hour;
-                });
-
-                return (
-                  <div key={`${day.toISOString()}-${hour}`} className="border rounded-lg p-1 lg:p-2 min-h-[45px] lg:min-h-[65px] bg-background">
-                    <div className="space-y-1">
-                      {dayBookings.map((booking) => {
-                        const staffMember = staff.find(s => s.id === booking.staff_id);
-                        const isMultiDay = multiDayBookings.has(booking.project_id);
-                        
-                        return (
-                          <ProjectDetailsPopover
-                            key={booking.id}
-                            booking={booking}
-                            staff={staff}
-                            isMultiDay={isMultiDay}
-                          >
-                            <Badge
-                              className={cn(
-                                "text-xs block cursor-pointer transition-colors w-full text-left relative",
-                                getStatusColor(booking.status)
-                              )}
-                            >
-                              <div className="flex items-center justify-between w-full">
-                                <div className="truncate flex-1 min-w-0">
-                                  <div className="truncate text-xs font-medium">
-                                    {booking.project.title}
-                                  </div>
-                                  {selectedStaff === "all" && (
-                                    <div className="text-xs opacity-80 truncate">
-                                      {staffMember?.name}
-                                    </div>
-                                  )}
+        {/* Week grid */}
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
+          {days.map((day) => {
+            const dayBookings = getBookingsForDay(day);
+            const isToday = isSameDay(day, new Date());
+            
+            return (
+              <div
+                key={day.toISOString()}
+                className={cn(
+                  "min-h-[120px] sm:min-h-[150px] p-2 border rounded-lg bg-background",
+                  isToday && "bg-blue-50 border-blue-200 ring-1 ring-blue-200"
+                )}
+              >
+                <div className="space-y-1">
+                  {dayBookings.map((booking) => {
+                    const staffMember = staff.find(s => s.id === booking.staff_id);
+                    const isMultiDay = multiDayBookings.has(booking.project_id);
+                    
+                    return (
+                      <ProjectDetailsPopover
+                        key={booking.id}
+                        booking={booking}
+                        staff={staff}
+                        isMultiDay={isMultiDay}
+                      >
+                        <Badge
+                          className={cn(
+                            "text-xs block cursor-pointer transition-colors w-full text-left relative p-2",
+                            getStatusColor(booking.status)
+                          )}
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <div className="truncate flex-1 min-w-0">
+                                <div className="truncate text-xs font-medium">
+                                  {booking.project.title}
                                 </div>
-                                {isMultiDay && (
-                                  <div className="ml-1 w-2 h-2 bg-current rounded-full opacity-60 flex-shrink-0" 
-                                       title="Multi-day booking" />
-                                )}
                               </div>
-                            </Badge>
-                          </ProjectDetailsPopover>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
+                              {isMultiDay && (
+                                <div className="ml-1 w-2 h-2 bg-current rounded-full opacity-60 flex-shrink-0" 
+                                     title="Multi-day booking" />
+                              )}
+                            </div>
+                            <div className="text-xs opacity-80">
+                              {booking.start_time} - {booking.end_time}
+                            </div>
+                            {selectedStaff === "all" && staffMember && (
+                              <div className="text-xs opacity-70 truncate">
+                                {staffMember.name}
+                              </div>
+                            )}
+                          </div>
+                        </Badge>
+                      </ProjectDetailsPopover>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -182,11 +183,11 @@ export function CalendarGrid({
 
   // Month view
   return (
-    <div className="w-full overflow-x-auto">
-      <div className="grid grid-cols-7 gap-1 lg:gap-2 min-w-[700px]">
+    <div className="w-full overflow-hidden">
+      <div className="grid grid-cols-7 gap-1 sm:gap-2">
         {/* Day headers */}
         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
-          <div key={day} className="text-center font-medium text-xs lg:text-sm p-2 lg:p-3 bg-muted/30">
+          <div key={day} className="text-center font-medium text-xs sm:text-sm p-2 bg-muted/30">
             {day}
           </div>
         ))}
@@ -200,12 +201,12 @@ export function CalendarGrid({
             <div
               key={day.toISOString()}
               className={cn(
-                "border rounded-lg p-1 lg:p-2 min-h-[80px] lg:min-h-[120px] bg-background",
+                "border rounded-lg p-1 sm:p-2 min-h-[80px] sm:min-h-[120px] bg-background",
                 isToday && "bg-blue-50 border-blue-200 ring-1 ring-blue-200"
               )}
             >
               <div className={cn(
-                "text-xs lg:text-sm font-medium mb-1 lg:mb-2 p-1",
+                "text-xs sm:text-sm font-medium mb-1 p-1",
                 isToday && "text-blue-600 font-semibold"
               )}>
                 {format(day, 'd')}

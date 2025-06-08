@@ -1,7 +1,7 @@
+
 import { useState, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { AlertTriangle, CheckCircle, Clock, Calendar } from "lucide-react";
 import { MultiDayBookingEngine } from "@/components/calendar/MultiDayBookingEngine";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +32,7 @@ export function CapacityChecker({
     availableHours: number;
     nextAvailableDate: string | null;
     alternatives: Staff[];
+    timeOffConflicts: any[];
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [multiDayOption, setMultiDayOption] = useState<{
@@ -76,6 +77,17 @@ export function CapacityChecker({
 
       if (bookingError) throw bookingError;
 
+      // Get time off for the next week
+      const { data: timeOff, error: timeOffError } = await supabase
+        .from('staff_time_off')
+        .select('*')
+        .eq('staff_id', staffId)
+        .eq('status', 'approved')
+        .lte('start_date', format(weekFromNow, 'yyyy-MM-dd'))
+        .gte('end_date', format(today, 'yyyy-MM-dd'));
+
+      if (timeOffError) throw timeOffError;
+
       // Calculate total available hours and booked hours
       const totalAvailableHours = availability?.reduce((total, avail) => {
         const startHour = parseInt(avail.start_time.split(':')[0]);
@@ -87,7 +99,24 @@ export function CapacityChecker({
         return total + booking.hours_booked;
       }, 0) || 0;
 
-      const availableHours = totalAvailableHours - totalBookedHours;
+      // Calculate hours lost due to time off
+      const timeOffHours = timeOff?.reduce((total, timeOffRecord) => {
+        if (timeOffRecord.is_full_day) {
+          // Calculate days between start and end date
+          const start = new Date(timeOffRecord.start_date);
+          const end = new Date(timeOffRecord.end_date);
+          const diffTime = Math.abs(end.getTime() - start.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+          return total + (diffDays * 8); // Assuming 8 hour work days
+        } else if (timeOffRecord.start_time && timeOffRecord.end_time) {
+          const startHour = parseInt(timeOffRecord.start_time.split(':')[0]);
+          const endHour = parseInt(timeOffRecord.end_time.split(':')[0]);
+          return total + (endHour - startHour);
+        }
+        return total;
+      }, 0) || 0;
+
+      const availableHours = totalAvailableHours - totalBookedHours - timeOffHours;
       const hasCapacity = availableHours >= projectHours;
 
       // Find alternative staff if current one doesn't have capacity
@@ -103,8 +132,9 @@ export function CapacityChecker({
       const result = {
         hasCapacity,
         availableHours,
-        nextAvailableDate: null, // Could be enhanced to find next available date
-        alternatives
+        nextAvailableDate: null,
+        alternatives,
+        timeOffConflicts: timeOff || []
       };
 
       setCapacityInfo(result);
@@ -155,6 +185,20 @@ export function CapacityChecker({
               <AlertDescription className="text-red-800">
                 <div className="space-y-2">
                   <p>Staff member at capacity (only {capacityInfo.availableHours}h available, needs {projectHours}h)</p>
+                  
+                  {capacityInfo.timeOffConflicts.length > 0 && (
+                    <div>
+                      <p className="font-medium text-sm">Upcoming time off:</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {capacityInfo.timeOffConflicts.map(timeOff => (
+                          <Badge key={timeOff.id} variant="outline" className="text-xs">
+                            {timeOff.type}: {format(new Date(timeOff.start_date), 'MMM d')} - {format(new Date(timeOff.end_date), 'MMM d')}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
                   {capacityInfo.alternatives.length > 0 && (
                     <div>
                       <p className="font-medium">Alternative staff available:</p>

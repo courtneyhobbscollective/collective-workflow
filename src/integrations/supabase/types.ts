@@ -436,6 +436,62 @@ export type Database = {
           },
         ]
       }
+      staff_time_off: {
+        Row: {
+          created_at: string
+          end_date: string
+          end_time: string | null
+          id: string
+          is_full_day: boolean
+          notes: string | null
+          reason: string
+          staff_id: string
+          start_date: string
+          start_time: string | null
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          end_time?: string | null
+          id?: string
+          is_full_day?: boolean
+          notes?: string | null
+          reason: string
+          staff_id: string
+          start_date: string
+          start_time?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          end_time?: string | null
+          id?: string
+          is_full_day?: boolean
+          notes?: string | null
+          reason?: string
+          staff_id?: string
+          start_date?: string
+          start_time?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_time_off_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
