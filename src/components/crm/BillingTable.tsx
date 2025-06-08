@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, User, Speech } from "lucide-react";
+import { Plus, User, MessageSquare } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
 interface BillingRecord {
@@ -188,7 +187,7 @@ export function BillingTable({
                       <DialogTrigger asChild>
                         <button className="text-blue-600 hover:text-blue-800 underline flex items-center space-x-1">
                           <User className="w-3 h-3" />
-                          <span>{record.project.client.name}</span>
+                          <span>{record.project.client.contact_person || record.project.client.name}</span>
                         </button>
                       </DialogTrigger>
                       <DialogContent>
@@ -323,7 +322,7 @@ export function BillingTable({
                           className="h-8 w-8 p-0"
                           onClick={() => openCommentDialog(record.id)}
                         >
-                          <Speech className="w-4 h-4" />
+                          <MessageSquare className="w-4 h-4" />
                         </Button>
                       </DialogTrigger>
                       <DialogContent>
