@@ -2,14 +2,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Users } from "lucide-react";
-
-interface Staff {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  profile_picture_url?: string | null;
-}
+import type { Staff } from "@/types/staff";
 
 interface ProjectStaffSectionProps {
   assignedStaffId: string | null;
