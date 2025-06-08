@@ -262,7 +262,7 @@ export function BookingReassignmentModal({
 
             {startTime && endTime && (
               <div className="text-sm text-muted-foreground">
-                Duration: {((new Date(`2000-01-01T${endTime}`) - new Date(`2000-01-01T${startTime}`)) / (1000 * 60 * 60)).toFixed(1)} hours
+                Duration: {((new Date(`2000-01-01T${endTime}`).getTime() - new Date(`2000-01-01T${startTime}`).getTime()) / (1000 * 60 * 60)).toFixed(1)} hours
               </div>
             )}
           </div>
