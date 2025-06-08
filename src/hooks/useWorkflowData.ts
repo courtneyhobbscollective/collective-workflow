@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +16,7 @@ interface Staff {
   name: string;
   email: string;
   role: string;
+  department?: string;
 }
 
 interface Client {

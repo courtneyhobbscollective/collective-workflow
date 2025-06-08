@@ -16,6 +16,7 @@ interface Staff {
   name: string;
   email: string;
   role: string;
+  department?: string;
 }
 
 interface Project {
@@ -51,7 +52,7 @@ export function CalendarView() {
   const [bookings, setBookings] = useState<ProjectBooking[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<"week" | "month">("month"); // Changed default to month
+  const [view, setView] = useState<"week" | "month">("month");
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [showBookingDetailsModal, setShowBookingDetailsModal] = useState(false);

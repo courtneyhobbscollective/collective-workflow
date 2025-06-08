@@ -27,7 +27,7 @@ interface Staff {
   name: string;
   email: string;
   role: string;
-  department: string;
+  department?: string;
 }
 
 interface Client {
@@ -154,8 +154,7 @@ export function ProjectCard({
             />
 
             <ProjectStaffSection
-              assignedStaff={project.assigned_staff}
-              currentStage={project.current_stage}
+              assignedStaffId={project.assigned_staff_id}
               staff={staff}
               onAssignStaff={(staffId) => onAssignStaff(project.id, staffId)}
             />
