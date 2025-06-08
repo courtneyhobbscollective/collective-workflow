@@ -1,5 +1,5 @@
 
-import { Users, UserPlus, Briefcase, Workflow, BarChart3, DollarSign, Calendar, Menu, X } from "lucide-react";
+import { Users, UserPlus, Briefcase, Workflow, BarChart3, Calendar, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ const navigationItems = [
   { id: "briefs", label: "Brief Management", icon: Briefcase },
   { id: "workflow", label: "Workflow Board", icon: Workflow },
   { id: "calendar", label: "Calendar", icon: Calendar },
-  { id: "crm", label: "CRM Dashboard", icon: DollarSign },
+  { id: "crm", label: "CRM Dashboard", icon: () => <span className="text-sm font-bold">£</span> },
 ];
 
 export function TopNavigation({ activeSection, onSectionChange }: TopNavigationProps) {

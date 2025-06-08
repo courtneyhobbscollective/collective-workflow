@@ -4,8 +4,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, User } from "lucide-react";
+import { Plus, User, Speech } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 interface BillingRecord {
   id: string;
@@ -64,14 +66,20 @@ export function BillingTable({
   calculateBillingAmount, 
   getTotalExpenses 
 }: BillingTableProps) {
+  const [commentDialogs, setCommentDialogs] = useState<{[key: string]: boolean}>({});
+  const [comments, setComments] = useState<{[key: string]: string}>({});
+  const [newComment, setNewComment] = useState("");
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
         return 'bg-green-100 text-green-800 hover:bg-green-200 cursor-pointer';
       case 'invoiced':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer';
+      case 'on_hold':
+        return 'bg-orange-100 text-orange-800 hover:bg-orange-200 cursor-pointer';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 text-gray-800 hover:bg-gray-200 cursor-pointer';
     }
   };
 
@@ -81,21 +89,44 @@ export function BillingTable({
         return 'Can be Invoiced';
       case 'invoiced':
         return 'Invoiced';
+      case 'on_hold':
+        return 'On Hold';
       default:
         return status;
     }
   };
 
-  const handleStatusClick = (record: BillingRecord) => {
-    if (record.invoice_status === 'pending') {
-      const calculatedAmount = calculateBillingAmount(record);
-      const defaultInvoiceNumber = `INV-${record.project.title.substring(0, 3).toUpperCase()}-${Date.now()}`;
-      onUpdate(record.id, record.amount || calculatedAmount, defaultInvoiceNumber, 'invoiced');
-    }
+  const handleStatusChange = (record: BillingRecord, newStatus: string) => {
+    const calculatedAmount = calculateBillingAmount(record);
+    const defaultInvoiceNumber = newStatus === 'invoiced' ? `INV-${record.project.title.substring(0, 3).toUpperCase()}-${Date.now()}` : '';
+    onUpdate(record.id, record.amount || calculatedAmount, defaultInvoiceNumber, newStatus);
   };
 
   const truncateText = (text: string, maxLength: number) => {
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+  };
+
+  const openCommentDialog = (recordId: string) => {
+    setCommentDialogs({...commentDialogs, [recordId]: true});
+  };
+
+  const closeCommentDialog = (recordId: string) => {
+    setCommentDialogs({...commentDialogs, [recordId]: false});
+    setNewComment("");
+  };
+
+  const addComment = (recordId: string) => {
+    if (newComment.trim()) {
+      const timestamp = new Date().toLocaleString();
+      const comment = `[${timestamp}] ${newComment}`;
+      const existingComments = comments[recordId] || "";
+      setComments({
+        ...comments,
+        [recordId]: existingComments ? `${existingComments}\n${comment}` : comment
+      });
+      setNewComment("");
+      closeCommentDialog(recordId);
+    }
   };
 
   return (
@@ -109,9 +140,9 @@ export function BillingTable({
               <TableHead>Client Name</TableHead>
               <TableHead>Stage</TableHead>
               <TableHead>Expenses</TableHead>
-              <TableHead>Deal Value</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead>Deal Value</TableHead>
+              <TableHead>Comments</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -194,13 +225,64 @@ export function BillingTable({
                   </TableCell>
                   
                   <TableCell>
-                    {totalProjectExpenses > 0 ? (
-                      <span className="text-red-600 font-medium">
-                        £{totalProjectExpenses.toLocaleString()}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">£0</span>
-                    )}
+                    <div className="flex items-center space-x-2">
+                      {totalProjectExpenses > 0 ? (
+                        <span className="text-red-600 font-medium">
+                          £{totalProjectExpenses.toLocaleString()}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">£0</span>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0"
+                        onClick={() => onOpenExpenseModal(record.project_id)}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                  
+                  <TableCell>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Badge className={getStatusColor(record.invoice_status)}>
+                          {getStatusText(record.invoice_status)}
+                        </Badge>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-48 bg-background border shadow-md">
+                        <div className="space-y-2">
+                          <h4 className="font-medium text-sm">Change Status</h4>
+                          <div className="space-y-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="w-full justify-start"
+                              onClick={() => handleStatusChange(record, 'pending')}
+                            >
+                              Can be Invoiced
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="w-full justify-start"
+                              onClick={() => handleStatusChange(record, 'invoiced')}
+                            >
+                              Invoiced
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="w-full justify-start"
+                              onClick={() => handleStatusChange(record, 'on_hold')}
+                            >
+                              On Hold
+                            </Button>
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </TableCell>
                   
                   <TableCell>
@@ -215,23 +297,56 @@ export function BillingTable({
                   </TableCell>
                   
                   <TableCell>
-                    <Badge 
-                      className={getStatusColor(record.invoice_status)}
-                      onClick={() => handleStatusClick(record)}
-                    >
-                      {getStatusText(record.invoice_status)}
-                    </Badge>
-                  </TableCell>
-                  
-                  <TableCell>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onOpenExpenseModal(record.project_id)}
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Expense
-                    </Button>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0"
+                          onClick={() => openCommentDialog(record.id)}
+                        >
+                          <Speech className="w-4 h-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Project Comments</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div className="max-h-40 overflow-y-auto bg-gray-50 p-3 rounded">
+                            {comments[record.id] ? (
+                              <pre className="text-sm whitespace-pre-wrap">{comments[record.id]}</pre>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">No comments yet</p>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <Textarea
+                              placeholder="Add a comment..."
+                              value={newComment}
+                              onChange={(e) => setNewComment(e.target.value)}
+                              className="min-h-20"
+                            />
+                            <div className="flex space-x-2">
+                              <Button
+                                size="sm"
+                                onClick={() => addComment(record.id)}
+                                disabled={!newComment.trim()}
+                              >
+                                Add Comment
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => closeCommentDialog(record.id)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </TableCell>
                 </TableRow>
               );
