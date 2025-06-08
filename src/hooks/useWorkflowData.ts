@@ -1,22 +1,13 @@
-
-import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import type { Staff } from "@/types/staff";
-
-interface ProjectStage {
-  id: string;
-  name: string;
-  order_index: number;
-  billing_percentage: number;
-  description: string;
-}
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import type { Staff } from '@/types/staff';
 
 interface Client {
   id: string;
-  name: string;
   company: string;
-  is_retainer: boolean;
+  contact_name: string;
+  contact_email: string;
+  created_at: string;
 }
 
 interface Project {
@@ -24,72 +15,50 @@ interface Project {
   title: string;
   description: string;
   client_id: string;
-  assigned_staff_id: string | null;
-  current_stage: string;
-  work_type: string;
-  deliverables: number;
-  due_date: string;
-  po_number: string;
   estimated_hours: number;
-  is_retainer: boolean;
-  status: string;
-  contract_signed: boolean;
-  po_required: boolean;
-  stage_status?: string;
-  picter_link?: string;
-  internal_review_completed?: boolean;
-  google_review_link?: string;
+  status: 'active' | 'pending' | 'completed' | 'on_hold' | 'cancelled';
+  start_date: string | null;
+  end_date: string | null;
+  created_at: string;
+  updated_at: string;
   client: Client;
+  assigned_staff_id: string | null;
   assigned_staff: Staff | null;
 }
 
 export function useWorkflowData() {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [stages, setStages] = useState<ProjectStage[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
+  const [error, setError] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
-      // Load stages
-      const { data: stagesData, error: stagesError } = await supabase
-        .from('project_stages')
-        .select('*')
-        .order('order_index');
+      setLoading(true);
+      const [projectsResponse, staffResponse] = await Promise.all([
+        supabase
+          .from('projects')
+          .select(`
+            *,
+            client:clients(*),
+            assigned_staff:staff(*)
+          `)
+          .order('updated_at', { ascending: false }),
+        supabase
+          .from('staff')
+          .select('*')
+          .eq('is_active', true)
+          .order('name')
+      ]);
 
-      if (stagesError) throw stagesError;
+      if (projectsResponse.error) throw projectsResponse.error;
+      if (staffResponse.error) throw staffResponse.error;
 
-      // Load projects with related data
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select(`
-          *,
-          client:clients(*),
-          assigned_staff:staff(*)
-        `)
-        .eq('status', 'active');
-
-      if (projectsError) throw projectsError;
-
-      // Load staff
-      const { data: staffData, error: staffError } = await supabase
-        .from('staff')
-        .select('*')
-        .eq('is_active', true);
-
-      if (staffError) throw staffError;
-
-      setStages(stagesData || []);
-      setProjects(projectsData || []);
-      setStaff(staffData || []);
-    } catch (error) {
-      console.error('Error loading data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load project data",
-        variant: "destructive",
-      });
+      setProjects((projectsResponse.data || []) as Project[]);
+      setStaff((staffResponse.data || []) as Staff[]);
+    } catch (err) {
+      console.error('Error loading workflow data:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -101,9 +70,9 @@ export function useWorkflowData() {
 
   return {
     projects,
-    stages,
     staff,
     loading,
-    loadData
+    error,
+    reload: loadData
   };
 }
