@@ -51,7 +51,7 @@ export function WorkflowBoard() {
       <ChaseUpAlerts />
 
       <div className="grid grid-cols-1 lg:grid-cols-7 gap-4 overflow-x-auto">
-        {stages.map((stage) => (
+        {stages?.map((stage) => (
           <StageColumn
             key={stage.id}
             stage={stage}
@@ -65,7 +65,11 @@ export function WorkflowBoard() {
             onUpdateStatus={handleUpdateProjectStatus}
             onBookingCreated={handleBookingCreated}
           />
-        ))}
+        )) || (
+          <div className="col-span-7 text-center text-muted-foreground">
+            No workflow stages configured
+          </div>
+        )}
       </div>
     </div>
   );
