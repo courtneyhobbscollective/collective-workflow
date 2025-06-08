@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +44,10 @@ interface Project {
   status: string;
   contract_signed: boolean;
   po_required: boolean;
+  stage_status?: string;
+  picter_link?: string;
+  internal_review_completed?: boolean;
+  google_review_link?: string;
   client: Client;
   assigned_staff: Staff | null;
 }
