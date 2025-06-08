@@ -1,47 +1,57 @@
 
 import { useState } from "react";
-import { TopNavigation } from "@/components/layout/TopNavigation";
 import { Dashboard } from "@/components/dashboard/Dashboard";
-import { StaffManagement } from "@/components/staff/StaffManagement";
-import { ClientManagement } from "@/components/clients/ClientManagement";
-import { BriefManagement } from "@/components/briefs/BriefManagement";
 import { WorkflowBoard } from "@/components/workflow/WorkflowBoard";
 import { CalendarView } from "@/components/calendar/CalendarView";
 import { ChatInterface } from "@/components/chat/ChatInterface";
+import { ClientManagement } from "@/components/clients/ClientManagement";
+import { BriefManagement } from "@/components/briefs/BriefManagement";
+import { StaffManagement } from "@/components/staff/StaffManagement";
 import { CRMDashboard } from "@/components/crm/CRMDashboard";
+import { TopNavigation } from "@/components/layout/TopNavigation";
+import { StaffDashboard } from "@/components/staff/StaffDashboard";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
-  const [activeSection, setActiveSection] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const { staff } = useAuth();
 
   const renderContent = () => {
-    switch (activeSection) {
-      case "dashboard":
-        return <Dashboard />;
-      case "staff":
-        return <StaffManagement />;
-      case "clients":
-        return <ClientManagement />;
-      case "briefs":
-        return <BriefManagement />;
+    // Show staff dashboard for Staff role, full dashboard for Admin
+    if (activeTab === "dashboard") {
+      return staff?.role === "Staff" ? <StaffDashboard /> : <Dashboard />;
+    }
+    
+    switch (activeTab) {
       case "workflow":
         return <WorkflowBoard />;
       case "calendar":
         return <CalendarView />;
       case "chat":
         return <ChatInterface />;
+      case "clients":
+        return <ClientManagement />;
+      case "briefs":
+        return <BriefManagement />;
+      case "staff":
+        return <StaffManagement />;
       case "crm":
-        return <CRMDashboard />;
+        // Only Admin can access CRM
+        return staff?.role === "Admin" ? <CRMDashboard /> : <Dashboard />;
       default:
         return <Dashboard />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-background w-full">
-      <TopNavigation activeSection={activeSection} onSectionChange={setActiveSection} />
-      <main className="p-3 sm:p-4 lg:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50/30 to-indigo-100/30">
+      <div className="sticky top-0 z-50">
+        <TopNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      </div>
+      
+      <div className="container mx-auto px-4 py-6">
         {renderContent()}
-      </main>
+      </div>
     </div>
   );
 };

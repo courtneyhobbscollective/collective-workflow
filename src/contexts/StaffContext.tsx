@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Staff {
   id: string;
@@ -23,6 +24,7 @@ const StaffContext = createContext<StaffContextType | undefined>(undefined);
 export function StaffProvider({ children }: { children: React.ReactNode }) {
   const [currentStaff, setCurrentStaff] = useState<Staff | null>(null);
   const [allStaff, setAllStaff] = useState<Staff[]>([]);
+  const { staff: authStaff } = useAuth();
 
   const loadStaff = async () => {
     try {
@@ -34,11 +36,6 @@ export function StaffProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error;
       setAllStaff(data || []);
-      
-      // Auto-set first staff member as current (simulating logged in user)
-      if (!currentStaff && data && data.length > 0) {
-        setCurrentStaff(data[0]);
-      }
     } catch (error) {
       console.error('Error loading staff:', error);
     }
@@ -60,6 +57,15 @@ export function StaffProvider({ children }: { children: React.ReactNode }) {
       throw error;
     }
   };
+
+  // Sync current staff with auth staff
+  useEffect(() => {
+    if (authStaff) {
+      setCurrentStaff(authStaff);
+    } else {
+      setCurrentStaff(null);
+    }
+  }, [authStaff]);
 
   useEffect(() => {
     loadStaff();
