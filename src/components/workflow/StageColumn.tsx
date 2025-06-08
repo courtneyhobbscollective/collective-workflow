@@ -55,6 +55,7 @@ interface StageColumnProps {
   onUpdateContract: (projectId: string, signed: boolean) => void;
   onUpdatePoNumber: (projectId: string, poNumber: string) => void;
   onMoveProject: (projectId: string, newStageId: string) => void;
+  onUpdateStatus: (projectId: string, status: string, picterLink?: string) => void;
   onBookingCreated?: () => void;
 }
 
@@ -67,6 +68,7 @@ export function StageColumn({
   onUpdateContract,
   onUpdatePoNumber,
   onMoveProject,
+  onUpdateStatus,
   onBookingCreated = () => {}
 }: StageColumnProps) {
   return (
@@ -103,6 +105,7 @@ export function StageColumn({
               onUpdateContract={onUpdateContract}
               onUpdatePoNumber={onUpdatePoNumber}
               onMoveProject={onMoveProject}
+              onUpdateStatus={onUpdateStatus}
               onBookingCreated={onBookingCreated}
             />
           ))

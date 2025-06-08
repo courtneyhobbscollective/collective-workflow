@@ -9,6 +9,53 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_notifications: {
+        Row: {
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_completed: boolean | null
+          notification_type: string
+          picter_link: string | null
+          project_id: string
+          title: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_completed?: boolean | null
+          notification_type: string
+          picter_link?: string | null
+          project_id: string
+          title: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_completed?: boolean | null
+          notification_type?: string
+          picter_link?: string | null
+          project_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_notifications_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
@@ -194,6 +241,41 @@ export type Database = {
           },
         ]
       }
+      project_closure_checklist: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          drive_link: string | null
+          final_version_uploaded: boolean | null
+          id: string
+          project_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          drive_link?: string | null
+          final_version_uploaded?: boolean | null
+          id?: string
+          project_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          drive_link?: string | null
+          final_version_uploaded?: boolean | null
+          id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_closure_checklist_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_stage_history: {
         Row: {
           changed_at: string
@@ -277,6 +359,50 @@ export type Database = {
         }
         Relationships: []
       }
+      project_status_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          id: string
+          new_status: string
+          notes: string | null
+          old_status: string | null
+          picter_link: string | null
+          project_id: string
+          stage_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_status: string
+          notes?: string | null
+          old_status?: string | null
+          picter_link?: string | null
+          project_id: string
+          stage_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          id?: string
+          new_status?: string
+          notes?: string | null
+          old_status?: string | null
+          picter_link?: string | null
+          project_id?: string
+          stage_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_status_history_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           assigned_staff_id: string | null
@@ -288,11 +414,15 @@ export type Database = {
           description: string | null
           due_date: string | null
           estimated_hours: number | null
+          google_review_link: string | null
           id: string
+          internal_review_completed: boolean | null
           is_retainer: boolean | null
+          picter_link: string | null
           po_number: string | null
           po_required: boolean | null
           project_value: number | null
+          stage_status: string | null
           status: string | null
           title: string
           treat_as_oneoff: boolean | null
@@ -309,11 +439,15 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           estimated_hours?: number | null
+          google_review_link?: string | null
           id?: string
+          internal_review_completed?: boolean | null
           is_retainer?: boolean | null
+          picter_link?: string | null
           po_number?: string | null
           po_required?: boolean | null
           project_value?: number | null
+          stage_status?: string | null
           status?: string | null
           title: string
           treat_as_oneoff?: boolean | null
@@ -330,11 +464,15 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           estimated_hours?: number | null
+          google_review_link?: string | null
           id?: string
+          internal_review_completed?: boolean | null
           is_retainer?: boolean | null
+          picter_link?: string | null
           po_number?: string | null
           po_required?: boolean | null
           project_value?: number | null
+          stage_status?: string | null
           status?: string | null
           title?: string
           treat_as_oneoff?: boolean | null

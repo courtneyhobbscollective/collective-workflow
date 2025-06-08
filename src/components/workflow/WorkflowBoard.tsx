@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -176,6 +175,85 @@ export function WorkflowBoard() {
     }
   };
 
+  const updateProjectStatus = async (projectId: string, status: string, picterLink?: string) => {
+    try {
+      const project = projects.find(p => p.id === projectId);
+      if (!project) return;
+
+      const updateData: any = { stage_status: status };
+      
+      if (picterLink) {
+        updateData.picter_link = picterLink;
+        updateData.internal_review_completed = true;
+      }
+
+      if (status === "ready_to_send_client") {
+        updateData.internal_review_completed = true;
+      }
+
+      if (status === "closed") {
+        updateData.status = "completed";
+      }
+
+      const { error } = await supabase
+        .from('projects')
+        .update(updateData)
+        .eq('id', projectId);
+
+      if (error) throw error;
+
+      // Create status history record
+      await supabase
+        .from('project_status_history')
+        .insert({
+          project_id: projectId,
+          stage_id: project.current_stage,
+          old_status: project.stage_status || 'in_progress',
+          new_status: status,
+          picter_link: picterLink
+        });
+
+      // Create admin notification for internal review
+      if (status === "ready_for_internal_review" && picterLink) {
+        await supabase
+          .from('admin_notifications')
+          .insert({
+            project_id: projectId,
+            notification_type: 'internal_review',
+            title: `Internal Review Required: ${project.title}`,
+            description: `Project is ready for internal review in ${stages.find(s => s.id === project.current_stage)?.name}`,
+            picter_link: picterLink
+          });
+      }
+
+      // Create admin notification for project closure
+      if (status === "closed") {
+        await supabase
+          .from('admin_notifications')
+          .insert({
+            project_id: projectId,
+            notification_type: 'send_final_email',
+            title: `Send Final Email: ${project.title}`,
+            description: `Project is closed and ready for final client email`
+          });
+      }
+
+      await loadData();
+
+      toast({
+        title: "Success",
+        description: `Project status updated to ${status}`,
+      });
+    } catch (error) {
+      console.error('Error updating project status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update project status",
+        variant: "destructive",
+      });
+    }
+  };
+
   const moveProject = async (projectId: string, newStageId: string) => {
     const project = projects.find(p => p.id === projectId);
     
@@ -263,6 +341,7 @@ export function WorkflowBoard() {
             onUpdateContract={updateContractStatus}
             onUpdatePoNumber={updatePoNumber}
             onMoveProject={moveProject}
+            onUpdateStatus={updateProjectStatus}
             onBookingCreated={handleBookingCreated}
           />
         ))}
