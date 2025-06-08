@@ -1,16 +1,18 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight, Clock, User, AlertCircle, CheckCircle } from "lucide-react";
-import { ProjectValidation, canMoveToStageOne } from "./ProjectValidation";
+import { canMoveToStageOne } from "./ProjectValidation";
 import { CapacityChecker } from "./CapacityChecker";
 import { BookingButton } from "./BookingButton";
 import { StatusSelector } from "./StatusSelector";
 import { PicterLinkModal } from "./PicterLinkModal";
 import { ProjectClosureModal } from "./ProjectClosureModal";
+import { ProjectValidation } from "./ProjectValidation";
+import { ProjectCardHeader } from "./ProjectCardHeader";
+import { ProjectContractSection } from "./ProjectContractSection";
+import { ProjectPOSection } from "./ProjectPOSection";
+import { ProjectStaffSection } from "./ProjectStaffSection";
+import { ProjectCardActions } from "./ProjectCardActions";
 
 interface ProjectStage {
   id: string;
@@ -83,22 +85,10 @@ export function ProjectCard({
   onUpdateStatus,
   onBookingCreated = () => {}
 }: ProjectCardProps) {
-  const [editingProject, setEditingProject] = useState<string | null>(null);
-  const [editPoNumber, setEditPoNumber] = useState("");
   const [hasCapacity, setHasCapacity] = useState(true);
   const [alternativeStaff, setAlternativeStaff] = useState<Staff[]>([]);
   const [picterModalOpen, setPicterModalOpen] = useState(false);
   const [closureModalOpen, setClosureModalOpen] = useState(false);
-
-  const getNextStage = (currentStage: string) => {
-    const currentIndex = stages.findIndex(stage => stage.id === currentStage);
-    return currentIndex < stages.length - 1 ? stages[currentIndex + 1] : null;
-  };
-
-  const startEditingPo = (project: Project) => {
-    setEditingProject(project.id);
-    setEditPoNumber(project.po_number || "");
-  };
 
   const canProgress = canMoveToStageOne(project);
 
@@ -141,122 +131,34 @@ export function ProjectCard({
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">{project.client?.company || project.client?.name}</p>
-            <p className="text-xs text-muted-foreground">{project.work_type}</p>
-            
-            {project.due_date && (
-              <div className="flex items-center space-x-1 text-xs">
-                <Clock className="w-3 h-3" />
-                <span>{new Date(project.due_date).toLocaleDateString()}</span>
-              </div>
-            )}
-            
-            {project.is_retainer ? (
-              <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                Retainer
-              </span>
-            ) : (
-              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                Project
-              </span>
-            )}
+            <ProjectCardHeader
+              title={project.title}
+              client={project.client}
+              workType={project.work_type}
+              dueDate={project.due_date}
+              isRetainer={project.is_retainer}
+            />
 
-            {/* Contract Status */}
-            <div className="flex items-center space-x-1 text-xs">
-              {project.contract_signed ? (
-                <CheckCircle className="w-3 h-3 text-green-600" />
-              ) : (
-                <AlertCircle className="w-3 h-3 text-red-600" />
-              )}
-              <span className={project.contract_signed ? "text-green-600" : "text-red-600"}>
-                Contract {project.contract_signed ? "Signed" : "Not Signed"}
-              </span>
-              {project.current_stage === 'incoming' && (
-                <Button
-                  size="sm"
-                  variant={project.contract_signed ? "outline" : "default"}
-                  className="ml-1 h-5 text-xs"
-                  onClick={() => onUpdateContract(project.id, !project.contract_signed)}
-                >
-                  {project.contract_signed ? "Mark Unsigned" : "Mark Signed"}
-                </Button>
-              )}
-            </div>
+            <ProjectContractSection
+              contractSigned={project.contract_signed}
+              currentStage={project.current_stage}
+              onUpdateContract={(signed) => onUpdateContract(project.id, signed)}
+            />
 
-            {/* PO Number */}
-            {project.po_required && (
-              <div className="space-y-1">
-                {editingProject === project.id ? (
-                  <div className="space-y-1">
-                    <Input
-                      value={editPoNumber}
-                      onChange={(e) => setEditPoNumber(e.target.value)}
-                      placeholder="Enter PO number"
-                      className="h-6 text-xs"
-                    />
-                    <div className="flex space-x-1">
-                      <Button
-                        size="sm"
-                        className="h-5 text-xs"
-                        onClick={() => onUpdatePoNumber(project.id, editPoNumber)}
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-5 text-xs"
-                        onClick={() => setEditingProject(null)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs">
-                      PO: {project.po_number || "Not provided"}
-                    </span>
-                    {project.current_stage === 'incoming' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-5 text-xs ml-1"
-                        onClick={() => startEditingPo(project)}
-                      >
-                        Edit
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            <ProjectPOSection
+              poRequired={project.po_required}
+              poNumber={project.po_number}
+              currentStage={project.current_stage}
+              projectId={project.id}
+              onUpdatePoNumber={onUpdatePoNumber}
+            />
 
-            {/* Staff Assignment */}
-            {project.assigned_staff ? (
-              <div className="flex items-center space-x-1 text-xs">
-                <User className="w-3 h-3" />
-                <span>{project.assigned_staff.name}</span>
-              </div>
-            ) : project.current_stage === 'incoming' ? (
-              <div className="space-y-2">
-                <p className="text-xs text-red-600">No staff assigned</p>
-                <Select onValueChange={(staffId) => onAssignStaff(project.id, staffId)}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Assign staff" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {staff.map((member) => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.name} - {member.role}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : (
-              <p className="text-xs text-red-600">No staff assigned</p>
-            )}
+            <ProjectStaffSection
+              assignedStaff={project.assigned_staff}
+              currentStage={project.current_stage}
+              staff={staff}
+              onAssignStaff={(staffId) => onAssignStaff(project.id, staffId)}
+            />
 
             {/* Capacity Checker for assigned staff */}
             {project.assigned_staff_id && project.estimated_hours && project.current_stage === 'incoming' && (
@@ -288,7 +190,6 @@ export function ProjectCard({
               </div>
             )}
 
-            {/* Validation Issues */}
             <ProjectValidation project={project} />
 
             {/* Calendar Booking Button for incoming projects with assigned staff */}
@@ -306,18 +207,12 @@ export function ProjectCard({
               />
             )}
 
-            {getNextStage(project.current_stage) && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full mt-2"
-                onClick={() => onMoveProject(project.id, getNextStage(project.current_stage)!.id)}
-                disabled={project.current_stage === 'incoming' && !canProgress}
-              >
-                <ArrowRight className="w-3 h-3 mr-1" />
-                Move Forward
-              </Button>
-            )}
+            <ProjectCardActions
+              currentStage={project.current_stage}
+              stages={stages}
+              canProgress={canProgress}
+              onMoveProject={(newStageId) => onMoveProject(project.id, newStageId)}
+            />
           </div>
         </CardContent>
       </Card>
