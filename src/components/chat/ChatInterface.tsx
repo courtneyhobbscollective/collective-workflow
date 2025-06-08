@@ -11,6 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 import { MessageList } from "./MessageList";
 import { EmojiPicker } from "./EmojiPicker";
 import { GifPicker } from "./GifPicker";
+import { ChannelCreationModal } from "./ChannelCreationModal";
+import type { Json } from "@/integrations/supabase/types";
 
 interface Channel {
   id: string;
@@ -31,7 +33,13 @@ interface Message {
   sender_email: string;
   message_type: string;
   created_at: string;
-  reactions: any[];
+  reactions: Json;
+}
+
+interface Client {
+  id: string;
+  name: string;
+  company: string;
 }
 
 export function ChatInterface() {
@@ -41,6 +49,8 @@ export function ChatInterface() {
   const [newMessage, setNewMessage] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
+  const [showChannelModal, setShowChannelModal] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -53,6 +63,7 @@ export function ChatInterface() {
 
   useEffect(() => {
     loadChannels();
+    loadClients();
   }, []);
 
   useEffect(() => {
@@ -100,6 +111,21 @@ export function ChatInterface() {
     }
   };
 
+  const loadClients = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, name, company')
+        .eq('is_active', true)
+        .order('company');
+
+      if (error) throw error;
+      setClients(data || []);
+    } catch (error) {
+      console.error('Error loading clients:', error);
+    }
+  };
+
   const loadMessages = async (channelId: string) => {
     try {
       const { data, error } = await supabase
@@ -110,7 +136,12 @@ export function ChatInterface() {
         .limit(100);
 
       if (error) throw error;
-      setMessages(data || []);
+      // Convert the data to match our Message interface
+      const formattedMessages: Message[] = (data || []).map(msg => ({
+        ...msg,
+        reactions: msg.reactions || []
+      }));
+      setMessages(formattedMessages);
     } catch (error) {
       console.error('Error loading messages:', error);
     }
@@ -128,7 +159,11 @@ export function ChatInterface() {
           filter: `channel_id=eq.${channelId}`
         },
         (payload) => {
-          setMessages(prev => [...prev, payload.new as Message]);
+          const newMsg = {
+            ...payload.new,
+            reactions: payload.new.reactions || []
+          } as Message;
+          setMessages(prev => [...prev, newMsg]);
         }
       )
       .subscribe();
@@ -193,6 +228,22 @@ export function ChatInterface() {
     setShowEmojiPicker(false);
   };
 
+  const handleChannelCreated = () => {
+    loadChannels();
+  };
+
+  const getChannelIcon = (channel: Channel) => {
+    if (channel.is_general) return <Hash className="w-4 h-4 mr-2 text-muted-foreground" />;
+    if (channel.client_id) return <Hash className="w-4 h-4 mr-2 text-blue-500" />;
+    return <Hash className="w-4 h-4 mr-2 text-green-500" />;
+  };
+
+  const getChannelBadge = (channel: Channel) => {
+    if (channel.is_general) return <Badge variant="outline" className="ml-2 text-xs">General</Badge>;
+    if (channel.client_id) return <Badge variant="outline" className="ml-2 text-xs bg-blue-50">Client</Badge>;
+    return <Badge variant="outline" className="ml-2 text-xs bg-green-50">Custom</Badge>;
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
   }
@@ -202,11 +253,23 @@ export function ChatInterface() {
       {/* Channel Sidebar */}
       <div className="w-80 border-r border-border bg-muted/30">
         <div className="p-4 border-b border-border">
-          <h3 className="font-semibold text-foreground flex items-center">
-            <Users className="w-4 h-4 mr-2" />
-            Team Chat
-          </h3>
-          <p className="text-sm text-muted-foreground">Internal communication</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-foreground flex items-center">
+                <Users className="w-4 h-4 mr-2" />
+                Team Chat
+              </h3>
+              <p className="text-sm text-muted-foreground">Internal communication</p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowChannelModal(true)}
+              className="h-8 w-8 p-0"
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
         
         <ScrollArea className="h-full">
@@ -219,7 +282,7 @@ export function ChatInterface() {
                 onClick={() => setActiveChannel(channel)}
               >
                 <div className="flex items-center w-full">
-                  <Hash className="w-4 h-4 mr-2 text-muted-foreground" />
+                  {getChannelIcon(channel)}
                   <div className="flex-1 text-left">
                     <div className="font-medium">{channel.name}</div>
                     {channel.description && (
@@ -228,11 +291,7 @@ export function ChatInterface() {
                       </div>
                     )}
                   </div>
-                  {channel.is_general && (
-                    <Badge variant="outline" className="ml-2 text-xs">
-                      General
-                    </Badge>
-                  )}
+                  {getChannelBadge(channel)}
                 </div>
               </Button>
             ))}
@@ -247,7 +306,7 @@ export function ChatInterface() {
             {/* Header */}
             <div className="p-4 border-b border-border bg-card">
               <div className="flex items-center">
-                <Hash className="w-5 h-5 mr-2" />
+                {getChannelIcon(activeChannel)}
                 <div>
                   <h3 className="font-semibold">{activeChannel.name}</h3>
                   {activeChannel.description && (
@@ -317,6 +376,14 @@ export function ChatInterface() {
           </>
         )}
       </div>
+
+      {/* Channel Creation Modal */}
+      <ChannelCreationModal
+        isOpen={showChannelModal}
+        onClose={() => setShowChannelModal(false)}
+        onChannelCreated={handleChannelCreated}
+        clients={clients}
+      />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Smile, MoreHorizontal } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { EmojiReactionPicker } from "./EmojiReactionPicker";
+import type { Json } from "@/integrations/supabase/types";
 
 interface Message {
   id: string;
@@ -14,7 +15,7 @@ interface Message {
   sender_email: string;
   message_type: string;
   created_at: string;
-  reactions: any[];
+  reactions: Json;
 }
 
 interface MessageListProps {
@@ -50,6 +51,8 @@ export function MessageList({ messages, currentUser }: MessageListProps) {
 
   const renderMessage = (message: Message) => {
     const isOwnMessage = message.sender_email === currentUser.email;
+    // Safely handle reactions - convert Json to array
+    const reactions = Array.isArray(message.reactions) ? message.reactions : [];
     
     return (
       <div
@@ -104,9 +107,9 @@ export function MessageList({ messages, currentUser }: MessageListProps) {
           </div>
           
           {/* Reactions */}
-          {message.reactions && message.reactions.length > 0 && (
+          {reactions && reactions.length > 0 && (
             <div className="flex flex-wrap mt-2 space-x-1">
-              {message.reactions.map((reaction, index) => (
+              {reactions.map((reaction: any, index: number) => (
                 <Button
                   key={index}
                   size="sm"
