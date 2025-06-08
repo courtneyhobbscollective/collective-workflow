@@ -1,9 +1,7 @@
-
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { format, startOfWeek, addDays, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
-import { ProjectDetailsPopover } from "./ProjectDetailsPopover";
 
 interface Staff {
   id: string;
@@ -37,6 +35,7 @@ interface CalendarGridProps {
   staff: Staff[];
   selectedStaff: string;
   onBookingUpdate: () => void;
+  onBookingClick: (booking: ProjectBooking) => void;
 }
 
 export function CalendarGrid({ 
@@ -45,7 +44,8 @@ export function CalendarGrid({
   bookings, 
   staff, 
   selectedStaff,
-  onBookingUpdate 
+  onBookingUpdate,
+  onBookingClick
 }: CalendarGridProps) {
   const [multiDayBookings, setMultiDayBookings] = useState<Set<string>>(new Set());
 
@@ -135,41 +135,36 @@ export function CalendarGrid({
                     const isMultiDay = multiDayBookings.has(booking.project_id);
                     
                     return (
-                      <ProjectDetailsPopover
+                      <Badge
                         key={booking.id}
-                        booking={booking}
-                        staff={staff}
-                        isMultiDay={isMultiDay}
+                        className={cn(
+                          "text-xs block cursor-pointer transition-colors w-full text-left relative p-2",
+                          getStatusColor(booking.status)
+                        )}
+                        onClick={() => onBookingClick(booking)}
                       >
-                        <Badge
-                          className={cn(
-                            "text-xs block cursor-pointer transition-colors w-full text-left relative p-2",
-                            getStatusColor(booking.status)
-                          )}
-                        >
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between">
-                              <div className="truncate flex-1 min-w-0">
-                                <div className="truncate text-xs font-medium">
-                                  {booking.project.title}
-                                </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <div className="truncate flex-1 min-w-0">
+                              <div className="truncate text-xs font-medium">
+                                {booking.project.title}
                               </div>
-                              {isMultiDay && (
-                                <div className="ml-1 w-2 h-2 bg-current rounded-full opacity-60 flex-shrink-0" 
-                                     title="Multi-day booking" />
-                              )}
                             </div>
-                            <div className="text-xs opacity-80">
-                              {booking.start_time} - {booking.end_time}
-                            </div>
-                            {selectedStaff === "all" && staffMember && (
-                              <div className="text-xs opacity-70 truncate">
-                                {staffMember.name}
-                              </div>
+                            {isMultiDay && (
+                              <div className="ml-1 w-2 h-2 bg-current rounded-full opacity-60 flex-shrink-0" 
+                                   title="Multi-day booking" />
                             )}
                           </div>
-                        </Badge>
-                      </ProjectDetailsPopover>
+                          <div className="text-xs opacity-80">
+                            {booking.start_time} - {booking.end_time}
+                          </div>
+                          {selectedStaff === "all" && staffMember && (
+                            <div className="text-xs opacity-70 truncate">
+                              {staffMember.name}
+                            </div>
+                          )}
+                        </div>
+                      </Badge>
                     );
                   })}
                 </div>
@@ -181,7 +176,7 @@ export function CalendarGrid({
     );
   }
 
-  // Month view
+  // Month view with square boxes for mobile
   return (
     <div className="w-full overflow-hidden">
       <div className="grid grid-cols-7 gap-1 sm:gap-2">
@@ -192,7 +187,7 @@ export function CalendarGrid({
           </div>
         ))}
         
-        {/* Calendar days */}
+        {/* Calendar days - made square on mobile */}
         {days.map((day) => {
           const dayBookings = getBookingsForDay(day);
           const isToday = isSameDay(day, new Date());
@@ -201,7 +196,7 @@ export function CalendarGrid({
             <div
               key={day.toISOString()}
               className={cn(
-                "border rounded-lg p-1 sm:p-2 min-h-[80px] sm:min-h-[120px] bg-background",
+                "border rounded-lg p-1 sm:p-2 bg-background aspect-square sm:aspect-auto sm:min-h-[120px]",
                 isToday && "bg-blue-50 border-blue-200 ring-1 ring-blue-200"
               )}
             >
@@ -212,47 +207,42 @@ export function CalendarGrid({
                 {format(day, 'd')}
               </div>
               
-              <div className="space-y-1">
-                {dayBookings.slice(0, 3).map((booking) => {
+              <div className="space-y-1 overflow-hidden">
+                {dayBookings.slice(0, 2).map((booking) => {
                   const staffMember = staff.find(s => s.id === booking.staff_id);
                   const isMultiDay = multiDayBookings.has(booking.project_id);
                   
                   return (
-                    <ProjectDetailsPopover
+                    <Badge
                       key={booking.id}
-                      booking={booking}
-                      staff={staff}
-                      isMultiDay={isMultiDay}
+                      className={cn(
+                        "text-xs block cursor-pointer transition-colors w-full text-left relative",
+                        getStatusColor(booking.status)
+                      )}
+                      onClick={() => onBookingClick(booking)}
                     >
-                      <Badge
-                        className={cn(
-                          "text-xs block cursor-pointer transition-colors w-full text-left relative",
-                          getStatusColor(booking.status)
-                        )}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <div className="truncate flex-1 min-w-0">
-                            <div className="truncate text-xs">
-                              {booking.project.title}
-                            </div>
-                            {selectedStaff === "all" && staffMember && (
-                              <div className="text-xs opacity-80 truncate">
-                                {staffMember.name}
-                              </div>
-                            )}
+                      <div className="flex items-center justify-between w-full">
+                        <div className="truncate flex-1 min-w-0">
+                          <div className="truncate text-xs">
+                            {booking.project.title}
                           </div>
-                          {isMultiDay && (
-                            <div className="ml-1 w-1.5 h-1.5 bg-current rounded-full opacity-70 flex-shrink-0" 
-                                 title="Multi-day booking" />
+                          {selectedStaff === "all" && staffMember && (
+                            <div className="text-xs opacity-80 truncate">
+                              {staffMember.name}
+                            </div>
                           )}
                         </div>
-                      </Badge>
-                    </ProjectDetailsPopover>
+                        {isMultiDay && (
+                          <div className="ml-1 w-1.5 h-1.5 bg-current rounded-full opacity-70 flex-shrink-0" 
+                               title="Multi-day booking" />
+                        )}
+                      </div>
+                    </Badge>
                   );
                 })}
-                {dayBookings.length > 3 && (
-                  <div className="text-xs text-muted-foreground px-1">
-                    +{dayBookings.length - 3} more
+                {dayBookings.length > 2 && (
+                  <div className="text-xs text-muted-foreground px-1 cursor-pointer hover:text-foreground">
+                    +{dayBookings.length - 2} more
                   </div>
                 )}
               </div>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { StaffFilter } from "./StaffFilter";
 import { CalendarGrid } from "./CalendarGrid";
 import { BookingModal } from "./BookingModal";
 import { StaffAvailabilityModal } from "./StaffAvailabilityModal";
+import { BookingDetailsModal } from "./BookingDetailsModal";
 
 interface Staff {
   id: string;
@@ -52,10 +52,12 @@ export function CalendarView() {
   const [bookings, setBookings] = useState<ProjectBooking[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<"week" | "month">("week");
+  const [view, setView] = useState<"week" | "month">("month");
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
+  const [showBookingDetailsModal, setShowBookingDetailsModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<ProjectBooking | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -130,6 +132,11 @@ export function CalendarView() {
     setShowBookingModal(true);
   };
 
+  const openBookingDetailsModal = (booking: ProjectBooking) => {
+    setSelectedBooking(booking);
+    setShowBookingDetailsModal(true);
+  };
+
   const filteredBookings = selectedStaff === "all" 
     ? bookings 
     : bookings.filter(booking => booking.staff_id === selectedStaff);
@@ -166,8 +173,8 @@ export function CalendarView() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="week">Week View</SelectItem>
                 <SelectItem value="month">Month View</SelectItem>
+                <SelectItem value="week">Week View</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -244,6 +251,7 @@ export function CalendarView() {
                   staff={staff}
                   selectedStaff={selectedStaff}
                   onBookingUpdate={loadData}
+                  onBookingClick={openBookingDetailsModal}
                 />
               </CardContent>
             </Card>
@@ -264,6 +272,14 @@ export function CalendarView() {
         onClose={() => setShowAvailabilityModal(false)}
         staff={staff}
         onAvailabilityUpdated={loadData}
+      />
+
+      <BookingDetailsModal
+        booking={selectedBooking}
+        isOpen={showBookingDetailsModal}
+        onClose={() => setShowBookingDetailsModal(false)}
+        staff={staff}
+        onBookingUpdate={loadData}
       />
     </div>
   );
