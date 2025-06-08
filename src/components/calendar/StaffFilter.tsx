@@ -1,13 +1,7 @@
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users } from "lucide-react";
-
-interface Staff {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-}
+import type { Staff } from "@/types/staff";
 
 interface StaffFilterProps {
   staff: Staff[];

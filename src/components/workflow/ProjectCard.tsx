@@ -13,6 +13,7 @@ import { ProjectContractSection } from "./ProjectContractSection";
 import { ProjectPOSection } from "./ProjectPOSection";
 import { ProjectStaffSection } from "./ProjectStaffSection";
 import { ProjectCardActions } from "./ProjectCardActions";
+import type { Staff } from "@/types/staff";
 
 interface ProjectStage {
   id: string;
@@ -20,14 +21,6 @@ interface ProjectStage {
   order_index: number;
   billing_percentage: number;
   description: string;
-}
-
-interface Staff {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  department?: string;
 }
 
 interface Client {

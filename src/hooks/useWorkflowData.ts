@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import type { Staff } from "@/types/staff";
 
 interface ProjectStage {
   id: string;
@@ -9,14 +10,6 @@ interface ProjectStage {
   order_index: number;
   billing_percentage: number;
   description: string;
-}
-
-interface Staff {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  department?: string;
 }
 
 interface Client {

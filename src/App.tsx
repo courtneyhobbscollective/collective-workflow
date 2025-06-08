@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { StaffProvider } from "@/contexts/StaffContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AuthPage } from "@/components/auth/AuthPage";
+import { PasswordSetupPage } from "@/components/auth/PasswordSetupPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -26,6 +27,7 @@ function App() {
                 <main>
                   <Routes>
                     <Route path="/auth" element={<AuthPage />} />
+                    <Route path="/setup-password" element={<PasswordSetupPage />} />
                     <Route path="/" element={
                       <ProtectedRoute>
                         <Index />

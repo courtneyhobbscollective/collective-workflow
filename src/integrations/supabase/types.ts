@@ -761,6 +761,7 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          invitation_status: string | null
           is_active: boolean | null
           name: string
           profile_picture_url: string | null
@@ -770,6 +771,7 @@ export type Database = {
           created_at?: string
           email: string
           id?: string
+          invitation_status?: string | null
           is_active?: boolean | null
           name: string
           profile_picture_url?: string | null
@@ -779,6 +781,7 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          invitation_status?: string | null
           is_active?: boolean | null
           name?: string
           profile_picture_url?: string | null
@@ -820,6 +823,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "staff_availability_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          created_by: string
+          email: string
+          expires_at: string
+          id: string
+          staff_id: string | null
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          created_by: string
+          email: string
+          expires_at: string
+          id?: string
+          staff_id?: string | null
+          token: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          created_by?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          staff_id?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_invitations_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "staff"

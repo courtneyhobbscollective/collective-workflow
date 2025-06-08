@@ -2,14 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-
-interface Staff {
-  id: string;
-  name: string;
-  email: string;
-  role: 'Admin' | 'Staff';
-  profile_picture_url: string | null;
-}
+import type { Staff } from '@/types/staff';
 
 interface StaffContextType {
   currentStaff: Staff | null;

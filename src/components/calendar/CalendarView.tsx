@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,14 +11,7 @@ import { CalendarGrid } from "./CalendarGrid";
 import { BookingModal } from "./BookingModal";
 import { StaffAvailabilityModal } from "./StaffAvailabilityModal";
 import { BookingDetailsModal } from "./BookingDetailsModal";
-
-interface Staff {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  department?: string;
-}
+import type { Staff } from "@/types/staff";
 
 interface Project {
   id: string;
