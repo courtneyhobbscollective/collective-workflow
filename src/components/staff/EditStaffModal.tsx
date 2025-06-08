@@ -7,14 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ProfilePictureUpload } from "./ProfilePictureUpload";
-
-interface Staff {
-  id: string;
-  name: string;
-  email: string;
-  role: 'Admin' | 'Staff';
-  profile_picture_url: string | null;
-}
+import type { Staff } from "@/types/staff";
 
 interface EditStaffModalProps {
   staff: Staff;

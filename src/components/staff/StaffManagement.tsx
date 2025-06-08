@@ -1,17 +1,12 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Users, Edit, Mail, CheckCircle, Clock } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ProfilePictureUpload } from "./ProfilePictureUpload";
 import { EditStaffModal } from "./EditStaffModal";
+import { AddStaffForm } from "./AddStaffForm";
+import { StaffGrid } from "./StaffGrid";
 import type { Staff } from "@/types/staff";
 
 export function StaffManagement() {
@@ -19,12 +14,6 @@ export function StaffManagement() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    role: "Staff" as 'Admin' | 'Staff',
-    profile_picture_url: "",
-  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -53,8 +42,12 @@ export function StaffManagement() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddStaff = async (formData: {
+    name: string;
+    email: string;
+    role: 'Admin' | 'Staff';
+    profile_picture_url: string;
+  }) => {
     if (!formData.name || !formData.email || !formData.role) {
       toast({
         title: "Error",
@@ -80,7 +73,6 @@ export function StaffManagement() {
       // Send invitation
       await sendInvitation(staffData.id, formData.email, formData.name);
 
-      setFormData({ name: "", email: "", role: "Staff", profile_picture_url: "" });
       setShowForm(false);
       await loadStaff();
       
@@ -169,23 +161,6 @@ export function StaffManagement() {
     }
   };
 
-  const handleImageUploaded = (url: string) => {
-    setFormData({ ...formData, profile_picture_url: url });
-  };
-
-  const getStatusBadge = (invitationStatus?: string) => {
-    switch (invitationStatus) {
-      case 'pending':
-        return <Badge variant="outline"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
-      case 'invited':
-        return <Badge variant="secondary"><Mail className="w-3 h-3 mr-1" />Invited</Badge>;
-      case 'accepted':
-        return <Badge variant="default"><CheckCircle className="w-3 h-3 mr-1" />Active</Badge>;
-      default:
-        return <Badge variant="default"><CheckCircle className="w-3 h-3 mr-1" />Active</Badge>;
-    }
-  };
-
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
   }
@@ -204,122 +179,17 @@ export function StaffManagement() {
       </div>
 
       {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Add New Staff Member</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              An invitation will be sent to the staff member's email to set up their account.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <ProfilePictureUpload
-                currentImageUrl={formData.profile_picture_url}
-                onImageUploaded={handleImageUploaded}
-                staffName={formData.name || "New Staff"}
-              />
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name">Full Name *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Enter full name"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="email">Email Address *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    placeholder="Enter email address"
-                    required
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <Label htmlFor="role">Role *</Label>
-                  <Select value={formData.role} onValueChange={(value: 'Admin' | 'Staff') => setFormData({ ...formData, role: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Admin">Admin</SelectItem>
-                      <SelectItem value="Staff">Staff</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="flex space-x-2">
-                <Button type="submit">Add Staff Member & Send Invitation</Button>
-                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+        <AddStaffForm
+          onSubmit={handleAddStaff}
+          onCancel={() => setShowForm(false)}
+        />
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {staff.map((member) => (
-          <Card key={member.id}>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <Avatar className="w-10 h-10">
-                    <AvatarImage src={member.profile_picture_url || undefined} />
-                    <AvatarFallback>
-                      {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex items-center space-x-2">
-                    <Users className="w-5 h-5" />
-                    <span>{member.name}</span>
-                  </div>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setEditingStaff(member)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">{member.email}</p>
-                <div className="flex items-center justify-between">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    member.role === 'Admin' 
-                      ? 'bg-purple-100 text-purple-800' 
-                      : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {member.role}
-                  </span>
-                  {getStatusBadge(member.invitation_status)}
-                </div>
-                {member.invitation_status === 'invited' && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full mt-2"
-                    onClick={() => resendInvitation(member)}
-                  >
-                    <Mail className="w-4 h-4 mr-2" />
-                    Resend Invitation
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <StaffGrid
+        staff={staff}
+        onEditStaff={setEditingStaff}
+        onResendInvitation={resendInvitation}
+      />
 
       {editingStaff && (
         <EditStaffModal
