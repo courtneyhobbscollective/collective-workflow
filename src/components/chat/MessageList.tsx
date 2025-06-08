@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { Smile, MoreHorizontal } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +23,7 @@ interface MessageListProps {
   currentUser: {
     name: string;
     email: string;
+    profile_picture_url?: string | null;
   };
 }
 
@@ -49,6 +50,10 @@ export function MessageList({ messages, currentUser }: MessageListProps) {
     setShowReactionPicker(null);
   };
 
+  const getFirstName = (fullName: string) => {
+    return fullName.split(' ')[0];
+  };
+
   const renderMessage = (message: Message) => {
     const isOwnMessage = message.sender_email === currentUser.email;
     // Safely handle reactions - convert Json to array
@@ -62,6 +67,7 @@ export function MessageList({ messages, currentUser }: MessageListProps) {
         }`}
       >
         <Avatar className="w-8 h-8">
+          <AvatarImage src={undefined} />
           <AvatarFallback className="text-xs">
             {message.sender_name.split(' ').map(n => n[0]).join('').toUpperCase()}
           </AvatarFallback>
@@ -69,7 +75,7 @@ export function MessageList({ messages, currentUser }: MessageListProps) {
         
         <div className={`flex-1 ${isOwnMessage ? 'text-right' : ''}`}>
           <div className="flex items-center space-x-2 mb-1">
-            <span className="font-medium text-sm">{message.sender_name}</span>
+            <span className="font-medium text-sm">{getFirstName(message.sender_name)}</span>
             <span className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
             </span>

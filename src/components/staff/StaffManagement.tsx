@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Plus, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { ProfilePictureUpload } from "./ProfilePictureUpload";
 
 interface Staff {
   id: string;
@@ -15,6 +17,7 @@ interface Staff {
   role: string;
   department: string;
   is_active: boolean;
+  profile_picture_url: string | null;
 }
 
 export function StaffManagement() {
@@ -26,6 +29,7 @@ export function StaffManagement() {
     email: "",
     role: "",
     department: "",
+    profile_picture_url: "",
   });
   const { toast } = useToast();
 
@@ -73,7 +77,7 @@ export function StaffManagement() {
 
       if (error) throw error;
 
-      setFormData({ name: "", email: "", role: "", department: "" });
+      setFormData({ name: "", email: "", role: "", department: "", profile_picture_url: "" });
       setShowForm(false);
       await loadStaff();
       
@@ -89,6 +93,10 @@ export function StaffManagement() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleImageUploaded = (url: string) => {
+    setFormData({ ...formData, profile_picture_url: url });
   };
 
   if (loading) {
@@ -115,6 +123,12 @@ export function StaffManagement() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <ProfilePictureUpload
+                currentImageUrl={formData.profile_picture_url}
+                onImageUploaded={handleImageUploaded}
+                staffName={formData.name || "New Staff"}
+              />
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="name">Full Name</Label>
@@ -169,9 +183,17 @@ export function StaffManagement() {
         {staff.map((member) => (
           <Card key={member.id}>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Users className="w-5 h-5" />
-                <span>{member.name}</span>
+              <CardTitle className="flex items-center space-x-3">
+                <Avatar className="w-10 h-10">
+                  <AvatarImage src={member.profile_picture_url || undefined} />
+                  <AvatarFallback>
+                    {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex items-center space-x-2">
+                  <Users className="w-5 h-5" />
+                  <span>{member.name}</span>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>

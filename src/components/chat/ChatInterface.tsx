@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,9 @@ import { MessageList } from "./MessageList";
 import { EmojiPicker } from "./EmojiPicker";
 import { GifPicker } from "./GifPicker";
 import { ChannelCreationModal } from "./ChannelCreationModal";
+import { StaffSelector } from "./StaffSelector";
 import { formatChannelDisplayName } from "@/utils/channelUtils";
+import { useStaff } from "@/contexts/StaffContext";
 import type { Json } from "@/integrations/supabase/types";
 
 interface Channel {
@@ -55,12 +56,7 @@ export function ChatInterface() {
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-
-  // Mock user for now - in a real app this would come from auth
-  const currentUser = {
-    name: "Staff Member",
-    email: "staff@collective.uk"
-  };
+  const { currentStaff } = useStaff();
 
   useEffect(() => {
     loadChannels();
@@ -174,7 +170,7 @@ export function ChatInterface() {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !activeChannel) return;
+    if (!newMessage.trim() || !activeChannel || !currentStaff) return;
 
     try {
       const { error } = await supabase
@@ -182,8 +178,8 @@ export function ChatInterface() {
         .insert([{
           channel_id: activeChannel.id,
           content: newMessage,
-          sender_name: currentUser.name,
-          sender_email: currentUser.email,
+          sender_name: currentStaff.name,
+          sender_email: currentStaff.email,
           message_type: 'text'
         }]);
 
@@ -203,7 +199,7 @@ export function ChatInterface() {
   };
 
   const sendGif = async (gifUrl: string) => {
-    if (!activeChannel) return;
+    if (!activeChannel || !currentStaff) return;
 
     try {
       const { error } = await supabase
@@ -211,8 +207,8 @@ export function ChatInterface() {
         .insert([{
           channel_id: activeChannel.id,
           content: gifUrl,
-          sender_name: currentUser.name,
-          sender_email: currentUser.email,
+          sender_name: currentStaff.name,
+          sender_email: currentStaff.email,
           message_type: 'gif'
         }]);
 
@@ -248,136 +244,155 @@ export function ChatInterface() {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
   }
 
+  if (!currentStaff) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <p>Please select a staff member to use the chat.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-[calc(100vh-120px)] bg-background border border-border rounded-lg overflow-hidden">
-      {/* Channel Sidebar */}
-      <div className="w-80 border-r border-border bg-muted/30">
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold text-foreground flex items-center">
-                <Users className="w-4 h-4 mr-2" />
-                Team Chat
-              </h3>
-              <p className="text-sm text-muted-foreground">Internal communication</p>
-            </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShowChannelModal(true)}
-              className="h-8 w-8 p-0"
-            >
-              <Plus className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-        
-        <ScrollArea className="h-full">
-          <div className="p-2">
-            {channels.map((channel) => (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Team Chat</h2>
+        <StaffSelector />
+      </div>
+
+      <div className="flex h-[calc(100vh-200px)] bg-background border border-border rounded-lg overflow-hidden">
+        {/* Channel Sidebar */}
+        <div className="w-80 border-r border-border bg-muted/30">
+          <div className="p-4 border-b border-border">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-foreground flex items-center">
+                  <Users className="w-4 h-4 mr-2" />
+                  Team Chat
+                </h3>
+                <p className="text-sm text-muted-foreground">Internal communication</p>
+              </div>
               <Button
-                key={channel.id}
-                variant={activeChannel?.id === channel.id ? "secondary" : "ghost"}
-                className="w-full justify-start mb-1 h-auto p-3"
-                onClick={() => setActiveChannel(channel)}
+                size="sm"
+                variant="outline"
+                onClick={() => setShowChannelModal(true)}
+                className="h-8 w-8 p-0"
               >
-                <div className="flex items-center w-full">
-                  {getChannelIcon(channel)}
-                  <div className="flex-1 text-left">
-                    <div className="font-medium">
-                      {formatChannelDisplayName(channel.name, channel.client?.company)}
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+          
+          <ScrollArea className="h-full">
+            <div className="p-2">
+              {channels.map((channel) => (
+                <Button
+                  key={channel.id}
+                  variant={activeChannel?.id === channel.id ? "secondary" : "ghost"}
+                  className="w-full justify-start mb-1 h-auto p-3"
+                  onClick={() => setActiveChannel(channel)}
+                >
+                  <div className="flex items-center w-full">
+                    {getChannelIcon(channel)}
+                    <div className="flex-1 text-left">
+                      <div className="font-medium">
+                        {formatChannelDisplayName(channel.name, channel.client?.company)}
+                      </div>
+                    </div>
+                    {getChannelBadge(channel)}
+                  </div>
+                </Button>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* Chat Area */}
+        <div className="flex-1 flex flex-col">
+          {activeChannel && (
+            <>
+              {/* Header */}
+              <div className="p-4 border-b border-border bg-card">
+                <div className="flex items-center">
+                  {getChannelIcon(activeChannel)}
+                  <div>
+                    <h3 className="font-semibold">
+                      {formatChannelDisplayName(activeChannel.name, activeChannel.client?.company)}
+                    </h3>
+                  </div>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <ScrollArea className="flex-1 p-4">
+                <MessageList messages={messages} currentUser={{
+                  name: currentStaff.name,
+                  email: currentStaff.email,
+                  profile_picture_url: currentStaff.profile_picture_url
+                }} />
+                <div ref={messagesEndRef} />
+              </ScrollArea>
+
+              {/* Message Input */}
+              <div className="p-4 border-t border-border bg-card">
+                <div className="flex items-end space-x-2">
+                  <div className="flex-1 relative">
+                    <Input
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder={`Message ${formatChannelDisplayName(activeChannel.name, activeChannel.client?.company)}`}
+                      onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                      className="pr-24"
+                    />
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex space-x-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Smile className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setShowGifPicker(!showGifPicker)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Image className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
-                  {getChannelBadge(channel)}
+                  <Button onClick={sendMessage} disabled={!newMessage.trim()}>
+                    <Send className="w-4 h-4" />
+                  </Button>
                 </div>
-              </Button>
-            ))}
-          </div>
-        </ScrollArea>
-      </div>
 
-      {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {activeChannel && (
-          <>
-            {/* Header */}
-            <div className="p-4 border-b border-border bg-card">
-              <div className="flex items-center">
-                {getChannelIcon(activeChannel)}
-                <div>
-                  <h3 className="font-semibold">
-                    {formatChannelDisplayName(activeChannel.name, activeChannel.client?.company)}
-                  </h3>
-                </div>
-              </div>
-            </div>
-
-            {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
-              <MessageList messages={messages} currentUser={currentUser} />
-              <div ref={messagesEndRef} />
-            </ScrollArea>
-
-            {/* Message Input */}
-            <div className="p-4 border-t border-border bg-card">
-              <div className="flex items-end space-x-2">
-                <div className="flex-1 relative">
-                  <Input
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder={`Message ${formatChannelDisplayName(activeChannel.name, activeChannel.client?.company)}`}
-                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                    className="pr-24"
-                  />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex space-x-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                      className="h-6 w-6 p-0"
-                    >
-                      <Smile className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setShowGifPicker(!showGifPicker)}
-                      className="h-6 w-6 p-0"
-                    >
-                      <Image className="w-4 h-4" />
-                    </Button>
+                {/* Emoji Picker */}
+                {showEmojiPicker && (
+                  <div className="absolute bottom-20 right-4">
+                    <EmojiPicker onEmojiSelect={addEmoji} onClose={() => setShowEmojiPicker(false)} />
                   </div>
-                </div>
-                <Button onClick={sendMessage} disabled={!newMessage.trim()}>
-                  <Send className="w-4 h-4" />
-                </Button>
+                )}
+
+                {/* GIF Picker */}
+                {showGifPicker && (
+                  <div className="absolute bottom-20 right-4">
+                    <GifPicker onGifSelect={sendGif} onClose={() => setShowGifPicker(false)} />
+                  </div>
+                )}
               </div>
+            </>
+          )}
+        </div>
 
-              {/* Emoji Picker */}
-              {showEmojiPicker && (
-                <div className="absolute bottom-20 right-4">
-                  <EmojiPicker onEmojiSelect={addEmoji} onClose={() => setShowEmojiPicker(false)} />
-                </div>
-              )}
-
-              {/* GIF Picker */}
-              {showGifPicker && (
-                <div className="absolute bottom-20 right-4">
-                  <GifPicker onGifSelect={sendGif} onClose={() => setShowGifPicker(false)} />
-                </div>
-              )}
-            </div>
-          </>
-        )}
+        {/* Channel Creation Modal */}
+        <ChannelCreationModal
+          isOpen={showChannelModal}
+          onClose={() => setShowChannelModal(false)}
+          onChannelCreated={handleChannelCreated}
+          clients={clients}
+        />
       </div>
-
-      {/* Channel Creation Modal */}
-      <ChannelCreationModal
-        isOpen={showChannelModal}
-        onClose={() => setShowChannelModal(false)}
-        onChannelCreated={handleChannelCreated}
-        clients={clients}
-      />
     </div>
   );
 }
