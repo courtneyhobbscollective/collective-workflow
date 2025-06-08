@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -71,7 +70,7 @@ export function ChatInterface() {
       
       // Subscribe to new messages for this channel
       const channel = supabase
-        .channel(`messages:${activeChannel.id}`)
+        .channel(`messages-${activeChannel.id}`)
         .on(
           'postgres_changes',
           {
@@ -86,24 +85,36 @@ export function ChatInterface() {
               ...payload.new,
               reactions: payload.new.reactions || []
             } as Message;
+            
             setMessages(prev => {
-              // Avoid duplicates
-              if (prev.some(msg => msg.id === newMsg.id)) {
-                console.log('Message already exists, skipping');
+              // Check if message already exists
+              const exists = prev.some(msg => msg.id === newMsg.id);
+              if (exists) {
+                console.log('Message already exists, skipping duplicate');
                 return prev;
               }
-              console.log('Adding new message to state');
+              console.log('Adding new message to state, new total:', prev.length + 1);
               return [...prev, newMsg];
             });
           }
         )
         .subscribe((status) => {
           console.log('Realtime subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('Successfully subscribed to channel messages');
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.error('Subscription error, attempting to reconnect...');
+            // Reload messages if subscription fails
+            setTimeout(() => {
+              console.log('Reloading messages due to subscription failure');
+              loadMessages(activeChannel.id);
+            }, 1000);
+          }
         });
 
       // Cleanup function to remove the subscription
       return () => {
-        console.log('Cleaning up realtime subscription');
+        console.log('Cleaning up realtime subscription for channel:', activeChannel.id);
         supabase.removeChannel(channel);
       };
     }
@@ -207,6 +218,12 @@ export function ChatInterface() {
       setNewMessage("");
       setShowEmojiPicker(false);
       setShowGifPicker(false);
+      
+      // Force reload messages if real-time isn't working
+      setTimeout(() => {
+        console.log('Force reloading messages after send');
+        loadMessages(activeChannel.id);
+      }, 500);
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -233,6 +250,11 @@ export function ChatInterface() {
 
       if (error) throw error;
       setShowGifPicker(false);
+      
+      // Force reload messages if real-time isn't working
+      setTimeout(() => {
+        loadMessages(activeChannel.id);
+      }, 500);
     } catch (error) {
       console.error('Error sending GIF:', error);
     }
