@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,10 +7,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, Calendar as CalendarIcon } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertTriangle, Calendar as CalendarIcon, Zap } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { format, addHours, parseISO } from "date-fns";
+import { format } from "date-fns";
+import { MultiDayBookingEngine } from "./MultiDayBookingEngine";
+import { MultiDayBookingPreview } from "./MultiDayBookingPreview";
 
 interface Staff {
   id: string;
@@ -46,6 +48,14 @@ interface TimeSlot {
   hours: number;
 }
 
+interface BookingSlot {
+  date: Date;
+  startTime: string;
+  endTime: string;
+  hours: number;
+  sequence: number;
+}
+
 interface BookingModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -69,6 +79,9 @@ export function BookingModal({
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [capacityWarning, setCapacityWarning] = useState<string | null>(null);
   const [alternativeStaff, setAlternativeStaff] = useState<Staff[]>([]);
+  const [multiDaySlots, setMultiDaySlots] = useState<BookingSlot[]>([]);
+  const [showMultiDayPreview, setShowMultiDayPreview] = useState(false);
+  const [multiDayLoading, setMultiDayLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -200,6 +213,84 @@ export function BookingModal({
     }
   };
 
+  const findMultiDaySlots = async () => {
+    if (!project) return;
+
+    setMultiDayLoading(true);
+    try {
+      const hoursNeeded = customHours ? parseFloat(customHours) : project.estimated_hours;
+      const engine = new MultiDayBookingEngine(project.assigned_staff_id, hoursNeeded);
+      const result = await engine.findOptimalBookingSlots();
+
+      if (result.canFit) {
+        setMultiDaySlots(result.bookingSlots);
+        setShowMultiDayPreview(true);
+        setCapacityWarning(null);
+      } else {
+        setCapacityWarning(result.message);
+        setMultiDaySlots([]);
+      }
+    } catch (error) {
+      console.error('Error finding multi-day slots:', error);
+      toast({
+        title: "Error",
+        description: "Failed to find multi-day booking options",
+        variant: "destructive",
+      });
+    } finally {
+      setMultiDayLoading(false);
+    }
+  };
+
+  const handleMultiDayBooking = async () => {
+    if (!project || multiDaySlots.length === 0) return;
+
+    setLoading(true);
+    try {
+      // Create multiple bookings
+      const bookingPromises = multiDaySlots.map((slot, index) => 
+        supabase
+          .from('project_bookings')
+          .insert({
+            project_id: project.id,
+            staff_id: project.assigned_staff_id,
+            booking_date: format(slot.date, 'yyyy-MM-dd'),
+            start_time: slot.startTime,
+            end_time: slot.endTime,
+            hours_booked: slot.hours,
+            status: 'scheduled',
+            notes: `Multi-day booking sequence ${slot.sequence} of ${multiDaySlots.length}`
+          })
+      );
+
+      const results = await Promise.all(bookingPromises);
+      
+      // Check if any failed
+      const errors = results.filter(result => result.error);
+      if (errors.length > 0) {
+        throw new Error(`Failed to create ${errors.length} bookings`);
+      }
+
+      toast({
+        title: "Success",
+        description: `Created ${multiDaySlots.length} bookings across multiple days`,
+      });
+
+      onBookingCreated();
+      onClose();
+      resetForm();
+    } catch (error) {
+      console.error('Error creating multi-day booking:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create multi-day booking",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleBooking = async () => {
     if (!project || !selectedSlot) return;
 
@@ -245,13 +336,15 @@ export function BookingModal({
     setSelectedSlot(null);
     setCustomHours("");
     setCapacityWarning(null);
+    setMultiDaySlots([]);
+    setShowMultiDayPreview(false);
   };
 
   const staffMember = project ? staff.find(s => s.id === project.assigned_staff_id) : null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Schedule Project: {project?.title}</DialogTitle>
         </DialogHeader>
@@ -300,65 +393,106 @@ export function BookingModal({
               </Alert>
             )}
 
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <Label>Select Date</Label>
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  disabled={(date) => date < new Date() || date.getDay() === 0 || date.getDay() === 6}
-                  className="rounded-md border"
-                />
-              </div>
+            {showMultiDayPreview && multiDaySlots.length > 0 && (
+              <MultiDayBookingPreview
+                bookingSlots={multiDaySlots}
+                totalHours={customHours ? parseFloat(customHours) : project.estimated_hours}
+                projectTitle={project.title}
+                onConfirm={handleMultiDayBooking}
+                onCancel={() => setShowMultiDayPreview(false)}
+                loading={loading}
+              />
+            )}
 
-              <div>
-                <Label>Available Time Slots</Label>
-                {selectedDate ? (
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {loadingSlots ? (
-                      <p className="text-sm text-muted-foreground">Finding available slots...</p>
-                    ) : availableSlots.length > 0 ? (
-                      availableSlots.map((slot, index) => (
-                        <Button
-                          key={index}
-                          variant={selectedSlot === slot ? "default" : "outline"}
-                          className="w-full justify-between"
-                          onClick={() => setSelectedSlot(slot)}
-                        >
-                          <span>{slot.startTime} - {slot.endTime}</span>
-                          <Badge variant="secondary">{slot.hours}h</Badge>
-                        </Button>
-                      ))
-                    ) : (
-                      <div className="text-center py-4">
-                        <CalendarIcon className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+            {!showMultiDayPreview && (
+              <Tabs defaultValue="single" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="single">Single Day Booking</TabsTrigger>
+                  <TabsTrigger value="multi">Smart Multi-Day</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="single" className="space-y-4">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <Label>Select Date</Label>
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        disabled={(date) => date < new Date() || date.getDay() === 0 || date.getDay() === 6}
+                        className="rounded-md border"
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Available Time Slots</Label>
+                      {selectedDate ? (
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {loadingSlots ? (
+                            <p className="text-sm text-muted-foreground">Finding available slots...</p>
+                          ) : availableSlots.length > 0 ? (
+                            availableSlots.map((slot, index) => (
+                              <Button
+                                key={index}
+                                variant={selectedSlot === slot ? "default" : "outline"}
+                                className="w-full justify-between"
+                                onClick={() => setSelectedSlot(slot)}
+                              >
+                                <span>{slot.startTime} - {slot.endTime}</span>
+                                <Badge variant="secondary">{slot.hours}h</Badge>
+                              </Button>
+                            ))
+                          ) : (
+                            <div className="text-center py-4">
+                              <CalendarIcon className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                              <p className="text-sm text-muted-foreground">
+                                {capacityWarning ? "Staff member at capacity" : "No available slots"}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
                         <p className="text-sm text-muted-foreground">
-                          {capacityWarning ? "Staff member at capacity" : "No available slots"}
+                          Select a date to see available time slots.
                         </p>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Select a date to see available time slots.
-                  </p>
-                )}
-              </div>
-            </div>
 
-            <div className="flex space-x-2">
-              <Button 
-                onClick={handleBooking} 
-                disabled={!selectedSlot || loading || !!capacityWarning}
-                className="flex-1"
-              >
-                {loading ? "Creating Booking..." : "Create Booking"}
-              </Button>
-              <Button variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-            </div>
+                  <div className="flex space-x-2">
+                    <Button 
+                      onClick={handleBooking} 
+                      disabled={!selectedSlot || loading || !!capacityWarning}
+                      className="flex-1"
+                    >
+                      {loading ? "Creating Booking..." : "Create Single Day Booking"}
+                    </Button>
+                    <Button variant="outline" onClick={onClose}>
+                      Cancel
+                    </Button>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="multi" className="space-y-4">
+                  <div className="text-center space-y-4">
+                    <div className="p-6 border-2 border-dashed border-gray-200 rounded-lg">
+                      <Zap className="w-12 h-12 mx-auto text-blue-600 mb-4" />
+                      <h3 className="text-lg font-medium mb-2">Smart Multi-Day Scheduling</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Automatically find the best way to split this project across multiple days based on staff availability.
+                      </p>
+                      <Button 
+                        onClick={findMultiDaySlots}
+                        disabled={multiDayLoading}
+                        size="lg"
+                      >
+                        {multiDayLoading ? "Analyzing Availability..." : "Find Optimal Schedule"}
+                      </Button>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            )}
           </div>
         )}
       </DialogContent>

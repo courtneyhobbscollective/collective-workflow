@@ -1,8 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, CheckCircle, Clock, Calendar } from "lucide-react";
+import { MultiDayBookingEngine } from "@/components/calendar/MultiDayBookingEngine";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
@@ -33,10 +34,16 @@ export function CapacityChecker({
     alternatives: Staff[];
   } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [multiDayOption, setMultiDayOption] = useState<{
+    canFit: boolean;
+    totalDays: number;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     if (staffId && projectHours > 0) {
       checkStaffCapacity();
+      checkMultiDayOptions();
     }
   }, [staffId, projectHours]);
 
@@ -109,38 +116,91 @@ export function CapacityChecker({
     }
   };
 
+  const checkMultiDayOptions = async () => {
+    if (!staffId) return;
+    
+    try {
+      const engine = new MultiDayBookingEngine(staffId, projectHours);
+      const result = await engine.findOptimalBookingSlots();
+      
+      setMultiDayOption({
+        canFit: result.canFit,
+        totalDays: result.totalDays,
+        message: result.message
+      });
+    } catch (error) {
+      console.error('Error checking multi-day options:', error);
+    }
+  };
+
   if (!staffId || loading) return null;
 
-  if (!capacityInfo) return null;
+  if (!capacityInfo && !multiDayOption) return null;
 
   return (
     <div className="space-y-2">
-      {capacityInfo.hasCapacity ? (
-        <Alert className="border-green-200 bg-green-50">
-          <CheckCircle className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800">
-            Staff member has capacity ({capacityInfo.availableHours}h available)
+      {/* Single Day Capacity Check */}
+      {capacityInfo && (
+        <>
+          {capacityInfo.hasCapacity ? (
+            <Alert className="border-green-200 bg-green-50">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                Staff member has capacity ({capacityInfo.availableHours}h available)
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <Alert className="border-red-200 bg-red-50">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800">
+                <div className="space-y-2">
+                  <p>Staff member at capacity (only {capacityInfo.availableHours}h available, needs {projectHours}h)</p>
+                  {capacityInfo.alternatives.length > 0 && (
+                    <div>
+                      <p className="font-medium">Alternative staff available:</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {capacityInfo.alternatives.map(staff => (
+                          <Badge key={staff.id} variant="outline">
+                            {staff.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+        </>
+      )}
+
+      {/* Multi-Day Option */}
+      {multiDayOption && multiDayOption.canFit && !capacityInfo?.hasCapacity && (
+        <Alert className="border-blue-200 bg-blue-50">
+          <Calendar className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-800">
+            <div className="space-y-2">
+              <p className="font-medium">Multi-Day Option Available:</p>
+              <p className="text-sm">{multiDayOption.message}</p>
+              <Badge variant="outline" className="bg-white">
+                {multiDayOption.totalDays} days required
+              </Badge>
+            </div>
           </AlertDescription>
         </Alert>
-      ) : (
+      )}
+
+      {/* No Options Available */}
+      {multiDayOption && !multiDayOption.canFit && !capacityInfo?.hasCapacity && (
         <Alert className="border-red-200 bg-red-50">
           <AlertTriangle className="h-4 w-4 text-red-600" />
           <AlertDescription className="text-red-800">
-            <div className="space-y-2">
-              <p>Staff member at capacity (only {capacityInfo.availableHours}h available, needs {projectHours}h)</p>
-              {capacityInfo.alternatives.length > 0 && (
-                <div>
-                  <p className="font-medium">Alternative staff available:</p>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {capacityInfo.alternatives.map(staff => (
-                      <Badge key={staff.id} variant="outline">
-                        {staff.name}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <p>Cannot accommodate {projectHours}h in the next 14 days. Consider:</p>
+            <ul className="text-sm mt-1 ml-4 list-disc">
+              <li>Assigning to a different staff member</li>
+              <li>Reducing project scope</li>
+              <li>Scheduling for a later date</li>
+            </ul>
           </AlertDescription>
         </Alert>
       )}
