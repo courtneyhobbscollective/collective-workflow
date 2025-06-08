@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,6 @@ interface Staff {
   name: string;
   email: string;
   role: string;
-  department: string;
 }
 
 interface Project {

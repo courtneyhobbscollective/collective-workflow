@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +11,6 @@ interface StaffMember {
   name: string;
   email: string;
   role: string;
-  department: string;
 }
 
 interface Project {
@@ -211,7 +209,7 @@ export function StaffDashboard() {
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold text-foreground">Welcome back, {currentStaff.name}</h2>
-        <p className="text-muted-foreground">{currentStaff.role} - {currentStaff.department}</p>
+        <p className="text-muted-foreground">{currentStaff.role}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
