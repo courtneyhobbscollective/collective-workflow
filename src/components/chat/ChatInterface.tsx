@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import { MessageList } from "./MessageList";
 import { EmojiPicker } from "./EmojiPicker";
 import { GifPicker } from "./GifPicker";
 import { ChannelCreationModal } from "./ChannelCreationModal";
+import { formatChannelDisplayName } from "@/utils/channelUtils";
 import type { Json } from "@/integrations/supabase/types";
 
 interface Channel {
@@ -284,12 +284,9 @@ export function ChatInterface() {
                 <div className="flex items-center w-full">
                   {getChannelIcon(channel)}
                   <div className="flex-1 text-left">
-                    <div className="font-medium">{channel.name}</div>
-                    {channel.description && (
-                      <div className="text-xs text-muted-foreground truncate">
-                        {channel.description}
-                      </div>
-                    )}
+                    <div className="font-medium">
+                      {formatChannelDisplayName(channel.name, channel.client?.company)}
+                    </div>
                   </div>
                   {getChannelBadge(channel)}
                 </div>
@@ -308,12 +305,9 @@ export function ChatInterface() {
               <div className="flex items-center">
                 {getChannelIcon(activeChannel)}
                 <div>
-                  <h3 className="font-semibold">{activeChannel.name}</h3>
-                  {activeChannel.description && (
-                    <p className="text-sm text-muted-foreground">
-                      {activeChannel.description}
-                    </p>
-                  )}
+                  <h3 className="font-semibold">
+                    {formatChannelDisplayName(activeChannel.name, activeChannel.client?.company)}
+                  </h3>
                 </div>
               </div>
             </div>
@@ -331,7 +325,7 @@ export function ChatInterface() {
                   <Input
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder={`Message #${activeChannel.name}`}
+                    placeholder={`Message ${formatChannelDisplayName(activeChannel.name, activeChannel.client?.company)}`}
                     onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                     className="pr-24"
                   />
