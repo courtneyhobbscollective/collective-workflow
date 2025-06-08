@@ -227,6 +227,15 @@ export function WorkflowBoard() {
     }
   };
 
+  const handleBookingCreated = () => {
+    // Refresh data when a booking is created
+    loadData();
+    toast({
+      title: "Success",
+      description: "Calendar booking created successfully",
+    });
+  };
+
   const getProjectsForStage = (stageId: string) => {
     return projects.filter(project => project.current_stage === stageId);
   };
@@ -254,6 +263,7 @@ export function WorkflowBoard() {
             onUpdateContract={updateContractStatus}
             onUpdatePoNumber={updatePoNumber}
             onMoveProject={moveProject}
+            onBookingCreated={handleBookingCreated}
           />
         ))}
       </div>

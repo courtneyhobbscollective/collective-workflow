@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowRight, Clock, User, AlertCircle, CheckCircle } from "lucide-react";
 import { ProjectValidation, canMoveToStageOne } from "./ProjectValidation";
+import { CapacityChecker } from "./CapacityChecker";
+import { BookingButton } from "./BookingButton";
 
 interface ProjectStage {
   id: string;
@@ -58,6 +60,7 @@ interface ProjectCardProps {
   onUpdateContract: (projectId: string, signed: boolean) => void;
   onUpdatePoNumber: (projectId: string, poNumber: string) => void;
   onMoveProject: (projectId: string, newStageId: string) => void;
+  onBookingCreated?: () => void;
 }
 
 export function ProjectCard({
@@ -67,10 +70,13 @@ export function ProjectCard({
   onAssignStaff,
   onUpdateContract,
   onUpdatePoNumber,
-  onMoveProject
+  onMoveProject,
+  onBookingCreated = () => {}
 }: ProjectCardProps) {
   const [editingProject, setEditingProject] = useState<string | null>(null);
   const [editPoNumber, setEditPoNumber] = useState("");
+  const [hasCapacity, setHasCapacity] = useState(true);
+  const [alternativeStaff, setAlternativeStaff] = useState<Staff[]>([]);
 
   const getNextStage = (currentStage: string) => {
     const currentIndex = stages.findIndex(stage => stage.id === currentStage);
@@ -83,6 +89,11 @@ export function ProjectCard({
   };
 
   const canProgress = canMoveToStageOne(project);
+
+  const handleCapacityChange = (capacity: boolean, alternatives: Staff[]) => {
+    setHasCapacity(capacity);
+    setAlternativeStaff(alternatives);
+  };
 
   return (
     <Card className="bg-white">
@@ -182,6 +193,7 @@ export function ProjectCard({
             </div>
           )}
 
+          {/* Staff Assignment */}
           {project.assigned_staff ? (
             <div className="flex items-center space-x-1 text-xs">
               <User className="w-3 h-3" />
@@ -207,12 +219,37 @@ export function ProjectCard({
             <p className="text-xs text-red-600">No staff assigned</p>
           )}
 
+          {/* Capacity Checker for assigned staff */}
+          {project.assigned_staff_id && project.estimated_hours && project.current_stage === 'incoming' && (
+            <CapacityChecker
+              staffId={project.assigned_staff_id}
+              projectHours={project.estimated_hours}
+              onCapacityChange={handleCapacityChange}
+              allStaff={staff}
+            />
+          )}
+
           {project.estimated_hours && (
             <p className="text-xs">Est. Hours: {project.estimated_hours}</p>
           )}
 
           {/* Validation Issues */}
           <ProjectValidation project={project} />
+
+          {/* Calendar Booking Button for incoming projects with assigned staff */}
+          {project.current_stage === 'incoming' && project.assigned_staff_id && hasCapacity && (
+            <BookingButton
+              project={{
+                id: project.id,
+                title: project.title,
+                estimated_hours: project.estimated_hours,
+                assigned_staff_id: project.assigned_staff_id,
+                client: project.client
+              }}
+              staff={staff}
+              onBookingCreated={onBookingCreated}
+            />
+          )}
 
           {getNextStage(project.current_stage) && (
             <Button

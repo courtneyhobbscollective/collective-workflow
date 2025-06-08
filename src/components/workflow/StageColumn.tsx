@@ -1,4 +1,6 @@
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ProjectCard } from "./ProjectCard";
 
 interface ProjectStage {
@@ -53,6 +55,7 @@ interface StageColumnProps {
   onUpdateContract: (projectId: string, signed: boolean) => void;
   onUpdatePoNumber: (projectId: string, poNumber: string) => void;
   onMoveProject: (projectId: string, newStageId: string) => void;
+  onBookingCreated?: () => void;
 }
 
 export function StageColumn({
@@ -63,38 +66,48 @@ export function StageColumn({
   onAssignStaff,
   onUpdateContract,
   onUpdatePoNumber,
-  onMoveProject
+  onMoveProject,
+  onBookingCreated = () => {}
 }: StageColumnProps) {
-  const getStageColor = (stageId: string) => {
-    const colors = {
-      'incoming': 'bg-gray-100',
-      'stage01': 'bg-blue-100',
-      'stage02': 'bg-yellow-100',
-      'stage03': 'bg-orange-100',
-      'stage04': 'bg-red-100',
-      'stage05': 'bg-green-100',
-      'stage06': 'bg-purple-100',
-    };
-    return colors[stageId as keyof typeof colors] || 'bg-gray-100';
-  };
-
   return (
-    <div className={`${getStageColor(stage.id)} p-4 rounded-lg min-h-[500px]`}>
-      <h3 className="font-semibold text-sm mb-3">{stage.name}</h3>
-      <div className="space-y-3">
-        {projects.map((project) => (
-          <ProjectCard
-            key={project.id}
-            project={project}
-            staff={staff}
-            stages={stages}
-            onAssignStaff={onAssignStaff}
-            onUpdateContract={onUpdateContract}
-            onUpdatePoNumber={onUpdatePoNumber}
-            onMoveProject={onMoveProject}
-          />
-        ))}
-      </div>
-    </div>
+    <Card className="min-w-[300px]">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg">{stage.name}</CardTitle>
+          <Badge variant="secondary" className="ml-2">
+            {projects.length}
+          </Badge>
+        </div>
+        {stage.description && (
+          <p className="text-xs text-muted-foreground">{stage.description}</p>
+        )}
+        {stage.billing_percentage > 0 && (
+          <Badge variant="outline" className="w-fit">
+            {stage.billing_percentage}% Billing
+          </Badge>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {projects.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">
+            No projects in this stage
+          </p>
+        ) : (
+          projects.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              staff={staff}
+              stages={stages}
+              onAssignStaff={onAssignStaff}
+              onUpdateContract={onUpdateContract}
+              onUpdatePoNumber={onUpdatePoNumber}
+              onMoveProject={onMoveProject}
+              onBookingCreated={onBookingCreated}
+            />
+          ))
+        )}
+      </CardContent>
+    </Card>
   );
 }
