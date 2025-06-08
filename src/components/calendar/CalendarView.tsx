@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,7 +53,7 @@ export function CalendarView() {
   const [bookings, setBookings] = useState<ProjectBooking[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<"week" | "month">("month");
+  const [view, setView] = useState<"week" | "month">("month"); // Changed default to month
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [showBookingDetailsModal, setShowBookingDetailsModal] = useState(false);
