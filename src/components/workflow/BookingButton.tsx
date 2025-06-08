@@ -3,13 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "lucide-react";
 import { BookingModal } from "@/components/calendar/BookingModal";
-
-interface Staff {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
-}
+import type { Staff } from "@/types/staff";
 
 interface Project {
   id: string;

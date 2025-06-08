@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ProjectCard } from "./ProjectCard";
+import type { Staff } from "@/types/staff";
 
 interface ProjectStage {
   id: string;
@@ -9,14 +10,6 @@ interface ProjectStage {
   order_index: number;
   billing_percentage: number;
   description: string;
-}
-
-interface Staff {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  department: string;
 }
 
 interface Client {

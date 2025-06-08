@@ -6,8 +6,10 @@ import type { Staff } from '@/types/staff';
 interface Client {
   id: string;
   company: string;
+  name: string;
   contact_name: string;
   contact_email: string;
+  is_retainer: boolean;
   created_at: string;
 }
 
@@ -80,9 +82,9 @@ export function useWorkflowData() {
       if (staffResponse.error) throw staffResponse.error;
       if (stagesResponse.error) throw stagesResponse.error;
 
-      setProjects((projectsResponse.data || []) as Project[]);
-      setStaff((staffResponse.data || []) as Staff[]);
-      setStages((stagesResponse.data || []) as ProjectStage[]);
+      setProjects(projectsResponse.data || []);
+      setStaff(staffResponse.data || []);
+      setStages(stagesResponse.data || []);
     } catch (err) {
       console.error('Error loading workflow data:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
