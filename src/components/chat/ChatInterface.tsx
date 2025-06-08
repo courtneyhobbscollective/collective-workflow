@@ -244,19 +244,27 @@ export function ChatInterface() {
     if (!currentStaff) return;
 
     try {
-      const { error } = await supabase
-        .from('message_mentions')
-        .update({ is_read: true })
-        .eq('mentioned_staff_email', currentStaff.email)
-        .eq('is_read', false)
-        .in('message_id', 
-          supabase
-            .from('messages')
-            .select('id')
-            .eq('channel_id', channelId)
-        );
+      // First get the message IDs for the channel
+      const { data: messages, error: messagesError } = await supabase
+        .from('messages')
+        .select('id')
+        .eq('channel_id', channelId);
 
-      if (error) throw error;
+      if (messagesError) throw messagesError;
+
+      const messageIds = messages?.map(msg => msg.id) || [];
+
+      if (messageIds.length > 0) {
+        const { error } = await supabase
+          .from('message_mentions')
+          .update({ is_read: true })
+          .eq('mentioned_staff_email', currentStaff.email)
+          .eq('is_read', false)
+          .in('message_id', messageIds);
+
+        if (error) throw error;
+      }
+      
       loadMentionCounts();
     } catch (error) {
       console.error('Error marking mentions as read:', error);
