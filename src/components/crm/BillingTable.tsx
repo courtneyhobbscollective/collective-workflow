@@ -129,6 +129,24 @@ export function BillingTable({
     }
   };
 
+  const formatComment = (commentText: string) => {
+    // Extract timestamp and comment from the format: [08/06/2025, 10:20:03] comment text
+    const match = commentText.match(/^\[([^\]]+)\] (.+)$/);
+    if (match) {
+      const [, timestamp, comment] = match;
+      return {
+        comment,
+        timestamp,
+        username: "Staff User" // For now, using a placeholder username
+      };
+    }
+    return {
+      comment: commentText,
+      timestamp: "",
+      username: "Staff User"
+    };
+  };
+
   return (
     <ScrollArea className="w-full">
       <div className="min-w-[800px] rounded-md border">
@@ -313,11 +331,25 @@ export function BillingTable({
                           <DialogTitle>Project Comments</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4">
-                          <div className="max-h-40 overflow-y-auto bg-gray-50 p-3 rounded">
+                          <div className="max-h-40 overflow-y-auto bg-gray-50 p-4 rounded-lg">
                             {comments[record.id] ? (
-                              <pre className="text-sm whitespace-pre-wrap">{comments[record.id]}</pre>
+                              <div className="space-y-3">
+                                {comments[record.id].split('\n').map((commentLine, index) => {
+                                  if (!commentLine.trim()) return null;
+                                  const { comment, timestamp, username } = formatComment(commentLine);
+                                  return (
+                                    <div key={index} className="bg-white p-3 rounded-lg border">
+                                      <p className="text-sm text-gray-900 mb-2">{comment}</p>
+                                      <div className="flex justify-between items-center text-xs text-gray-500">
+                                        <span className="font-medium">{username}</span>
+                                        <span>{timestamp}</span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             ) : (
-                              <p className="text-sm text-muted-foreground">No comments yet</p>
+                              <p className="text-sm text-muted-foreground text-center py-4">No comments yet</p>
                             )}
                           </div>
                           <div className="space-y-2">
