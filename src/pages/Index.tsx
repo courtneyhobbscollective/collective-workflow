@@ -7,6 +7,7 @@ import { ClientManagement } from "@/components/clients/ClientManagement";
 import { BriefManagement } from "@/components/briefs/BriefManagement";
 import { WorkflowBoard } from "@/components/workflow/WorkflowBoard";
 import { CalendarView } from "@/components/calendar/CalendarView";
+import { ChatInterface } from "@/components/chat/ChatInterface";
 import { CRMDashboard } from "@/components/crm/CRMDashboard";
 
 const Index = () => {
@@ -26,6 +27,8 @@ const Index = () => {
         return <WorkflowBoard />;
       case "calendar":
         return <CalendarView />;
+      case "chat":
+        return <ChatInterface />;
       case "crm":
         return <CRMDashboard />;
       default:

@@ -56,6 +56,50 @@ export type Database = {
           },
         ]
       }
+      channels: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_archived: boolean
+          is_general: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_archived?: boolean
+          is_general?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_archived?: boolean
+          is_general?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channels_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_chase_alerts: {
         Row: {
           chase_count: number
@@ -230,6 +274,101 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          user_email: string | null
+          user_name: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          user_email?: string | null
+          user_name: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          user_email?: string | null
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          channel_id: string
+          content: string
+          created_at: string
+          edited_at: string | null
+          id: string
+          is_edited: boolean
+          message_type: string
+          reactions: Json | null
+          sender_email: string | null
+          sender_name: string
+          thread_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          channel_id: string
+          content: string
+          created_at?: string
+          edited_at?: string | null
+          id?: string
+          is_edited?: boolean
+          message_type?: string
+          reactions?: Json | null
+          sender_email?: string | null
+          sender_name: string
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          channel_id?: string
+          content?: string
+          created_at?: string
+          edited_at?: string | null
+          id?: string
+          is_edited?: boolean
+          message_type?: string
+          reactions?: Json | null
+          sender_email?: string | null
+          sender_name?: string
+          thread_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
         ]
