@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -69,7 +70,32 @@ export function ChatInterface() {
   useEffect(() => {
     if (activeChannel) {
       loadMessages(activeChannel.id);
-      subscribeToMessages(activeChannel.id);
+      
+      // Subscribe to new messages for this channel
+      const channel = supabase
+        .channel(`messages:${activeChannel.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `channel_id=eq.${activeChannel.id}`
+          },
+          (payload) => {
+            const newMsg = {
+              ...payload.new,
+              reactions: payload.new.reactions || []
+            } as Message;
+            setMessages(prev => [...prev, newMsg]);
+          }
+        )
+        .subscribe();
+
+      // Cleanup function to remove the subscription
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [activeChannel]);
 
@@ -145,32 +171,6 @@ export function ChatInterface() {
     } catch (error) {
       console.error('Error loading messages:', error);
     }
-  };
-
-  const subscribeToMessages = (channelId: string) => {
-    const channel = supabase
-      .channel(`messages:${channelId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `channel_id=eq.${channelId}`
-        },
-        (payload) => {
-          const newMsg = {
-            ...payload.new,
-            reactions: payload.new.reactions || []
-          } as Message;
-          setMessages(prev => [...prev, newMsg]);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   };
 
   const sendMessage = async () => {
