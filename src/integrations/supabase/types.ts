@@ -56,6 +56,56 @@ export type Database = {
           },
         ]
       }
+      client_chase_alerts: {
+        Row: {
+          chase_count: number
+          chase_up_due_at: string
+          created_at: string
+          dismissed_at: string | null
+          dismissed_by: string | null
+          email_sent_at: string
+          id: string
+          is_dismissed: boolean
+          last_chase_at: string | null
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          chase_count?: number
+          chase_up_due_at: string
+          created_at?: string
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          email_sent_at?: string
+          id?: string
+          is_dismissed?: boolean
+          last_chase_at?: string | null
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          chase_count?: number
+          chase_up_due_at?: string
+          created_at?: string
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          email_sent_at?: string
+          id?: string
+          is_dismissed?: boolean
+          last_chase_at?: string | null
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_chase_alerts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null

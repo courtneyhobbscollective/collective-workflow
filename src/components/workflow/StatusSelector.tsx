@@ -1,8 +1,8 @@
-
 import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Mail } from "lucide-react";
+import { useChaseUpAlerts } from "@/hooks/useChaseUpAlerts";
 
 interface StatusSelectorProps {
   currentStage: string;
@@ -57,6 +57,7 @@ export function StatusSelector({
   project
 }: StatusSelectorProps) {
   const statusOptions = getStatusOptions(currentStage);
+  const { createChaseUpAlert } = useChaseUpAlerts();
   
   const getEmailContent = (stage: string) => {
     const clientName = project.client.name;
@@ -82,12 +83,15 @@ export function StatusSelector({
     return { subject: "", body: "" };
   };
 
-  const handleEmailClient = () => {
+  const handleEmailClient = async () => {
     const emailContent = getEmailContent(currentStage);
     onEmailClient({
       ...emailContent,
       to: project.client.email || ""
     });
+    
+    // Create chase-up alert when email is sent
+    await createChaseUpAlert(project.id);
   };
 
   const canSelectReadyToSend = internalReviewCompleted && picterLink;
