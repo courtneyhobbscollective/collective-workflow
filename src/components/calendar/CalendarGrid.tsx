@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,7 @@ export function CalendarGrid({
   onBookingClick
 }: CalendarGridProps) {
   const [multiDayBookings, setMultiDayBookings] = useState<Set<string>>(new Set());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   useEffect(() => {
     // Check for multi-day bookings by grouping by project_id
@@ -97,6 +99,25 @@ export function CalendarGrid({
       default:
         return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
     }
+  };
+
+  const getStatusDotColor = (status: string) => {
+    switch (status) {
+      case 'scheduled':
+        return 'bg-blue-500';
+      case 'in_progress':
+        return 'bg-orange-500';
+      case 'completed':
+        return 'bg-green-500';
+      case 'cancelled':
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  const handleDateClick = (date: Date) => {
+    setSelectedDate(date);
   };
 
   const days = getDays();
@@ -176,7 +197,7 @@ export function CalendarGrid({
     );
   }
 
-  // Month view with square boxes for mobile
+  // Month view with mobile optimization
   return (
     <div className="w-full overflow-hidden">
       <div className="grid grid-cols-7 gap-1 sm:gap-2">
@@ -187,69 +208,165 @@ export function CalendarGrid({
           </div>
         ))}
         
-        {/* Calendar days - made square on mobile */}
+        {/* Calendar days */}
         {days.map((day) => {
           const dayBookings = getBookingsForDay(day);
           const isToday = isSameDay(day, new Date());
+          const isSelected = selectedDate && isSameDay(day, selectedDate);
           
           return (
             <div
               key={day.toISOString()}
               className={cn(
-                "border rounded-lg p-1 sm:p-2 bg-background aspect-square sm:aspect-auto sm:min-h-[120px]",
-                isToday && "bg-blue-50 border-blue-200 ring-1 ring-blue-200"
+                "border rounded-lg bg-background aspect-square sm:aspect-auto sm:min-h-[120px] cursor-pointer transition-colors",
+                isToday && "bg-blue-50 border-blue-200 ring-1 ring-blue-200",
+                isSelected && "ring-2 ring-primary",
+                "hover:bg-muted/20"
               )}
+              onClick={() => handleDateClick(day)}
             >
-              <div className={cn(
-                "text-xs sm:text-sm font-medium mb-1 p-1",
-                isToday && "text-blue-600 font-semibold"
-              )}>
-                {format(day, 'd')}
-              </div>
-              
-              <div className="space-y-1 overflow-hidden">
-                {dayBookings.slice(0, 2).map((booking) => {
-                  const staffMember = staff.find(s => s.id === booking.staff_id);
-                  const isMultiDay = multiDayBookings.has(booking.project_id);
-                  
-                  return (
-                    <Badge
-                      key={booking.id}
-                      className={cn(
-                        "text-xs block cursor-pointer transition-colors w-full text-left relative",
-                        getStatusColor(booking.status)
-                      )}
-                      onClick={() => onBookingClick(booking)}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <div className="truncate flex-1 min-w-0">
-                          <div className="truncate text-xs">
-                            {booking.project.title}
-                          </div>
-                          {selectedStaff === "all" && staffMember && (
-                            <div className="text-xs opacity-80 truncate">
-                              {staffMember.name}
-                            </div>
+              <div className="p-1 sm:p-2 h-full flex flex-col">
+                <div className={cn(
+                  "text-xs sm:text-sm font-medium mb-1",
+                  isToday && "text-blue-600 font-semibold"
+                )}>
+                  {format(day, 'd')}
+                </div>
+                
+                {/* Mobile: Show dots, Desktop: Show booking cards */}
+                <div className="flex-1 overflow-hidden">
+                  {/* Mobile dots (sm and below) */}
+                  <div className="sm:hidden">
+                    {dayBookings.length > 0 && (
+                      <div className="flex justify-center items-end h-full pb-1">
+                        <div className="flex space-x-1">
+                          {dayBookings.slice(0, 3).map((booking, index) => (
+                            <div
+                              key={booking.id}
+                              className={cn(
+                                "w-1.5 h-1.5 rounded-full",
+                                getStatusDotColor(booking.status)
+                              )}
+                            />
+                          ))}
+                          {dayBookings.length > 3 && (
+                            <div className="w-1.5 h-1.5 rounded-full bg-gray-400" />
                           )}
                         </div>
-                        {isMultiDay && (
-                          <div className="ml-1 w-1.5 h-1.5 bg-current rounded-full opacity-70 flex-shrink-0" 
-                               title="Multi-day booking" />
-                        )}
                       </div>
-                    </Badge>
-                  );
-                })}
-                {dayBookings.length > 2 && (
-                  <div className="text-xs text-muted-foreground px-1 cursor-pointer hover:text-foreground">
-                    +{dayBookings.length - 2} more
+                    )}
                   </div>
-                )}
+
+                  {/* Desktop booking cards (sm and above) */}
+                  <div className="hidden sm:block space-y-1">
+                    {dayBookings.slice(0, 2).map((booking) => {
+                      const staffMember = staff.find(s => s.id === booking.staff_id);
+                      const isMultiDay = multiDayBookings.has(booking.project_id);
+                      
+                      return (
+                        <Badge
+                          key={booking.id}
+                          className={cn(
+                            "text-xs block cursor-pointer transition-colors w-full text-left relative",
+                            getStatusColor(booking.status)
+                          )}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onBookingClick(booking);
+                          }}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <div className="truncate flex-1 min-w-0">
+                              <div className="truncate text-xs">
+                                {booking.project.title}
+                              </div>
+                              {selectedStaff === "all" && staffMember && (
+                                <div className="text-xs opacity-80 truncate">
+                                  {staffMember.name}
+                                </div>
+                              )}
+                            </div>
+                            {isMultiDay && (
+                              <div className="ml-1 w-1.5 h-1.5 bg-current rounded-full opacity-70 flex-shrink-0" 
+                                   title="Multi-day booking" />
+                            )}
+                          </div>
+                        </Badge>
+                      );
+                    })}
+                    {dayBookings.length > 2 && (
+                      <div className="text-xs text-muted-foreground px-1 cursor-pointer hover:text-foreground">
+                        +{dayBookings.length - 2} more
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Mobile: Selected date bookings */}
+      {selectedDate && (
+        <div className="sm:hidden mt-4 space-y-3">
+          <div className="text-sm font-medium text-center">
+            {format(selectedDate, 'EEEE, MMMM d, yyyy')}
+          </div>
+          
+          <div className="space-y-2">
+            {getBookingsForDay(selectedDate).length === 0 ? (
+              <div className="text-center text-sm text-muted-foreground py-4">
+                No bookings for this date
+              </div>
+            ) : (
+              getBookingsForDay(selectedDate).map((booking) => {
+                const staffMember = staff.find(s => s.id === booking.staff_id);
+                const isMultiDay = multiDayBookings.has(booking.project_id);
+                
+                return (
+                  <div
+                    key={booking.id}
+                    className={cn(
+                      "p-3 rounded-lg border cursor-pointer transition-colors",
+                      getStatusColor(booking.status)
+                    )}
+                    onClick={() => onBookingClick(booking)}
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm">
+                            {booking.project.title}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {booking.project.client.company}
+                          </div>
+                        </div>
+                        {isMultiDay && (
+                          <div className="ml-2 w-2 h-2 bg-current rounded-full opacity-60 flex-shrink-0" 
+                               title="Multi-day booking" />
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-xs">
+                        <div>
+                          {booking.start_time} - {booking.end_time}
+                        </div>
+                        {selectedStaff === "all" && staffMember && (
+                          <div className="text-muted-foreground">
+                            {staffMember.name}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
