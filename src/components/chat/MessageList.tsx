@@ -66,9 +66,25 @@ export function MessageList({ messages, currentUser, allStaff = [] }: MessageLis
     return staff?.profile_picture_url || null;
   };
 
+  const formatMessageContent = (content: string, allStaff: Array<{name: string; email: string}>) => {
+    // Replace @mentions with styled spans
+    const mentionRegex = /@(\w+)/g;
+    
+    return content.replace(mentionRegex, (match, username) => {
+      const mentionedStaff = allStaff.find(staff => 
+        staff.name.toLowerCase().includes(username.toLowerCase())
+      );
+      
+      if (mentionedStaff) {
+        return `<span class="bg-blue-100 text-blue-800 px-1 rounded font-medium">${match}</span>`;
+      }
+      
+      return match;
+    });
+  };
+
   const renderMessage = (message: Message) => {
     const isOwnMessage = message.sender_email === currentUser.email;
-    // Safely handle reactions - convert Json to array
     const reactions = Array.isArray(message.reactions) ? message.reactions : [];
     const profilePictureUrl = getStaffProfilePicture(message.sender_email);
     
@@ -108,7 +124,11 @@ export function MessageList({ messages, currentUser, allStaff = [] }: MessageLis
                   ? 'bg-primary text-primary-foreground' 
                   : 'bg-muted'
               }`}>
-                {message.content}
+                <div 
+                  dangerouslySetInnerHTML={{ 
+                    __html: formatMessageContent(message.content, allStaff) 
+                  }}
+                />
               </div>
             )}
             

@@ -35,7 +35,7 @@ export function StaffProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
       setAllStaff(data || []);
       
-      // Set first staff member as current if none selected
+      // Auto-set first staff member as current (simulating logged in user)
       if (!currentStaff && data && data.length > 0) {
         setCurrentStaff(data[0]);
       }

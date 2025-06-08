@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { MessageList } from "./MessageList";
 import { EmojiPicker } from "./EmojiPicker";
 import { GifPicker } from "./GifPicker";
 import { ChannelCreationModal } from "./ChannelCreationModal";
-import { StaffSelector } from "./StaffSelector";
+import { MentionInput } from "./MentionInput";
 import { formatChannelDisplayName } from "@/utils/channelUtils";
 import { useStaff } from "@/contexts/StaffContext";
 import type { Json } from "@/integrations/supabase/types";
@@ -44,6 +45,11 @@ interface Client {
   company: string;
 }
 
+interface MentionCount {
+  channel_id: string;
+  unread_count: number;
+}
+
 export function ChatInterface() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [activeChannel, setActiveChannel] = useState<Channel | null>(null);
@@ -54,6 +60,7 @@ export function ChatInterface() {
   const [showChannelModal, setShowChannelModal] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mentionCounts, setMentionCounts] = useState<MentionCount[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { currentStaff, allStaff } = useStaff();
@@ -61,12 +68,16 @@ export function ChatInterface() {
   useEffect(() => {
     loadChannels();
     loadClients();
-  }, []);
+    if (currentStaff) {
+      loadMentionCounts();
+    }
+  }, [currentStaff]);
 
   useEffect(() => {
     if (activeChannel) {
       console.log('Active channel changed to:', activeChannel.id);
       loadMessages(activeChannel.id);
+      markMentionsAsRead(activeChannel.id);
       
       // Subscribe to new messages for this channel
       const channel = supabase
@@ -87,7 +98,6 @@ export function ChatInterface() {
             } as Message;
             
             setMessages(prev => {
-              // Check if message already exists
               const exists = prev.some(msg => msg.id === newMsg.id);
               if (exists) {
                 console.log('Message already exists, skipping duplicate');
@@ -104,7 +114,6 @@ export function ChatInterface() {
             console.log('Successfully subscribed to channel messages');
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
             console.error('Subscription error, attempting to reconnect...');
-            // Reload messages if subscription fails
             setTimeout(() => {
               console.log('Reloading messages due to subscription failure');
               loadMessages(activeChannel.id);
@@ -112,13 +121,37 @@ export function ChatInterface() {
           }
         });
 
-      // Cleanup function to remove the subscription
       return () => {
         console.log('Cleaning up realtime subscription for channel:', activeChannel.id);
         supabase.removeChannel(channel);
       };
     }
   }, [activeChannel]);
+
+  useEffect(() => {
+    if (currentStaff) {
+      // Subscribe to mention updates
+      const mentionChannel = supabase
+        .channel('mention-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'message_mentions',
+            filter: `mentioned_staff_email=eq.${currentStaff.email}`
+          },
+          () => {
+            loadMentionCounts();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(mentionChannel);
+      };
+    }
+  }, [currentStaff]);
 
   useEffect(() => {
     scrollToBottom();
@@ -174,6 +207,62 @@ export function ChatInterface() {
     }
   };
 
+  const loadMentionCounts = async () => {
+    if (!currentStaff) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('message_mentions')
+        .select(`
+          message_id,
+          messages!inner(channel_id)
+        `)
+        .eq('mentioned_staff_email', currentStaff.email)
+        .eq('is_read', false);
+
+      if (error) throw error;
+
+      // Count mentions per channel
+      const counts: Record<string, number> = {};
+      data?.forEach((mention: any) => {
+        const channelId = mention.messages.channel_id;
+        counts[channelId] = (counts[channelId] || 0) + 1;
+      });
+
+      const mentionCountsArray = Object.entries(counts).map(([channel_id, unread_count]) => ({
+        channel_id,
+        unread_count
+      }));
+
+      setMentionCounts(mentionCountsArray);
+    } catch (error) {
+      console.error('Error loading mention counts:', error);
+    }
+  };
+
+  const markMentionsAsRead = async (channelId: string) => {
+    if (!currentStaff) return;
+
+    try {
+      const { error } = await supabase
+        .from('message_mentions')
+        .update({ is_read: true })
+        .eq('mentioned_staff_email', currentStaff.email)
+        .eq('is_read', false)
+        .in('message_id', 
+          supabase
+            .from('messages')
+            .select('id')
+            .eq('channel_id', channelId)
+        );
+
+      if (error) throw error;
+      loadMentionCounts();
+    } catch (error) {
+      console.error('Error marking mentions as read:', error);
+    }
+  };
+
   const loadMessages = async (channelId: string) => {
     try {
       console.log('Loading messages for channel:', channelId);
@@ -186,7 +275,6 @@ export function ChatInterface() {
 
       if (error) throw error;
       console.log('Loaded messages:', data?.length);
-      // Convert the data to match our Message interface
       const formattedMessages: Message[] = (data || []).map(msg => ({
         ...msg,
         reactions: msg.reactions || []
@@ -197,12 +285,43 @@ export function ChatInterface() {
     }
   };
 
+  const processMentions = async (content: string, messageId: string) => {
+    if (!currentStaff) return;
+
+    const mentionRegex = /@(\w+)/g;
+    const mentions = content.match(mentionRegex);
+    
+    if (mentions) {
+      for (const mention of mentions) {
+        const username = mention.substring(1).toLowerCase();
+        const mentionedStaff = allStaff.find(staff => 
+          staff.name.toLowerCase().includes(username) ||
+          staff.email.toLowerCase().includes(username)
+        );
+
+        if (mentionedStaff && mentionedStaff.email !== currentStaff.email) {
+          try {
+            await supabase
+              .from('message_mentions')
+              .insert({
+                message_id: messageId,
+                mentioned_staff_email: mentionedStaff.email,
+                mentioned_staff_name: mentionedStaff.name
+              });
+          } catch (error) {
+            console.error('Error creating mention:', error);
+          }
+        }
+      }
+    }
+  };
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !activeChannel || !currentStaff) return;
 
     console.log('Sending message:', newMessage);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('messages')
         .insert([{
           channel_id: activeChannel.id,
@@ -210,16 +329,20 @@ export function ChatInterface() {
           sender_name: currentStaff.name,
           sender_email: currentStaff.email,
           message_type: 'text'
-        }]);
+        }])
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Process mentions after message is created
+      await processMentions(newMessage, data.id);
 
       console.log('Message sent successfully');
       setNewMessage("");
       setShowEmojiPicker(false);
       setShowGifPicker(false);
       
-      // Force reload messages if real-time isn't working
       setTimeout(() => {
         console.log('Force reloading messages after send');
         loadMessages(activeChannel.id);
@@ -251,7 +374,6 @@ export function ChatInterface() {
       if (error) throw error;
       setShowGifPicker(false);
       
-      // Force reload messages if real-time isn't working
       setTimeout(() => {
         loadMessages(activeChannel.id);
       }, 500);
@@ -281,6 +403,11 @@ export function ChatInterface() {
     return <Badge variant="outline" className="ml-2 text-xs bg-green-50">Custom</Badge>;
   };
 
+  const getMentionCount = (channelId: string) => {
+    const mentionData = mentionCounts.find(m => m.channel_id === channelId);
+    return mentionData?.unread_count || 0;
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
   }
@@ -297,7 +424,10 @@ export function ChatInterface() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Team Chat</h2>
-        <StaffSelector />
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-muted-foreground">Chatting as:</span>
+          <span className="font-medium">{currentStaff.name}</span>
+        </div>
       </div>
 
       <div className="flex h-[calc(100vh-200px)] bg-background border border-border rounded-lg overflow-hidden">
@@ -325,24 +455,34 @@ export function ChatInterface() {
           
           <ScrollArea className="h-full">
             <div className="p-2">
-              {channels.map((channel) => (
-                <Button
-                  key={channel.id}
-                  variant={activeChannel?.id === channel.id ? "secondary" : "ghost"}
-                  className="w-full justify-start mb-1 h-auto p-3"
-                  onClick={() => setActiveChannel(channel)}
-                >
-                  <div className="flex items-center w-full">
-                    {getChannelIcon(channel)}
-                    <div className="flex-1 text-left">
-                      <div className="font-medium">
-                        {formatChannelDisplayName(channel.name, channel.client?.company)}
+              {channels.map((channel) => {
+                const mentionCount = getMentionCount(channel.id);
+                return (
+                  <Button
+                    key={channel.id}
+                    variant={activeChannel?.id === channel.id ? "secondary" : "ghost"}
+                    className="w-full justify-start mb-1 h-auto p-3 relative"
+                    onClick={() => setActiveChannel(channel)}
+                  >
+                    <div className="flex items-center w-full">
+                      {getChannelIcon(channel)}
+                      <div className="flex-1 text-left">
+                        <div className="font-medium">
+                          {formatChannelDisplayName(channel.name, channel.client?.company)}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        {mentionCount > 0 && (
+                          <Badge variant="destructive" className="h-5 min-w-5 text-xs px-1">
+                            {mentionCount}
+                          </Badge>
+                        )}
+                        {getChannelBadge(channel)}
                       </div>
                     </div>
-                    {getChannelBadge(channel)}
-                  </div>
-                </Button>
-              ))}
+                  </Button>
+                );
+              })}
             </div>
           </ScrollArea>
         </div>
@@ -381,12 +521,12 @@ export function ChatInterface() {
               <div className="p-4 border-t border-border bg-card">
                 <div className="flex items-end space-x-2">
                   <div className="flex-1 relative">
-                    <Input
+                    <MentionInput
                       value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
+                      onChange={setNewMessage}
                       placeholder={`Message ${formatChannelDisplayName(activeChannel.name, activeChannel.client?.company)}`}
-                      onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                      className="pr-24"
+                      onSubmit={sendMessage}
+                      allStaff={allStaff}
                     />
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex space-x-1">
                       <Button
