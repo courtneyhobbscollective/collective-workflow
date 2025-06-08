@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Plus, UserPlus } from "lucide-react";
+import { Plus, UserPlus, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -25,6 +25,7 @@ export function ClientManagement() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     company: "",
@@ -62,6 +63,34 @@ export function ClientManagement() {
     }
   };
 
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      company: "",
+      email: "",
+      phone: "",
+      contact_person: "",
+      address: "",
+      is_retainer: false,
+    });
+    setEditingClient(null);
+    setShowForm(false);
+  };
+
+  const handleEdit = (client: Client) => {
+    setEditingClient(client);
+    setFormData({
+      name: client.name,
+      company: client.company,
+      email: client.email || "",
+      phone: client.phone || "",
+      contact_person: client.contact_person || "",
+      address: client.address || "",
+      is_retainer: client.is_retainer,
+    });
+    setShowForm(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.company || !formData.email || !formData.phone) {
@@ -74,33 +103,41 @@ export function ClientManagement() {
     }
 
     try {
-      const { error } = await supabase
-        .from('clients')
-        .insert([formData]);
+      if (editingClient) {
+        // Update existing client
+        const { error } = await supabase
+          .from('clients')
+          .update(formData)
+          .eq('id', editingClient.id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      setFormData({
-        name: "",
-        company: "",
-        email: "",
-        phone: "",
-        contact_person: "",
-        address: "",
-        is_retainer: false,
-      });
-      setShowForm(false);
+        toast({
+          title: "Success",
+          description: "Client updated successfully",
+        });
+      } else {
+        // Create new client
+        const { error } = await supabase
+          .from('clients')
+          .insert([formData]);
+
+        if (error) throw error;
+
+        toast({
+          title: "Success",
+          description: "Client onboarded successfully",
+        });
+      }
+
+      resetForm();
       await loadClients();
       
-      toast({
-        title: "Success",
-        description: "Client onboarded successfully",
-      });
     } catch (error) {
-      console.error('Error adding client:', error);
+      console.error('Error saving client:', error);
       toast({
         title: "Error",
-        description: "Failed to onboard client",
+        description: editingClient ? "Failed to update client" : "Failed to onboard client",
         variant: "destructive",
       });
     }
@@ -126,7 +163,9 @@ export function ClientManagement() {
       {showForm && (
         <Card>
           <CardHeader>
-            <CardTitle>Onboard New Client</CardTitle>
+            <CardTitle>
+              {editingClient ? 'Edit Client' : 'Onboard New Client'}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -198,8 +237,10 @@ export function ClientManagement() {
               </div>
 
               <div className="flex space-x-2">
-                <Button type="submit">Onboard Client</Button>
-                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
+                <Button type="submit">
+                  {editingClient ? 'Update Client' : 'Onboard Client'}
+                </Button>
+                <Button type="button" variant="outline" onClick={resetForm}>
                   Cancel
                 </Button>
               </div>
@@ -212,9 +253,18 @@ export function ClientManagement() {
         {clients.map((client) => (
           <Card key={client.id}>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <UserPlus className="w-5 h-5" />
-                <span>{client.name}</span>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <UserPlus className="w-5 h-5" />
+                  <span>{client.name}</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleEdit(client)}
+                >
+                  <Edit className="w-4 h-4" />
+                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
