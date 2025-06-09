@@ -932,7 +932,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      validate_invitation_token: {
+        Args: { token_param: string }
+        Returns: {
+          id: string
+          email: string
+          staff_id: string
+          token: string
+          expires_at: string
+          accepted_at: string
+          created_at: string
+          created_by: string
+          name: string
+          role: string
+          profile_picture_url: string
+          invitation_status: string
+        }[]
+      }
     }
     Enums: {
       staff_role: "Admin" | "Staff"
