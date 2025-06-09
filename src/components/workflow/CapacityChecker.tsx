@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,7 @@ export function CapacityChecker({
   onCapacityChange, 
   allStaff 
 }: CapacityCheckerProps) {
-  const [capacityInfo, setCapacityInfo<{
+  const [capacityInfo, setCapacityInfo] = useState<{
     hasCapacity: boolean;
     availableHours: number;
     nextAvailableDate: string | null;
@@ -28,7 +29,7 @@ export function CapacityChecker({
     timeOffConflicts: any[];
   } | null>(null);
   const [loading, setLoading] = useState(false);
-  const [multiDayOption, setMultiDayOption<{
+  const [multiDayOption, setMultiDayOption] = useState<{
     canFit: boolean;
     totalDays: number;
     message: string;
