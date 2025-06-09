@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useSearchParams, Navigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,13 +8,28 @@ import { Loader2, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+interface InvitationData {
+  id: string;
+  email: string;
+  staff_id: string;
+  token: string;
+  expires_at: string;
+  accepted_at: string | null;
+  created_at: string;
+  created_by: string;
+  name: string;
+  role: string;
+  profile_picture_url: string | null;
+  invitation_status: string;
+}
+
 export function PasswordSetupPage() {
   const [searchParams] = useSearchParams();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(true);
-  const [invitation, setInvitation] = useState<any>(null);
+  const [invitation, setInvitation] = useState<InvitationData | null>(null);
   const [completed, setCompleted] = useState(false);
   const { toast } = useToast();
 
@@ -36,7 +50,10 @@ export function PasswordSetupPage() {
       
       // Query with proper time comparison using rpc call for server-side validation
       const { data: invitationData, error: invitationError } = await supabase
-        .rpc('validate_invitation_token', { token_param: token });
+        .rpc('validate_invitation_token', { token_param: token as string }) as { 
+          data: InvitationData[] | null, 
+          error: any 
+        };
 
       console.log('Invitation query result:', { invitationData, invitationError });
 
