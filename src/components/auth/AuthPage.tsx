@@ -30,7 +30,7 @@ export function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="flex justify-center">
           <Logo size="lg" />
@@ -38,6 +38,9 @@ export function AuthPage() {
         
         <Card className="w-full">
           <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <Logo size="md" />
+            </div>
             <CardTitle className="text-2xl font-bold">Staff Login</CardTitle>
             <p className="text-muted-foreground">Sign in to your staff account</p>
           </CardHeader>
