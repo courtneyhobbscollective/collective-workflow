@@ -26,7 +26,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Sending invitation email to ${email} for ${name}`);
 
     const emailResponse = await resend.emails.send({
-      from: "Team Invitation <onboarding@resend.dev>",
+      from: "Team Invitation <courtney@collectivedigital.uk>",
       to: [email],
       subject: "You've been invited to join the team!",
       html: `
