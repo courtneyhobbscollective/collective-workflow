@@ -1,11 +1,12 @@
 
 interface LogoProps {
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   className?: string;
 }
 
 export function Logo({ size = "md", className = "" }: LogoProps) {
   const sizeClasses = {
+    xs: "h-3 w-auto",
     sm: "h-8 w-auto",
     md: "h-12 w-auto", 
     lg: "h-16 w-auto"

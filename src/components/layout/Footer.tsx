@@ -7,7 +7,7 @@ export function Footer() {
       <div className="container mx-auto px-4 py-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center">
-            <Logo size="sm" className="h-4 w-auto" />
+            <Logo size="xs" />
           </div>
           <div className="ml-auto">
             <span className="text-sm text-muted-foreground">
