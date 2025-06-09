@@ -50,7 +50,7 @@ export function PasswordSetupPage() {
     try {
       console.log('Validating token:', token);
       
-      // Query with proper RPC call - this returns a single record, not an array
+      // Query with proper RPC call - handle as array since that's what the function returns
       const { data: invitationData, error: invitationError } = await supabase
         .rpc('validate_invitation_token', { token_param: token as string });
 
@@ -68,8 +68,8 @@ export function PasswordSetupPage() {
         return;
       }
 
-      // RPC returns a single record or null, not an array
-      if (!invitationData) {
+      // The RPC function returns an array, so we need to check if it has any results
+      if (!invitationData || invitationData.length === 0) {
         console.log('No valid invitation found for token');
         setValidationError('This invitation link is invalid or has expired');
         toast({
@@ -81,9 +81,10 @@ export function PasswordSetupPage() {
         return;
       }
 
-      // invitationData is already the single record, no need to access [0]
-      console.log('Validation successful, setting invitation data:', invitationData);
-      setInvitation(invitationData as InvitationData);
+      // Get the first (and only) result from the array
+      const invitationRecord = invitationData[0];
+      console.log('Validation successful, setting invitation data:', invitationRecord);
+      setInvitation(invitationRecord as InvitationData);
       setValidationError(null);
     } catch (error) {
       console.error('Error validating token:', error);
