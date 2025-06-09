@@ -145,8 +145,8 @@ export function StaffManagement() {
         .update({ invitation_status: 'invited' })
         .eq('id', staffId);
 
-      // Send email via Edge Function
-      const inviteLink = `${window.location.origin}/setup-password?token=${token}`;
+      // Send email via Edge Function with hardcoded domain
+      const inviteLink = `https://collective-workflow.lovable.app/setup-password?token=${token}`;
       
       const { data, error: emailError } = await supabase.functions.invoke('send-staff-invitation', {
         body: {
