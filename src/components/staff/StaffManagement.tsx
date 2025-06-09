@@ -105,18 +105,39 @@ export function StaffManagement() {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
 
-      // Create invitation record
-      const { error: inviteError } = await supabase
+      // Check if an invitation record already exists for this staff member
+      const { data: existingInvitation } = await supabase
         .from('staff_invitations')
-        .insert({
-          email,
-          staff_id: staffId,
-          token,
-          expires_at: expiresAt.toISOString(),
-          created_by: 'Admin'
-        });
+        .select('id')
+        .eq('email', email)
+        .single();
 
-      if (inviteError) throw inviteError;
+      if (existingInvitation) {
+        // Update existing invitation record with new token and expiry
+        const { error: updateError } = await supabase
+          .from('staff_invitations')
+          .update({
+            token,
+            expires_at: expiresAt.toISOString(),
+            created_at: new Date().toISOString() // Reset created time for new invitation
+          })
+          .eq('email', email);
+
+        if (updateError) throw updateError;
+      } else {
+        // Create new invitation record
+        const { error: inviteError } = await supabase
+          .from('staff_invitations')
+          .insert({
+            email,
+            staff_id: staffId,
+            token,
+            expires_at: expiresAt.toISOString(),
+            created_by: 'Admin'
+          });
+
+        if (inviteError) throw inviteError;
+      }
 
       // Update staff status to 'invited'
       await supabase
@@ -163,7 +184,12 @@ export function StaffManagement() {
     try {
       await sendInvitation(staff.id, staff.email, staff.name);
       await loadStaff();
+      toast({
+        title: "Success",
+        description: `Invitation resent to ${staff.name}`,
+      });
     } catch (error) {
+      console.error('Error resending invitation:', error);
       toast({
         title: "Error",
         description: "Failed to resend invitation",
