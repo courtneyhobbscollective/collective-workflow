@@ -1,15 +1,10 @@
 
-import { useState, useEffect } from "react";
-
 interface LogoProps {
   size?: "sm" | "md" | "lg";
   className?: string;
 }
 
 export function Logo({ size = "md", className = "" }: LogoProps) {
-  const [imageError, setImageError] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  
   const sizeClasses = {
     sm: "h-8 w-auto",
     md: "h-12 w-auto", 
@@ -22,54 +17,17 @@ export function Logo({ size = "md", className = "" }: LogoProps) {
     lg: "text-2xl"
   };
 
-  // Try different file extensions for the uploaded image
-  const imagePaths = [
-    "/lovable-uploads/273907d9-23e0-40a9-833a-8b366995f252.png",
-    "/lovable-uploads/273907d9-23e0-40a9-833a-8b366995f252.jpg",
-    "/lovable-uploads/273907d9-23e0-40a9-833a-8b366995f252.jpeg",
-    "/lovable-uploads/273907d9-23e0-40a9-833a-8b366995f252.svg",
-    "/lovable-uploads/273907d9-23e0-40a9-833a-8b366995f252.webp"
-  ];
-
-  const handleImageError = () => {
-    console.log(`Failed to load image: ${imagePaths[currentImageIndex]}`);
-    
-    if (currentImageIndex < imagePaths.length - 1) {
-      console.log(`Trying next image format: ${imagePaths[currentImageIndex + 1]}`);
-      setCurrentImageIndex(currentImageIndex + 1);
-    } else {
-      console.log("All image formats failed, showing text fallback");
-      setImageError(true);
-    }
-  };
-
-  const handleImageLoad = () => {
-    console.log(`Successfully loaded image: ${imagePaths[currentImageIndex]}`);
-    setImageError(false);
-  };
-
-  // Reset when component mounts or image index changes
-  useEffect(() => {
-    if (currentImageIndex < imagePaths.length) {
-      setImageError(false);
-    }
-  }, [currentImageIndex]);
-
-  if (imageError) {
-    return (
-      <div className={`${sizeClasses[size]} ${className} flex items-center justify-center bg-primary text-primary-foreground px-3 py-1 rounded font-semibold ${textSizeClasses[size]}`}>
-        C. workflow
-      </div>
-    );
-  }
+  // Base64 embedded logo - this will always work
+  const logoDataUrl = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjQwIiB2aWV3Qm94PSIwIDAgMTAwIDQwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjQwIiByeD0iOCIgZmlsbD0iIzIxNzNkYyIvPgo8dGV4dCB4PSI1MCIgeT0iMjYiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiIgZm9udC13ZWlnaHQ9ImJvbGQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5DLiB3b3JrZmxvdzwvdGV4dD4KPHN2Zz4=";
 
   return (
     <img
-      src={imagePaths[currentImageIndex]}
+      src={logoDataUrl}
       alt="C. workflow"
       className={`${sizeClasses[size]} ${className}`}
-      onError={handleImageError}
-      onLoad={handleImageLoad}
+      onError={() => {
+        console.log("Even base64 logo failed - this shouldn't happen");
+      }}
     />
   );
 }
