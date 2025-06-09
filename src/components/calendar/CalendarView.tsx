@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -93,7 +92,13 @@ export function CalendarView() {
 
       if (bookingsError) throw bookingsError;
 
-      setStaff((staffData || []) as Staff[]);
+      // Transform staff data to match our Staff interface
+      const transformedStaff = (staffData || []).map((member: any) => ({
+        ...member,
+        invitation_status: member.invitation_status as 'pending' | 'invited' | 'accepted'
+      })) as Staff[];
+
+      setStaff(transformedStaff);
       setProjects(projectsData || []);
       setBookings(bookingsData || []);
     } catch (error) {

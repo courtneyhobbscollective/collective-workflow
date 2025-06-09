@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { UserMenu } from "./UserMenu";
+import { Logo } from "@/components/ui/Logo";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface TopNavigationProps {
@@ -68,29 +69,32 @@ export function TopNavigation({ activeTab, onTabChange }: TopNavigationProps) {
       <Card className="hidden lg:block border-0 shadow-sm bg-white/80 backdrop-blur-sm">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
-            <NavigationMenu>
-              <NavigationMenuList className="flex space-x-1">
-                {navigationItems.map((item) => (
-                  <NavigationMenuItem key={item.id}>
-                    <NavigationMenuLink
-                      className={cn(
-                        navigationMenuTriggerStyle(),
-                        activeTab === item.id && "bg-accent text-accent-foreground"
-                      )}
-                      onClick={() => onTabChange(item.id)}
-                    >
-                      <item.icon className="w-4 h-4 mr-2" />
-                      {item.label}
-                      {item.id === "crm" && staff?.role === 'Admin' && (
-                        <Badge variant="secondary" className="ml-2 text-xs">
-                          Admin
-                        </Badge>
-                      )}
-                    </NavigationMenuLink>
-                  </NavigationMenuItem>
-                ))}
-              </NavigationMenuList>
-            </NavigationMenu>
+            <div className="flex items-center space-x-6">
+              <Logo size="sm" />
+              <NavigationMenu>
+                <NavigationMenuList className="flex space-x-1">
+                  {navigationItems.map((item) => (
+                    <NavigationMenuItem key={item.id}>
+                      <NavigationMenuLink
+                        className={cn(
+                          navigationMenuTriggerStyle(),
+                          activeTab === item.id && "bg-accent text-accent-foreground"
+                        )}
+                        onClick={() => onTabChange(item.id)}
+                      >
+                        <item.icon className="w-4 h-4 mr-2" />
+                        {item.label}
+                        {item.id === "crm" && staff?.role === 'Admin' && (
+                          <Badge variant="secondary" className="ml-2 text-xs">
+                            Admin
+                          </Badge>
+                        )}
+                      </NavigationMenuLink>
+                    </NavigationMenuItem>
+                  ))}
+                </NavigationMenuList>
+              </NavigationMenu>
+            </div>
             <UserMenu />
           </div>
         </CardContent>
@@ -100,7 +104,7 @@ export function TopNavigation({ activeTab, onTabChange }: TopNavigationProps) {
       <Card className="lg:hidden border-0 shadow-sm bg-white/80 backdrop-blur-sm">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-lg font-semibold">Project Management</h1>
+            <Logo size="sm" />
             <div className="flex items-center space-x-2">
               <UserMenu />
               <Button

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -29,7 +28,14 @@ export function StaffManagement() {
         .order('name');
 
       if (error) throw error;
-      setStaff(data || []);
+      
+      // Transform data to match our Staff interface
+      const transformedStaff = (data || []).map((member: any) => ({
+        ...member,
+        invitation_status: member.invitation_status as 'pending' | 'invited' | 'accepted'
+      })) as Staff[];
+      
+      setStaff(transformedStaff);
     } catch (error) {
       console.error('Error loading staff:', error);
       toast({
