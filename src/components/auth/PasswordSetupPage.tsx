@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useSearchParams, Navigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,12 +50,9 @@ export function PasswordSetupPage() {
     try {
       console.log('Validating token:', token);
       
-      // Query with proper time comparison using rpc call for server-side validation
+      // Query with proper RPC call - this returns a single record, not an array
       const { data: invitationData, error: invitationError } = await supabase
-        .rpc('validate_invitation_token', { token_param: token as string }) as { 
-          data: InvitationData[] | null, 
-          error: any 
-        };
+        .rpc('validate_invitation_token', { token_param: token as string });
 
       console.log('Invitation query result:', { invitationData, invitationError });
 
@@ -72,7 +68,8 @@ export function PasswordSetupPage() {
         return;
       }
 
-      if (!invitationData || invitationData.length === 0) {
+      // RPC returns a single record or null, not an array
+      if (!invitationData) {
         console.log('No valid invitation found for token');
         setValidationError('This invitation link is invalid or has expired');
         toast({
@@ -84,9 +81,9 @@ export function PasswordSetupPage() {
         return;
       }
 
-      const combinedData = invitationData[0];
-      console.log('Validation successful, setting invitation data:', combinedData);
-      setInvitation(combinedData);
+      // invitationData is already the single record, no need to access [0]
+      console.log('Validation successful, setting invitation data:', invitationData);
+      setInvitation(invitationData as InvitationData);
       setValidationError(null);
     } catch (error) {
       console.error('Error validating token:', error);
