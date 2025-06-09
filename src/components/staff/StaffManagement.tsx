@@ -127,7 +127,7 @@ export function StaffManagement() {
       // Send email via Edge Function
       const inviteLink = `${window.location.origin}/setup-password?token=${token}`;
       
-      const { error: emailError } = await supabase.functions.invoke('send-staff-invitation', {
+      const { data, error: emailError } = await supabase.functions.invoke('send-staff-invitation', {
         body: {
           email,
           name,
@@ -137,13 +137,14 @@ export function StaffManagement() {
 
       if (emailError) {
         console.error('Email sending error:', emailError);
-        // Still show success but mention email issue
         toast({
           title: "Staff Added",
           description: `${name} added but email failed to send. Please check email configuration.`,
           variant: "destructive",
         });
+        throw emailError;
       } else {
+        console.log('Email sent successfully:', data);
         toast({
           title: "Invitation Sent",
           description: `Invitation email sent to ${name} at ${email}`,
