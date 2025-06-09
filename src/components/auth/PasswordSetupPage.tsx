@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useSearchParams, Navigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,14 +33,9 @@ export function PasswordSetupPage() {
     try {
       console.log('Validating token:', token);
       
-      // Use server-side NOW() function instead of JavaScript date to avoid timezone issues
+      // Query with proper time comparison using rpc call for server-side validation
       const { data: invitationData, error: invitationError } = await supabase
-        .from('staff_invitations')
-        .select('*')
-        .eq('token', token)
-        .is('accepted_at', null)
-        .filter('expires_at', 'gt', 'now()')
-        .maybeSingle();
+        .rpc('validate_invitation_token', { token_param: token });
 
       console.log('Invitation query result:', { invitationData, invitationError });
 
@@ -56,7 +50,7 @@ export function PasswordSetupPage() {
         return;
       }
 
-      if (!invitationData) {
+      if (!invitationData || invitationData.length === 0) {
         console.log('No valid invitation found for token');
         toast({
           title: "Invalid Invitation",
@@ -67,43 +61,7 @@ export function PasswordSetupPage() {
         return;
       }
 
-      // Now get the staff record
-      const { data: staffData, error: staffError } = await supabase
-        .from('staff')
-        .select('*')
-        .eq('id', invitationData.staff_id)
-        .maybeSingle();
-
-      console.log('Staff query result:', { staffData, staffError });
-
-      if (staffError) {
-        console.error('Error fetching staff:', staffError);
-        toast({
-          title: "Error",
-          description: "Failed to validate staff information.",
-          variant: "destructive",
-        });
-        setValidating(false);
-        return;
-      }
-
-      if (!staffData) {
-        console.log('No staff record found for invitation');
-        toast({
-          title: "Invalid Invitation",
-          description: "Staff record not found for this invitation.",
-          variant: "destructive",
-        });
-        setValidating(false);
-        return;
-      }
-
-      // Combine the data
-      const combinedData = {
-        ...invitationData,
-        staff: staffData
-      };
-
+      const combinedData = invitationData[0];
       console.log('Validation successful, setting invitation data:', combinedData);
       setInvitation(combinedData);
     } catch (error) {
@@ -235,7 +193,7 @@ export function PasswordSetupPage() {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Set Up Your Password</CardTitle>
           <p className="text-muted-foreground">
-            Welcome {invitation.staff.name}! Please set up your password to complete your account.
+            Welcome {invitation.name}! Please set up your password to complete your account.
           </p>
         </CardHeader>
         <CardContent>
