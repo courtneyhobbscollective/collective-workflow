@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -27,13 +26,6 @@ interface ProjectBooking {
       company: string;
     };
   };
-}
-
-interface Staff {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
 }
 
 interface BookingDetailsModalProps {
