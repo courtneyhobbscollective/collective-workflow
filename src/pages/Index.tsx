@@ -9,6 +9,7 @@ import { BriefManagement } from "@/components/briefs/BriefManagement";
 import { StaffManagement } from "@/components/staff/StaffManagement";
 import { CRMDashboard } from "@/components/crm/CRMDashboard";
 import { TopNavigation } from "@/components/layout/TopNavigation";
+import { Footer } from "@/components/layout/Footer";
 import { StaffDashboard } from "@/components/staff/StaffDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -44,14 +45,16 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50/30 to-indigo-100/30">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50/30 to-indigo-100/30 flex flex-col">
       <div className="sticky top-0 z-50">
         <TopNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
       
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-6 flex-1">
         {renderContent()}
       </div>
+      
+      <Footer />
     </div>
   );
 };
