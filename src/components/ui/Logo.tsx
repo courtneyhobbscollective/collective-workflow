@@ -1,4 +1,5 @@
 
+
 interface LogoProps {
   size?: "sm" | "md" | "lg";
   className?: string;
@@ -13,9 +14,10 @@ export function Logo({ size = "md", className = "" }: LogoProps) {
 
   return (
     <img
-      src="/lovable-uploads/997cbb31-bb02-423d-814c-b2d5da7896ec.png"
-      alt="Collectflow"
+      src="/lovable-uploads/24789421-1542-44d8-95f7-8eab431238e3.png"
+      alt="C. workflow"
       className={`${sizeClasses[size]} ${className}`}
     />
   );
 }
+
