@@ -1,10 +1,11 @@
+
 import { useState, useEffect } from "react";
 import { useSearchParams, Navigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, CheckCircle } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -31,6 +32,7 @@ export function PasswordSetupPage() {
   const [validating, setValidating] = useState(true);
   const [invitation, setInvitation] = useState<InvitationData | null>(null);
   const [completed, setCompleted] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const token = searchParams.get('token');
@@ -40,6 +42,7 @@ export function PasswordSetupPage() {
       validateToken();
     } else {
       console.log('No token provided in URL');
+      setValidationError('No invitation token provided');
       setValidating(false);
     }
   }, [token]);
@@ -59,6 +62,7 @@ export function PasswordSetupPage() {
 
       if (invitationError) {
         console.error('Error fetching invitation:', invitationError);
+        setValidationError('Failed to validate invitation');
         toast({
           title: "Error",
           description: "Failed to validate invitation.",
@@ -70,6 +74,7 @@ export function PasswordSetupPage() {
 
       if (!invitationData || invitationData.length === 0) {
         console.log('No valid invitation found for token');
+        setValidationError('This invitation link is invalid or has expired');
         toast({
           title: "Invalid Invitation",
           description: "This invitation link is invalid or has expired.",
@@ -82,8 +87,10 @@ export function PasswordSetupPage() {
       const combinedData = invitationData[0];
       console.log('Validation successful, setting invitation data:', combinedData);
       setInvitation(combinedData);
+      setValidationError(null);
     } catch (error) {
       console.error('Error validating token:', error);
+      setValidationError('Failed to validate invitation');
       toast({
         title: "Error",
         description: "Failed to validate invitation.",
@@ -96,6 +103,8 @@ export function PasswordSetupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!invitation) return;
     
     if (password !== confirmPassword) {
       toast({
@@ -172,18 +181,45 @@ export function PasswordSetupPage() {
     }
   };
 
+  // Show loading while validating
   if (validating) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex flex-col items-center justify-center p-8">
+            <Loader2 className="w-8 h-8 animate-spin mb-4" />
+            <p className="text-muted-foreground">Validating invitation...</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  if (!token || !invitation) {
-    return <Navigate to="/auth" replace />;
+  // Show error state if validation failed
+  if (validationError || !invitation) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <AlertCircle className="w-6 h-6 text-red-600" />
+            </div>
+            <CardTitle className="text-2xl font-bold">Invalid Invitation</CardTitle>
+            <p className="text-muted-foreground">
+              {validationError || 'This invitation link is not valid.'}
+            </p>
+          </CardHeader>
+          <CardContent className="text-center">
+            <Button asChild variant="outline">
+              <a href="/auth">Back to Login</a>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
+  // Show success state if completed
   if (completed) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -205,6 +241,7 @@ export function PasswordSetupPage() {
     );
   }
 
+  // Show password setup form
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <Card className="w-full max-w-md">
