@@ -21,10 +21,10 @@ import {
   MessageSquare,
   FileText,
   UserCog,
+  TrendingUp,
   Menu,
   X,
 } from "lucide-react";
-import { PoundSterlingIcon } from "@/components/ui/PoundSterlingIcon";
 import { UserMenu } from "./UserMenu";
 import { Logo } from "@/components/ui/Logo";
 import { useAuth } from "@/contexts/AuthContext";
@@ -46,7 +46,7 @@ export function TopNavigation({ activeTab, onTabChange }: TopNavigationProps) {
     { id: "clients", label: "Clients", icon: Users },
     { id: "briefs", label: "Briefs", icon: FileText },
     { id: "staff", label: "Staff", icon: UserCog },
-    ...(staff?.role === 'Admin' ? [{ id: "crm", label: "CRM", icon: PoundSterlingIcon }] : []),
+    ...(staff?.role === 'Admin' ? [{ id: "crm", label: "CRM", icon: TrendingUp }] : []),
   ];
 
   const NavButton = ({ item }: { item: typeof navigationItems[0] }) => (
