@@ -31,7 +31,7 @@ export function Logo({ size = "md", className = "" }: LogoProps) {
 
   return (
     <img
-      src="/logo.png"
+      src="/lovable-uploads/24789421-1542-44d8-95f7-8eab431238e3.png"
       alt="C. workflow"
       className={`${sizeClasses[size]} ${className}`}
       onError={() => setImageError(true)}
