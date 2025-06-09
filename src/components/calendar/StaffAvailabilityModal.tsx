@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -13,13 +12,7 @@ import { Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-
-interface Staff {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
-}
+import type { Staff } from "@/types/staff";
 
 interface TimeOff {
   id: string;

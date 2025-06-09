@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -6,13 +5,7 @@ import { AlertTriangle, CheckCircle, Clock, Calendar } from "lucide-react";
 import { MultiDayBookingEngine } from "@/components/calendar/MultiDayBookingEngine";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-
-interface Staff {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
-}
+import type { Staff } from "@/types/staff";
 
 interface CapacityCheckerProps {
   staffId: string | null;
@@ -27,7 +20,7 @@ export function CapacityChecker({
   onCapacityChange, 
   allStaff 
 }: CapacityCheckerProps) {
-  const [capacityInfo, setCapacityInfo] = useState<{
+  const [capacityInfo, setCapacityInfo<{
     hasCapacity: boolean;
     availableHours: number;
     nextAvailableDate: string | null;
@@ -35,7 +28,7 @@ export function CapacityChecker({
     timeOffConflicts: any[];
   } | null>(null);
   const [loading, setLoading] = useState(false);
-  const [multiDayOption, setMultiDayOption] = useState<{
+  const [multiDayOption, setMultiDayOption<{
     canFit: boolean;
     totalDays: number;
     message: string;

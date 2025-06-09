@@ -1,9 +1,9 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar, Clock, User, Building, Target } from "lucide-react";
 import { format } from "date-fns";
+import type { Staff } from "@/types/staff";
 
 interface ProjectBooking {
   id: string;
@@ -21,13 +21,6 @@ interface ProjectBooking {
       company: string;
     };
   };
-}
-
-interface Staff {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
 }
 
 interface ProjectDetailsPopoverProps {

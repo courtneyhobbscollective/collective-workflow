@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import { Calendar, Clock, User, Building } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import type { Staff } from "@/types/staff";
 
 interface ProjectBooking {
   id: string;
@@ -27,13 +27,6 @@ interface ProjectBooking {
       company: string;
     };
   };
-}
-
-interface Staff {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
 }
 
 interface BookingReassignmentModalProps {

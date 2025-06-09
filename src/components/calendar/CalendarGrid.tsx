@@ -1,15 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { format, startOfWeek, addDays, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
-
-interface Staff {
-  id: string;
-  name: string;
-  role: string;
-  department: string;
-}
+import type { Staff } from "@/types/staff";
 
 interface ProjectBooking {
   id: string;
@@ -287,7 +280,7 @@ export function CalendarGrid({
                               )}
                             </div>
                             {isMultiDay && (
-                              <div className="ml-1 w-1.5 h-1.5 bg-current rounded-full opacity-70 flex-shrink-0" 
+                              <div className="ml-2 w-1.5 h-1.5 bg-current rounded-full opacity-70 flex-shrink-0" 
                                    title="Multi-day booking" />
                             )}
                           </div>

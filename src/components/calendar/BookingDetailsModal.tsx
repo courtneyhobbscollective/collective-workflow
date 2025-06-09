@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { BookingReassignmentModal } from "./BookingReassignmentModal";
+import type { Staff } from "@/types/staff";
 
 interface ProjectBooking {
   id: string;
