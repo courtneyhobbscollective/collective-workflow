@@ -25,24 +25,39 @@ export function PasswordSetupPage() {
     if (token) {
       validateToken();
     } else {
+      console.log('No token provided in URL');
       setValidating(false);
     }
   }, [token]);
 
   const validateToken = async () => {
     try {
-      const { data, error } = await supabase
+      console.log('Validating token:', token);
+      
+      // First, get the invitation record
+      const { data: invitationData, error: invitationError } = await supabase
         .from('staff_invitations')
-        .select(`
-          *,
-          staff:staff(*)
-        `)
+        .select('*')
         .eq('token', token)
         .is('accepted_at', null)
         .gt('expires_at', new Date().toISOString())
-        .single();
+        .maybeSingle();
 
-      if (error || !data) {
+      console.log('Invitation query result:', { invitationData, invitationError });
+
+      if (invitationError) {
+        console.error('Error fetching invitation:', invitationError);
+        toast({
+          title: "Error",
+          description: "Failed to validate invitation.",
+          variant: "destructive",
+        });
+        setValidating(false);
+        return;
+      }
+
+      if (!invitationData) {
+        console.log('No valid invitation found for token');
         toast({
           title: "Invalid Invitation",
           description: "This invitation link is invalid or has expired.",
@@ -52,7 +67,45 @@ export function PasswordSetupPage() {
         return;
       }
 
-      setInvitation(data);
+      // Now get the staff record
+      const { data: staffData, error: staffError } = await supabase
+        .from('staff')
+        .select('*')
+        .eq('id', invitationData.staff_id)
+        .maybeSingle();
+
+      console.log('Staff query result:', { staffData, staffError });
+
+      if (staffError) {
+        console.error('Error fetching staff:', staffError);
+        toast({
+          title: "Error",
+          description: "Failed to validate staff information.",
+          variant: "destructive",
+        });
+        setValidating(false);
+        return;
+      }
+
+      if (!staffData) {
+        console.log('No staff record found for invitation');
+        toast({
+          title: "Invalid Invitation",
+          description: "Staff record not found for this invitation.",
+          variant: "destructive",
+        });
+        setValidating(false);
+        return;
+      }
+
+      // Combine the data
+      const combinedData = {
+        ...invitationData,
+        staff: staffData
+      };
+
+      console.log('Validation successful, setting invitation data:', combinedData);
+      setInvitation(combinedData);
     } catch (error) {
       console.error('Error validating token:', error);
       toast({
@@ -89,6 +142,8 @@ export function PasswordSetupPage() {
     setLoading(true);
 
     try {
+      console.log('Creating auth user for email:', invitation.email);
+      
       // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: invitation.email,
@@ -98,19 +153,29 @@ export function PasswordSetupPage() {
         }
       });
 
+      console.log('Auth signup result:', { authData, authError });
+
       if (authError) throw authError;
 
       // Mark invitation as accepted
-      await supabase
+      const { error: updateInvitationError } = await supabase
         .from('staff_invitations')
         .update({ accepted_at: new Date().toISOString() })
         .eq('id', invitation.id);
 
+      if (updateInvitationError) {
+        console.error('Error updating invitation:', updateInvitationError);
+      }
+
       // Update staff status
-      await supabase
+      const { error: updateStaffError } = await supabase
         .from('staff')
         .update({ invitation_status: 'accepted' })
         .eq('id', invitation.staff_id);
+
+      if (updateStaffError) {
+        console.error('Error updating staff status:', updateStaffError);
+      }
 
       setCompleted(true);
       
