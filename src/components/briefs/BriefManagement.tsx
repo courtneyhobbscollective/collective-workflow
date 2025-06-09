@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Briefcase } from "lucide-react";
+import { Plus, Briefcase, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { DeleteBriefModal } from "./DeleteBriefModal";
 
 interface Client {
   id: string;
@@ -50,6 +52,7 @@ export function BriefManagement() {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState({
     title: "",
     clientId: "",
@@ -167,6 +170,43 @@ export function BriefManagement() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteBrief = async (projectId: string) => {
+    try {
+      // Delete related records first (due to foreign key constraints)
+      await supabase.from('project_bookings').delete().eq('project_id', projectId);
+      await supabase.from('expenses').delete().eq('project_id', projectId);
+      await supabase.from('crm_billing_records').delete().eq('project_id', projectId);
+      await supabase.from('project_stage_history').delete().eq('project_id', projectId);
+      await supabase.from('project_status_history').delete().eq('project_id', projectId);
+      await supabase.from('project_closure_checklist').delete().eq('project_id', projectId);
+      await supabase.from('admin_notifications').delete().eq('project_id', projectId);
+      await supabase.from('client_chase_alerts').delete().eq('project_id', projectId);
+
+      // Finally delete the project
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', projectId);
+
+      if (error) throw error;
+
+      await loadData();
+      setDeletingProject(null);
+      
+      toast({
+        title: "Success",
+        description: "Brief deleted successfully",
+      });
+    } catch (error) {
+      console.error('Error deleting brief:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete brief",
+        variant: "destructive",
+      });
     }
   };
 
@@ -353,9 +393,19 @@ export function BriefManagement() {
         {projects.map((project) => (
           <Card key={project.id}>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Briefcase className="w-5 h-5" />
-                <span>{project.title}</span>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Briefcase className="w-5 h-5" />
+                  <span>{project.title}</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setDeletingProject(project)}
+                  className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -401,6 +451,15 @@ export function BriefManagement() {
           </Card>
         ))}
       </div>
+
+      {deletingProject && (
+        <DeleteBriefModal
+          briefTitle={deletingProject.title}
+          open={!!deletingProject}
+          onOpenChange={(open) => !open && setDeletingProject(null)}
+          onConfirm={() => handleDeleteBrief(deletingProject.id)}
+        />
+      )}
     </div>
   );
 }

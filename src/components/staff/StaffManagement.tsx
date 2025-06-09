@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -6,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { EditStaffModal } from "./EditStaffModal";
 import { AddStaffForm } from "./AddStaffForm";
 import { StaffGrid } from "./StaffGrid";
+import { DeleteStaffModal } from "./DeleteStaffModal";
 import type { Staff } from "@/types/staff";
 
 export function StaffManagement() {
@@ -13,6 +15,7 @@ export function StaffManagement() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+  const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -121,15 +124,31 @@ export function StaffManagement() {
         .update({ invitation_status: 'invited' })
         .eq('id', staffId);
 
-      // Here you would typically call an edge function to send the email
-      // For now, we'll show a toast with the invitation link
+      // Send email via Edge Function
       const inviteLink = `${window.location.origin}/setup-password?token=${token}`;
       
-      toast({
-        title: "Invitation Created",
-        description: `Copy this link and send it to ${name}: ${inviteLink}`,
-        duration: 10000,
+      const { error: emailError } = await supabase.functions.invoke('send-staff-invitation', {
+        body: {
+          email,
+          name,
+          inviteLink
+        }
       });
+
+      if (emailError) {
+        console.error('Email sending error:', emailError);
+        // Still show success but mention email issue
+        toast({
+          title: "Staff Added",
+          description: `${name} added but email failed to send. Please check email configuration.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Invitation Sent",
+          description: `Invitation email sent to ${name} at ${email}`,
+        });
+      }
 
     } catch (error) {
       console.error('Error sending invitation:', error);
@@ -147,6 +166,49 @@ export function StaffManagement() {
       toast({
         title: "Error",
         description: "Failed to resend invitation",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteStaff = async (staffId: string, permanent: boolean = false) => {
+    try {
+      if (permanent) {
+        // Permanent deletion
+        const { error } = await supabase
+          .from('staff')
+          .delete()
+          .eq('id', staffId);
+
+        if (error) throw error;
+
+        // Also delete any pending invitations
+        await supabase
+          .from('staff_invitations')
+          .delete()
+          .eq('staff_id', staffId);
+      } else {
+        // Soft delete
+        const { error } = await supabase
+          .from('staff')
+          .update({ is_active: false })
+          .eq('id', staffId);
+
+        if (error) throw error;
+      }
+
+      await loadStaff();
+      setDeletingStaff(null);
+      
+      toast({
+        title: "Success",
+        description: `Staff member ${permanent ? 'permanently deleted' : 'deactivated'} successfully`,
+      });
+    } catch (error) {
+      console.error('Error deleting staff:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete staff member",
         variant: "destructive",
       });
     }
@@ -195,6 +257,7 @@ export function StaffManagement() {
         staff={staff}
         onEditStaff={setEditingStaff}
         onResendInvitation={resendInvitation}
+        onDeleteStaff={setDeletingStaff}
       />
 
       {editingStaff && (
@@ -203,6 +266,15 @@ export function StaffManagement() {
           open={!!editingStaff}
           onOpenChange={(open) => !open && setEditingStaff(null)}
           onUpdate={handleUpdate}
+        />
+      )}
+
+      {deletingStaff && (
+        <DeleteStaffModal
+          staff={deletingStaff}
+          open={!!deletingStaff}
+          onOpenChange={(open) => !open && setDeletingStaff(null)}
+          onConfirm={handleDeleteStaff}
         />
       )}
     </div>

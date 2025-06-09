@@ -3,16 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Users, Edit, Mail, CheckCircle, Clock } from "lucide-react";
+import { Users, Edit, Mail, CheckCircle, Clock, Trash2 } from "lucide-react";
 import type { Staff } from "@/types/staff";
 
 interface StaffCardProps {
   staff: Staff;
   onEdit: (staff: Staff) => void;
   onResendInvitation: (staff: Staff) => void;
+  onDelete: (staff: Staff) => void;
 }
 
-export function StaffCard({ staff, onEdit, onResendInvitation }: StaffCardProps) {
+export function StaffCard({ staff, onEdit, onResendInvitation, onDelete }: StaffCardProps) {
   const getStatusBadge = (invitationStatus?: string) => {
     switch (invitationStatus) {
       case 'pending':
@@ -42,13 +43,23 @@ export function StaffCard({ staff, onEdit, onResendInvitation }: StaffCardProps)
               <span>{staff.name}</span>
             </div>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onEdit(staff)}
-          >
-            <Edit className="w-4 h-4" />
-          </Button>
+          <div className="flex space-x-1">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onEdit(staff)}
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onDelete(staff)}
+              className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
