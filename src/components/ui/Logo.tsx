@@ -13,8 +13,8 @@ export function Logo({ size = "md", className = "" }: LogoProps) {
 
   return (
     <img
-      src="/lovable-uploads/82a3af5b-1314-48af-b30a-52ed62206b8c.png"
-      alt="C. workflow"
+      src="/lovable-uploads/c1bdf4c1-36f7-4e46-8a6e-e8b08ae8fced.png"
+      alt="Collectflow"
       className={`${sizeClasses[size]} ${className}`}
     />
   );
