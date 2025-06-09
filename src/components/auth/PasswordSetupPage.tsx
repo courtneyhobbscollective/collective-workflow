@@ -34,13 +34,13 @@ export function PasswordSetupPage() {
     try {
       console.log('Validating token:', token);
       
-      // First, get the invitation record
+      // Use server-side NOW() function instead of JavaScript date to avoid timezone issues
       const { data: invitationData, error: invitationError } = await supabase
         .from('staff_invitations')
         .select('*')
         .eq('token', token)
         .is('accepted_at', null)
-        .gt('expires_at', new Date().toISOString())
+        .filter('expires_at', 'gt', 'now()')
         .maybeSingle();
 
       console.log('Invitation query result:', { invitationData, invitationError });
