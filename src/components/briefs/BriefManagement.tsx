@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Briefcase, Trash2, FileTemplate } from "lucide-react";
+import { Plus, Briefcase, Trash2, File } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { DeleteBriefModal } from "./DeleteBriefModal";
@@ -551,7 +551,7 @@ export function BriefManagement() {
         <TabsContent value="templates" className="space-y-6">
           <div className="flex justify-end">
             <Button onClick={() => setShowTemplateModal(true)}>
-              <FileTemplate className="w-4 h-4 mr-2" />
+              <File className="w-4 h-4 mr-2" />
               Create Template
             </Button>
           </div>
