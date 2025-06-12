@@ -56,6 +56,56 @@ export type Database = {
           },
         ]
       }
+      brief_templates: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string
+          deliverables: number
+          description: string | null
+          estimated_hours: number | null
+          id: string
+          project_value: number | null
+          template_name: string
+          updated_at: string
+          work_type: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by: string
+          deliverables?: number
+          description?: string | null
+          estimated_hours?: number | null
+          id?: string
+          project_value?: number | null
+          template_name: string
+          updated_at?: string
+          work_type: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          deliverables?: number
+          description?: string | null
+          estimated_hours?: number | null
+          id?: string
+          project_value?: number | null
+          template_name?: string
+          updated_at?: string
+          work_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brief_templates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channels: {
         Row: {
           client_id: string | null
