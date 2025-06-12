@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,6 +68,7 @@ export function BriefManagement() {
   const [clients, setClients] = useState<Client[]>([]);
   const [templates, setTemplates] = useState<BriefTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("briefs");
   const [showForm, setShowForm] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<BriefTemplate | null>(null);
@@ -161,6 +161,16 @@ export function BriefManagement() {
       contractSigned: false,
     });
     setSelectedTemplate(template.id);
+  };
+
+  const handleCreateFromTemplate = (template: BriefTemplate) => {
+    loadTemplateData(template);
+    setShowForm(true);
+    setActiveTab("briefs");
+    toast({
+      title: "Template Loaded",
+      description: `Brief form populated with ${template.template_name} template data`,
+    });
   };
 
   const handleTemplateChange = (templateId: string) => {
@@ -311,7 +321,7 @@ export function BriefManagement() {
         </div>
       </div>
 
-      <Tabs defaultValue="briefs" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList>
           <TabsTrigger value="briefs">Project Briefs</TabsTrigger>
           <TabsTrigger value="templates">Brief Templates</TabsTrigger>
@@ -563,10 +573,7 @@ export function BriefManagement() {
               setShowTemplateModal(true);
             }}
             onTemplateDeleted={loadData}
-            onCreateFromTemplate={(template) => {
-              loadTemplateData(template);
-              setShowForm(true);
-            }}
+            onCreateFromTemplate={handleCreateFromTemplate}
           />
         </TabsContent>
       </Tabs>
