@@ -221,6 +221,7 @@ export function IncomingBriefCard({
               onMoveProject={onMoveProject}
               onUpdateStatus={onUpdateStatus}
               onBookingCreated={onBookingCreated}
+              onMoveProjectBack={(newStageId) => onMoveProject(project.id, newStageId)}
             />
           </div>
         </AccordionContent>

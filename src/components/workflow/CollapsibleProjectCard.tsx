@@ -1,5 +1,4 @@
-
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } => "@/components/ui/accordion";
 import { ProjectCardMain } from "./project-card/ProjectCardMain";
 import { IncomingBriefCard } from "./IncomingBriefCard";
 import type { Staff } from "@/types/staff";
@@ -54,6 +53,7 @@ interface CollapsibleProjectCardProps {
   onMoveProject: (projectId: string, newStageId: string) => void;
   onUpdateStatus: (projectId: string, status: string, picterLink?: string) => void;
   onBookingCreated?: () => void;
+  onMoveProjectBack: (projectId: string, newStageId: string) => void;
 }
 
 export function CollapsibleProjectCard({
@@ -65,7 +65,8 @@ export function CollapsibleProjectCard({
   onUpdatePoNumber,
   onMoveProject,
   onUpdateStatus,
-  onBookingCreated = () => {}
+  onBookingCreated = () => {},
+  onMoveProjectBack
 }: CollapsibleProjectCardProps) {
   // Use specialized incoming brief card for incoming stage
   if (project.current_stage === 'incoming') {
@@ -105,6 +106,7 @@ export function CollapsibleProjectCard({
             onMoveProject={onMoveProject}
             onUpdateStatus={onUpdateStatus}
             onBookingCreated={onBookingCreated}
+            onMoveProjectBack={onMoveProjectBack}
           />
         </AccordionContent>
       </AccordionItem>

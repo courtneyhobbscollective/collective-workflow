@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { canMoveToStageOne } from "../ProjectValidation";
@@ -65,6 +64,7 @@ interface ProjectCardMainProps {
   onMoveProject: (projectId: string, newStageId: string) => void;
   onUpdateStatus: (projectId: string, status: string, picterLink?: string) => void;
   onBookingCreated?: () => void;
+  onMoveProjectBack: (projectId: string, newStageId: string) => void;
 }
 
 export function ProjectCardMain({
@@ -76,7 +76,8 @@ export function ProjectCardMain({
   onUpdatePoNumber,
   onMoveProject,
   onUpdateStatus,
-  onBookingCreated = () => {}
+  onBookingCreated = () => {},
+  onMoveProjectBack
 }: ProjectCardMainProps) {
   const [hasCapacity, setHasCapacity] = useState(true);
   const [alternativeStaff, setAlternativeStaff] = useState<Staff[]>([]);
@@ -204,6 +205,7 @@ export function ProjectCardMain({
               stages={stages}
               canProgress={canProgress}
               onMoveProject={(newStageId) => onMoveProject(project.id, newStageId)}
+              onMoveProjectBack={(newStageId) => onMoveProjectBack(project.id, newStageId)}
             />
           </div>
         </CardContent>
