@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,12 +93,12 @@ export function ChannelCreationModal({ isOpen, onClose, onChannelCreated, client
 
           <div>
             <Label htmlFor="client-select">Link to Client (Optional)</Label>
-            <Select value={clientId || ""} onValueChange={(value) => setClientId(value || null)}>
+            <Select value={clientId || "none-client"} onValueChange={(value) => setClientId(value === "none-client" ? null : value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a client (optional)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No specific client</SelectItem>
+                <SelectItem value="none-client">No specific client</SelectItem>
                 {clients.map((client) => (
                   <SelectItem key={client.id} value={client.id}>
                     {client.company} ({client.name})
