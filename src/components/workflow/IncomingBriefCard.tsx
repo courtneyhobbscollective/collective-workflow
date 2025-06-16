@@ -1,10 +1,11 @@
-
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Clock, User, FileText, Calendar } from "lucide-react";
 import { IncomingProjectCardMain } from "./project-card/IncomingProjectCardMain";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { StatusSelector, formatStatusLabel } from "./StatusSelector"; // Import formatStatusLabel
 import type { Staff } from "@/types/staff";
 
 interface ProjectStage {
@@ -74,6 +75,26 @@ export function IncomingBriefCard({
   const dueDate = new Date(project.due_date);
   const isOverdue = dueDate < new Date();
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'in_progress': return 'bg-blue-100 text-blue-800';
+      case 'on_hold': return 'bg-orange-100 text-orange-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const handleStatusChange = (newStatus: string) => {
+    // For incoming briefs, we only expect 'in_progress' or 'on_hold'
+    // No picter link or closure logic needed here
+    onUpdateStatus(project.id, newStatus);
+  };
+
+  const handleEmailClient = (emailData: { subject: string; body: string; to: string }) => {
+    const mailtoLink = `mailto:${emailData.to}?subject=${encodeURIComponent(emailData.subject)}&body=${encodeURIComponent(emailData.body)}`;
+    window.open(mailtoLink);
+    // No status update to 'sent_to_client' for incoming briefs
+  };
+
   return (
     <Accordion type="single" collapsible className="w-full">
       <AccordionItem value={project.id} className="border rounded-lg bg-white shadow-sm">
@@ -137,6 +158,27 @@ export function IncomingBriefCard({
                   <span className="text-xs font-medium">Unassigned</span>
                 </div>
               )}
+              {/* Project Status Section - Moved here */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Badge 
+                    className={`cursor-pointer ${getStatusColor(project.stage_status || 'in_progress')}`}
+                  >
+                    {formatStatusLabel(project.stage_status || 'in_progress')}
+                  </Badge>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-0">
+                  <StatusSelector
+                    currentStage={project.current_stage}
+                    currentStatus={project.stage_status || 'in_progress'}
+                    internalReviewCompleted={project.internal_review_completed || false}
+                    picterLink={project.picter_link}
+                    onStatusChange={handleStatusChange}
+                    onEmailClient={handleEmailClient}
+                    project={project}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
         </AccordionTrigger>
