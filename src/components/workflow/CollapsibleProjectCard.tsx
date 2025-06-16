@@ -1,6 +1,7 @@
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ProjectCardMain } from "./project-card/ProjectCardMain";
+import { IncomingBriefCard } from "./IncomingBriefCard";
 import type { Staff } from "@/types/staff";
 
 interface ProjectStage {
@@ -66,6 +67,24 @@ export function CollapsibleProjectCard({
   onUpdateStatus,
   onBookingCreated = () => {}
 }: CollapsibleProjectCardProps) {
+  // Use specialized incoming brief card for incoming stage
+  if (project.current_stage === 'incoming') {
+    return (
+      <IncomingBriefCard
+        project={project}
+        staff={staff}
+        stages={stages}
+        onAssignStaff={onAssignStaff}
+        onUpdateContract={onUpdateContract}
+        onUpdatePoNumber={onUpdatePoNumber}
+        onMoveProject={onMoveProject}
+        onUpdateStatus={onUpdateStatus}
+        onBookingCreated={onBookingCreated}
+      />
+    );
+  }
+
+  // Use regular card for other stages
   return (
     <Accordion type="single" collapsible className="w-full">
       <AccordionItem value={project.id} className="border rounded-lg bg-white">
