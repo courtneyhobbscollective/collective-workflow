@@ -14,7 +14,8 @@ export function WorkflowBoard() {
     updateContractStatus, 
     updatePoNumber, 
     updateProjectStatus, 
-    moveProject 
+    moveProject,
+    moveProjectBack
   } = useProjectOperations(loadData, stages);
   const { toast } = useToast();
 
@@ -42,6 +43,10 @@ export function WorkflowBoard() {
 
   const handleMoveProject = (projectId: string, newStageId: string) => {
     moveProject(projectId, newStageId, projects);
+  };
+
+  const handleMoveProjectBack = (projectId: string, newStageId: string) => {
+    moveProjectBack(projectId, newStageId);
   };
 
   if (loading) {
@@ -77,6 +82,7 @@ export function WorkflowBoard() {
             onUpdateStatus={handleUpdateProjectStatus}
             onBookingCreated={handleBookingCreated}
             isIncomingStage={true}
+            onMoveProjectBack={handleMoveProjectBack}
           />
         </div>
       )}
@@ -97,6 +103,7 @@ export function WorkflowBoard() {
               onMoveProject={handleMoveProject}
               onUpdateStatus={handleUpdateProjectStatus}
               onBookingCreated={handleBookingCreated}
+              onMoveProjectBack={handleMoveProjectBack}
             />
           ))}
         </div>

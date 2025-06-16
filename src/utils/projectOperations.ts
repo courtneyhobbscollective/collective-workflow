@@ -1,4 +1,3 @@
-
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getValidationIssues, canMoveToStageOne } from "@/components/workflow/ProjectValidation";
@@ -228,11 +227,36 @@ export function useProjectOperations(loadData: () => Promise<void>, stages: Proj
     }
   };
 
+  const moveProjectBack = async (projectId: string, newStageId: string) => {
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({ current_stage: newStageId })
+        .eq('id', projectId);
+
+      if (error) throw error;
+
+      await loadData();
+      toast({
+        title: "Success",
+        description: `Project moved back to ${stages.find(s => s.id === newStageId)?.name}`,
+      });
+    } catch (error) {
+      console.error('Error moving project back:', error);
+      toast({
+        title: "Error",
+        description: "Failed to move project back",
+        variant: "destructive",
+      });
+    }
+  };
+
   return {
     assignStaff,
     updateContractStatus,
     updatePoNumber,
     updateProjectStatus,
-    moveProject
+    moveProject,
+    moveProjectBack
   };
 }
