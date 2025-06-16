@@ -7,7 +7,7 @@ import { useProjectOperations } from "@/utils/projectOperations";
 import { useToast } from "@/hooks/use-toast";
 
 export function WorkflowBoard() {
-  const { projects, stages, staff, loading, loadData } = useWorkflowData();
+  const { projects, setProjects, stages, staff, loading, loadData } = useWorkflowData();
   const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const { 
     assignStaff, 
@@ -16,11 +16,11 @@ export function WorkflowBoard() {
     updateProjectStatus, 
     moveProject,
     moveProjectBack
-  } = useProjectOperations(loadData, stages);
+  } = useProjectOperations(stages, projects, setProjects); // Pass projects and setProjects
   const { toast } = useToast();
 
   const handleBookingCreated = () => {
-    loadData();
+    loadData(); // Still need to reload for new bookings as they are not part of project state
     toast({
       title: "Success",
       description: "Calendar booking created successfully",
@@ -38,11 +38,11 @@ export function WorkflowBoard() {
   };
 
   const handleUpdateProjectStatus = (projectId: string, status: string, picterLink?: string) => {
-    updateProjectStatus(projectId, status, picterLink, projects);
+    updateProjectStatus(projectId, status, picterLink); // projects param removed
   };
 
   const handleMoveProject = (projectId: string, newStageId: string) => {
-    moveProject(projectId, newStageId, projects);
+    moveProject(projectId, newStageId); // projects param removed
   };
 
   const handleMoveProjectBack = (projectId: string, newStageId: string) => {

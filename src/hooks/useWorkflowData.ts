@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Staff } from '@/types/staff';
@@ -112,6 +111,7 @@ export function useWorkflowData() {
 
   return {
     projects,
+    setProjects, // Expose setProjects
     staff,
     stages,
     loading,

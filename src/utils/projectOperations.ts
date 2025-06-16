@@ -1,6 +1,7 @@
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getValidationIssues, canMoveToStageOne } from "@/components/workflow/ProjectValidation";
+import type { Staff } from "@/types/staff"; // Import Staff type
 
 interface ProjectStage {
   id: string;
@@ -10,20 +11,57 @@ interface ProjectStage {
   description: string;
 }
 
+interface Client { // Define Client interface if not already defined
+  id: string;
+  company: string;
+  name: string;
+  contact_name: string;
+  contact_email: string;
+  is_retainer: boolean;
+  created_at: string;
+}
+
 interface Project {
   id: string;
   title: string;
+  description: string;
+  client_id: string;
+  estimated_hours: number;
+  status: 'active' | 'pending' | 'completed' | 'on_hold' | 'cancelled';
+  start_date: string | null;
+  end_date: string | null;
+  created_at: string;
+  updated_at: string;
   current_stage: string;
+  work_type: string;
+  deliverables: number;
+  due_date: string;
+  po_number: string;
   is_retainer: boolean;
-  stage_status?: string;
   contract_signed: boolean;
   po_required: boolean;
-  po_number: string;
+  project_value: number | null;
+  stage_status: string;
+  picter_link: string | null;
+  client: Client;
   assigned_staff_id: string | null;
+  assigned_staff: Staff | null;
 }
 
-export function useProjectOperations(loadData: () => Promise<void>, stages: ProjectStage[]) {
+export function useProjectOperations(
+  stages: ProjectStage[],
+  projects: Project[],
+  setProjects: React.Dispatch<React.SetStateAction<Project[]>>
+) {
   const { toast } = useToast();
+
+  const updateProjectInState = (projectId: string, updates: Partial<Project>) => {
+    setProjects(prevProjects =>
+      prevProjects.map(p =>
+        p.id === projectId ? { ...p, ...updates } : p
+      )
+    );
+  };
 
   const assignStaff = async (projectId: string, staffId: string) => {
     try {
@@ -34,7 +72,8 @@ export function useProjectOperations(loadData: () => Promise<void>, stages: Proj
 
       if (error) throw error;
 
-      await loadData();
+      // Update local state
+      updateProjectInState(projectId, { assigned_staff_id: staffId });
       toast({
         title: "Success",
         description: "Staff member assigned successfully",
@@ -58,7 +97,8 @@ export function useProjectOperations(loadData: () => Promise<void>, stages: Proj
 
       if (error) throw error;
 
-      await loadData();
+      // Update local state
+      updateProjectInState(projectId, { contract_signed: signed });
       toast({
         title: "Success",
         description: `Contract marked as ${signed ? 'signed' : 'not signed'}`,
@@ -82,7 +122,8 @@ export function useProjectOperations(loadData: () => Promise<void>, stages: Proj
 
       if (error) throw error;
 
-      await loadData();
+      // Update local state
+      updateProjectInState(projectId, { po_number: poNumber });
       toast({
         title: "Success",
         description: "PO number updated successfully",
@@ -97,9 +138,9 @@ export function useProjectOperations(loadData: () => Promise<void>, stages: Proj
     }
   };
 
-  const updateProjectStatus = async (projectId: string, status: string, picterLink?: string, projects?: Project[]) => {
+  const updateProjectStatus = async (projectId: string, status: string, picterLink?: string) => {
     try {
-      const project = projects?.find(p => p.id === projectId);
+      const project = projects.find(p => p.id === projectId);
       if (!project) return;
 
       const updateData: any = { stage_status: status };
@@ -123,6 +164,9 @@ export function useProjectOperations(loadData: () => Promise<void>, stages: Proj
         .eq('id', projectId);
 
       if (error) throw error;
+
+      // Update local state
+      updateProjectInState(projectId, updateData);
 
       // Create status history record
       await supabase
@@ -160,8 +204,6 @@ export function useProjectOperations(loadData: () => Promise<void>, stages: Proj
           });
       }
 
-      await loadData();
-
       toast({
         title: "Success",
         description: `Project status updated to ${status}`,
@@ -176,7 +218,7 @@ export function useProjectOperations(loadData: () => Promise<void>, stages: Proj
     }
   };
 
-  const moveProject = async (projectId: string, newStageId: string, projects: Project[]) => {
+  const moveProject = async (projectId: string, newStageId: string) => {
     const project = projects.find(p => p.id === projectId);
     
     if (!project) return;
@@ -200,7 +242,8 @@ export function useProjectOperations(loadData: () => Promise<void>, stages: Proj
 
       if (error) throw error;
 
-      await loadData();
+      // Update local state
+      updateProjectInState(projectId, { current_stage: newStageId });
 
       // Show billing notification for non-retainer projects
       if (!project.is_retainer) {
@@ -236,7 +279,9 @@ export function useProjectOperations(loadData: () => Promise<void>, stages: Proj
 
       if (error) throw error;
 
-      await loadData();
+      // Update local state
+      updateProjectInState(projectId, { current_stage: newStageId });
+
       toast({
         title: "Success",
         description: `Project moved back to ${stages.find(s => s.id === newStageId)?.name}`,
