@@ -173,10 +173,20 @@ export function BriefManagement() {
     });
   };
 
-  const handleTemplateChange = (templateId: string) => {
-    setSelectedTemplate(templateId);
-    if (templateId) {
-      const template = templates.find(t => t.id === templateId);
+  const handleTemplateChange = (value: string) => {
+    setSelectedTemplate(value);
+    if (value === "no-template") { // Check for the new non-empty placeholder value
+      // Reset template-related fields if "No template" is selected
+      setFormData(prev => ({
+        ...prev,
+        workType: "",
+        deliverables: "",
+        description: "",
+        estimatedHours: "",
+        projectValue: "",
+      }));
+    } else {
+      const template = templates.find(t => t.id === value);
       if (template) {
         loadTemplateData(template);
       }
@@ -370,7 +380,7 @@ export function BriefManagement() {
                             <SelectValue placeholder="Select a template (optional)" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">No template</SelectItem>
+                            <SelectItem value="no-template">No template</SelectItem> {/* Changed value from "" to "no-template" */}
                             {clientTemplates.map((template) => (
                               <SelectItem key={template.id} value={template.id}>
                                 {template.template_name}
@@ -378,29 +388,6 @@ export function BriefManagement() {
                             ))}
                           </SelectContent>
                         </Select>
-                      </div>
-                    )}
-
-                    <div>
-                      <Label htmlFor="title">Project Title *</Label>
-                      <Input
-                        id="title"
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        placeholder="Enter project title"
-                      />
-                    </div>
-                    
-                    {selectedClient?.is_retainer && (
-                      <div className="md:col-span-2">
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id="treatAsOneoff"
-                            checked={formData.treatAsOneoff}
-                            onCheckedChange={(checked) => setFormData({ ...formData, treatAsOneoff: checked })}
-                          />
-                          <Label htmlFor="treatAsOneoff">One-off Upsell (bill separately from retainer)</Label>
-                        </div>
                       </div>
                     )}
 
