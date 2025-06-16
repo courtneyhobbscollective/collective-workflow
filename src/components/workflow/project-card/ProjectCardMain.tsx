@@ -193,7 +193,7 @@ export function ProjectCardMain({
                       {formatStatusLabel(project.stage_status || 'in_progress')}
                     </Badge>
                   </PopoverTrigger>
-                  <PopoverContent className="w-48 p-0">
+                  <PopoverContent className="w-48 p-0 z-50">
                     <StatusSelector
                       currentStage={project.current_stage}
                       currentStatus={project.stage_status || 'in_progress'}
