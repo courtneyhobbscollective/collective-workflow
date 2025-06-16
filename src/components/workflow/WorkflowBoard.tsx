@@ -7,7 +7,7 @@ import { useProjectOperations } from "@/utils/projectOperations";
 import { useToast } from "@/hooks/use-toast";
 
 export function WorkflowBoard() {
-  const { projects, stages, staff, loading, loadData } = useWorkflowData();
+  const { projects, setProjects, stages, staff, loading, loadData } = useWorkflowData();
   const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const { 
     assignStaff, 
@@ -16,7 +16,7 @@ export function WorkflowBoard() {
     updateProjectStatus, 
     moveProject,
     moveProjectBack
-  } = useProjectOperations(loadData, stages);
+  } = useProjectOperations(setProjects, stages); // Pass setProjects here
   const { toast } = useToast();
 
   const handleBookingCreated = () => {
@@ -46,7 +46,7 @@ export function WorkflowBoard() {
   };
 
   const handleMoveProjectBack = (projectId: string, newStageId: string) => {
-    moveProjectBack(projectId, newStageId);
+    moveProjectBack(projectId, newStageId, projects); // Pass projects here
   };
 
   if (loading) {

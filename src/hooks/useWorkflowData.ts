@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Staff } from '@/types/staff';
@@ -46,6 +45,7 @@ interface Project {
   client: Client;
   assigned_staff_id: string | null;
   assigned_staff: Staff | null;
+  internal_review_completed?: boolean; // Added this to match Project interface in ProjectCardMain
 }
 
 export function useWorkflowData() {
@@ -112,6 +112,7 @@ export function useWorkflowData() {
 
   return {
     projects,
+    setProjects, // Expose setProjects
     staff,
     stages,
     loading,
