@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { canMoveToStageOne } from "../ProjectValidation";
 import { CapacityChecker } from "../CapacityChecker";
 import { BookingButton } from "../BookingButton";
-import { StatusSelector } from "../StatusSelector";
+import { StatusSelector, formatStatusLabel } from "../StatusSelector";
 import { PicterLinkModal } from "../PicterLinkModal";
 import { ProjectClosureModal } from "../ProjectClosureModal";
 import { ProjectValidation } from "../ProjectValidation";
@@ -12,6 +12,8 @@ import { ProjectContractSection } from "../ProjectContractSection";
 import { ProjectPOSection } from "../ProjectPOSection";
 import { ProjectStaffSection } from "../ProjectStaffSection";
 import { ProjectCardActions } from "../ProjectCardActions";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 import type { Staff } from "@/types/staff";
 
 interface ProjectStage {
@@ -117,6 +119,18 @@ export function ProjectCardMain({
     onUpdateStatus(project.id, "sent_to_client");
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'in_progress': return 'bg-blue-100 text-blue-800';
+      case 'on_hold': return 'bg-orange-100 text-orange-800';
+      case 'ready_for_internal_review': return 'bg-purple-100 text-purple-800';
+      case 'ready_to_send_client': return 'bg-green-100 text-green-800';
+      case 'sent_to_client': return 'bg-teal-100 text-teal-800';
+      case 'closed': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   return (
     <>
       <Card className="bg-white">
@@ -171,15 +185,26 @@ export function ProjectCardMain({
             {project.current_stage !== 'incoming' && (
               <div className="space-y-1">
                 <label className="text-xs font-medium">Status:</label>
-                <StatusSelector
-                  currentStage={project.current_stage}
-                  currentStatus={project.stage_status || 'in_progress'}
-                  internalReviewCompleted={project.internal_review_completed || false}
-                  picterLink={project.picter_link}
-                  onStatusChange={handleStatusChange}
-                  onEmailClient={handleEmailClient}
-                  project={project}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Badge 
+                      className={`cursor-pointer ${getStatusColor(project.stage_status || 'in_progress')}`}
+                    >
+                      {formatStatusLabel(project.stage_status || 'in_progress')}
+                    </Badge>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-48 p-0">
+                    <StatusSelector
+                      currentStage={project.current_stage}
+                      currentStatus={project.stage_status || 'in_progress'}
+                      internalReviewCompleted={project.internal_review_completed || false}
+                      picterLink={project.picter_link}
+                      onStatusChange={handleStatusChange}
+                      onEmailClient={handleEmailClient}
+                      project={project}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             )}
 
