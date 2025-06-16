@@ -399,6 +399,18 @@ export function BriefManagement() {
                       </div>
                     )}
 
+                    {/* Added missing Title field */}
+                    <div>
+                      <Label htmlFor="title">Brief Title *</Label>
+                      <Input
+                        id="title"
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        placeholder="e.g., Website Redesign for Acme Corp"
+                        required
+                      />
+                    </div>
+
                     <div>
                       <Label htmlFor="workType">Type of Work *</Label>
                       <Select value={formData.workType} onValueChange={(value) => setFormData({ ...formData, workType: value })}>
