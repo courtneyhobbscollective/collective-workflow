@@ -35,7 +35,7 @@ const getStatusOptions = (stage: string) => {
   return baseOptions;
 };
 
-const formatStatusLabel = (status: string) => {
+export const formatStatusLabel = (status: string) => {
   const labels: Record<string, string> = {
     in_progress: "In Progress",
     on_hold: "On Hold",
