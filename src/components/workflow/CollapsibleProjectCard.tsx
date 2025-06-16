@@ -1,4 +1,4 @@
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } => "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ProjectCardMain } from "./project-card/ProjectCardMain";
 import { IncomingBriefCard } from "./IncomingBriefCard";
 import type { Staff } from "@/types/staff";
