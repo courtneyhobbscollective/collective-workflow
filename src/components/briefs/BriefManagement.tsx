@@ -195,7 +195,15 @@ export function BriefManagement() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.clientId || !formData.title || !formData.workType) return;
+    // Check for required fields and provide feedback
+    if (!formData.clientId || !formData.title || !formData.workType || !formData.deliverables || !formData.dueDate) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields (Client, Title, Work Type, Deliverables, Due Date).",
+        variant: "destructive",
+      });
+      return; // Stop submission
+    }
 
     setLoading(true);
     try {
@@ -380,7 +388,7 @@ export function BriefManagement() {
                             <SelectValue placeholder="Select a template (optional)" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="no-template">No template</SelectItem> {/* Changed value from "" to "no-template" */}
+                            <SelectItem value="no-template">No template</SelectItem>
                             {clientTemplates.map((template) => (
                               <SelectItem key={template.id} value={template.id}>
                                 {template.template_name}
