@@ -36,10 +36,25 @@ interface ProjectBooking {
   };
 }
 
+interface StaffTimeOff {
+  id: string;
+  staff_id: string;
+  start_date: string;
+  end_date: string;
+  reason: string;
+  type: string;
+  is_full_day: boolean;
+  start_time: string | null;
+  end_time: string | null;
+  notes: string | null;
+  status: string;
+}
+
 export function CalendarView() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [bookings, setBookings] = useState<ProjectBooking[]>([]);
+  const [staffTimeOff, setStaffTimeOff] = useState<StaffTimeOff[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"week" | "month">("month");
@@ -92,6 +107,15 @@ export function CalendarView() {
 
       if (bookingsError) throw bookingsError;
 
+      // Load staff time off
+      const { data: timeOffData, error: timeOffError } = await supabase
+        .from('staff_time_off')
+        .select('*')
+        .eq('status', 'approved') // Only show approved time off
+        .order('start_date', { ascending: true });
+
+      if (timeOffError) throw timeOffError;
+
       // Transform staff data to match our Staff interface
       const transformedStaff = (staffData || []).map((member: any) => ({
         ...member,
@@ -101,6 +125,7 @@ export function CalendarView() {
       setStaff(transformedStaff);
       setProjects(projectsData || []);
       setBookings(bookingsData || []);
+      setStaffTimeOff(timeOffData || []);
     } catch (error) {
       console.error('Error loading calendar data:', error);
       toast({
@@ -165,6 +190,7 @@ export function CalendarView() {
             view={view}
             bookings={bookings}
             staff={staff}
+            staffTimeOff={staffTimeOff}
             selectedStaff={selectedStaff}
             onViewChange={setView}
             onNavigateDate={navigateDate}
