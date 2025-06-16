@@ -88,7 +88,7 @@ export function BookingModal({
     if (selectedDate && project) {
       findAvailableSlots();
     }
-  }, [selectedDate, project]);
+  }, [selectedDate, project, customHours]); // Added customHours to dependency array
 
   useEffect(() => {
     if (project && staff.length > 0) {
@@ -361,8 +361,9 @@ export function BookingModal({
                 </div>
               </div>
               <div>
-                <Label>Custom Hours (Optional)</Label>
+                <Label htmlFor="customHours">Custom Hours (Optional)</Label>
                 <Input
+                  id="customHours"
                   type="number"
                   step="0.5"
                   value={customHours}
