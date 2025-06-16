@@ -90,7 +90,9 @@ export function BriefManagement() {
   const { toast } = useToast();
 
   const selectedClient = clients.find(c => c.id === formData.clientId);
-  const showProjectValue = !selectedClient?.is_retainer || formData.treatAsOneoff;
+  // Modified logic: show project value if it's already set (from template),
+  // or if it's a non-retainer, or a retainer treated as one-off.
+  const showProjectValue = (formData.projectValue !== "" && formData.projectValue !== "0") || !selectedClient?.is_retainer || formData.treatAsOneoff;
   const clientTemplates = templates.filter(t => t.client_id === formData.clientId);
 
   useEffect(() => {
