@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, CheckCircle, Clock, Calendar } from "lucide-react";
 import { MultiDayBookingEngine } from "@/components/calendar/MultiDayBookingEngine";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import type { Staff } from "@/types/staff";
 
 interface CapacityCheckerProps {
@@ -13,6 +13,14 @@ interface CapacityCheckerProps {
   projectHours: number;
   onCapacityChange: (hasCapacity: boolean, alternatives: Staff[]) => void;
   allStaff: Staff[];
+}
+
+interface DailyCapacity {
+  date: Date;
+  availableHours: number;
+  bookedHours: number;
+  timeOffHours: number;
+  totalAvailable: number;
 }
 
 export function CapacityChecker({ 
@@ -23,8 +31,9 @@ export function CapacityChecker({
 }: CapacityCheckerProps) {
   const [capacityInfo, setCapacityInfo] = useState<{
     hasCapacity: boolean;
-    availableHours: number;
-    nextAvailableDate: string | null;
+    weeklyAvailable: number;
+    weeklyTotal: number;
+    dailyBreakdown: DailyCapacity[];
     alternatives: Staff[];
     timeOffConflicts: any[];
   } | null>(null);
@@ -47,19 +56,11 @@ export function CapacityChecker({
     
     setLoading(true);
     try {
-      // Get next 7 days to check availability
       const today = new Date();
       const weekFromNow = new Date();
       weekFromNow.setDate(today.getDate() + 7);
 
-      // Check staff availability for the next week
-      const { data: availability, error: availError } = await supabase
-        .from('staff_availability')
-        .select('*')
-        .eq('staff_id', staffId)
-        .eq('is_available', true);
-
-      if (availError) throw availError;
+      console.log('Checking capacity for staff:', staffId, 'Project hours:', projectHours);
 
       // Get existing bookings for the next week
       const { data: bookings, error: bookingError } = await supabase
@@ -82,36 +83,61 @@ export function CapacityChecker({
 
       if (timeOffError) throw timeOffError;
 
-      // Calculate total available hours and booked hours
-      const totalAvailableHours = availability?.reduce((total, avail) => {
-        const startHour = parseInt(avail.start_time.split(':')[0]);
-        const endHour = parseInt(avail.end_time.split(':')[0]);
-        return total + (endHour - startHour) * 5; // Assuming 5 working days per week
-      }, 0) || 0;
+      console.log('Bookings found:', bookings);
+      console.log('Time off found:', timeOff);
 
-      const totalBookedHours = bookings?.reduce((total, booking) => {
-        return total + booking.hours_booked;
-      }, 0) || 0;
+      // Calculate daily capacity for each weekday
+      const dailyBreakdown: DailyCapacity[] = [];
+      let totalWeeklyAvailable = 0;
+      const standardDailyHours = 7; // 8 hours minus 1 hour lunch
+      const weeklyStandardHours = standardDailyHours * 5; // Monday to Friday
 
-      // Calculate hours lost due to time off
-      const timeOffHours = timeOff?.reduce((total, timeOffRecord) => {
-        if (timeOffRecord.is_full_day) {
-          // Calculate days between start and end date
-          const start = new Date(timeOffRecord.start_date);
-          const end = new Date(timeOffRecord.end_date);
-          const diffTime = Math.abs(end.getTime() - start.getTime());
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-          return total + (diffDays * 8); // Assuming 8 hour work days
-        } else if (timeOffRecord.start_time && timeOffRecord.end_time) {
-          const startHour = parseInt(timeOffRecord.start_time.split(':')[0]);
-          const endHour = parseInt(timeOffRecord.end_time.split(':')[0]);
-          return total + (endHour - startHour);
-        }
-        return total;
-      }, 0) || 0;
+      for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+        const currentDate = addDays(today, dayOffset);
+        const dayOfWeek = currentDate.getDay();
+        
+        // Skip weekends (Saturday = 6, Sunday = 0)
+        if (dayOfWeek === 0 || dayOfWeek === 6) continue;
 
-      const availableHours = totalAvailableHours - totalBookedHours - timeOffHours;
-      const hasCapacity = availableHours >= projectHours;
+        const dateStr = format(currentDate, 'yyyy-MM-dd');
+        
+        // Calculate booked hours for this specific day
+        const dayBookings = bookings?.filter(booking => booking.booking_date === dateStr) || [];
+        const bookedHours = dayBookings.reduce((total, booking) => total + booking.hours_booked, 0);
+
+        // Calculate time off hours for this specific day
+        const dayTimeOff = timeOff?.filter(timeOffRecord => {
+          const startDate = new Date(timeOffRecord.start_date);
+          const endDate = new Date(timeOffRecord.end_date);
+          return currentDate >= startDate && currentDate <= endDate;
+        }) || [];
+
+        const timeOffHours = dayTimeOff.reduce((total, timeOffRecord) => {
+          if (timeOffRecord.is_full_day) {
+            return total + standardDailyHours; // Full day off
+          } else if (timeOffRecord.start_time && timeOffRecord.end_time) {
+            const startHour = parseInt(timeOffRecord.start_time.split(':')[0]);
+            const endHour = parseInt(timeOffRecord.end_time.split(':')[0]);
+            return total + (endHour - startHour);
+          }
+          return total;
+        }, 0);
+
+        const totalAvailable = Math.max(0, standardDailyHours - bookedHours - timeOffHours);
+        totalWeeklyAvailable += totalAvailable;
+
+        dailyBreakdown.push({
+          date: currentDate,
+          availableHours: standardDailyHours,
+          bookedHours,
+          timeOffHours,
+          totalAvailable
+        });
+      }
+
+      const hasCapacity = totalWeeklyAvailable >= projectHours;
+
+      console.log('Total weekly available:', totalWeeklyAvailable, 'Project needs:', projectHours, 'Has capacity:', hasCapacity);
 
       // Find alternative staff if current one doesn't have capacity
       let alternatives: Staff[] = [];
@@ -125,8 +151,9 @@ export function CapacityChecker({
 
       const result = {
         hasCapacity,
-        availableHours,
-        nextAvailableDate: null,
+        weeklyAvailable: totalWeeklyAvailable,
+        weeklyTotal: weeklyStandardHours,
+        dailyBreakdown,
         alternatives,
         timeOffConflicts: timeOff || []
       };
@@ -163,14 +190,20 @@ export function CapacityChecker({
 
   return (
     <div className="space-y-2">
-      {/* Single Day Capacity Check */}
+      {/* Weekly Capacity Overview */}
       {capacityInfo && (
         <>
           {capacityInfo.hasCapacity ? (
             <Alert className="border-green-200 bg-green-50">
               <CheckCircle className="h-4 w-4 text-green-600" />
               <AlertDescription className="text-green-800">
-                Staff member has capacity ({capacityInfo.availableHours}h available)
+                <div className="space-y-1">
+                  <p>Staff member has sufficient capacity</p>
+                  <p className="text-sm">
+                    {capacityInfo.weeklyAvailable}h available this week out of {capacityInfo.weeklyTotal}h total
+                    (Need: {projectHours}h)
+                  </p>
+                </div>
               </AlertDescription>
             </Alert>
           ) : (
@@ -178,7 +211,24 @@ export function CapacityChecker({
               <AlertTriangle className="h-4 w-4 text-red-600" />
               <AlertDescription className="text-red-800">
                 <div className="space-y-2">
-                  <p>Staff member at capacity (only {capacityInfo.availableHours}h available, needs {projectHours}h)</p>
+                  <p>Insufficient capacity: Only {capacityInfo.weeklyAvailable}h available, needs {projectHours}h</p>
+                  
+                  {/* Daily Breakdown */}
+                  <div>
+                    <p className="font-medium text-sm">This week's breakdown:</p>
+                    <div className="grid grid-cols-1 gap-1 mt-1 text-xs">
+                      {capacityInfo.dailyBreakdown.map((day, index) => (
+                        <div key={index} className="flex justify-between">
+                          <span>{format(day.date, 'EEE MMM d')}:</span>
+                          <span className={day.totalAvailable > 0 ? "text-green-700" : "text-red-700"}>
+                            {day.totalAvailable}h available
+                            {day.bookedHours > 0 && ` (${day.bookedHours}h booked)`}
+                            {day.timeOffHours > 0 && ` (${day.timeOffHours}h time off)`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                   
                   {capacityInfo.timeOffConflicts.length > 0 && (
                     <div>
