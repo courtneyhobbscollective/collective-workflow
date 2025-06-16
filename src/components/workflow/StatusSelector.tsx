@@ -92,6 +92,9 @@ export function StatusSelector({
     
     // Create chase-up alert when email is sent
     await createChaseUpAlert(project.id);
+
+    // Update status to sent_to_client after opening the email client
+    onStatusChange("sent_to_client");
   };
 
   const canSelectReadyToSend = internalReviewCompleted && picterLink;
