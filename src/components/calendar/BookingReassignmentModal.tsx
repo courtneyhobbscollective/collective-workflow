@@ -184,11 +184,12 @@ export function BookingReassignmentModal({
 
             <div>
               <label className="text-sm font-medium mb-2 block">Reassign to Staff</label>
-              <Select value={selectedStaff} onValueChange={setSelectedStaff}>
+              <Select value={selectedStaff || "select-staff"} onValueChange={(value) => setSelectedStaff(value === "select-staff" ? "" : value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select staff member" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="select-staff">Select staff member</SelectItem>
                   {staff.map((member) => (
                     <SelectItem key={member.id} value={member.id}>
                       {member.name} - {member.role}
@@ -222,11 +223,12 @@ export function BookingReassignmentModal({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium mb-2 block">Start Time</label>
-                <Select value={startTime} onValueChange={setStartTime}>
+                <Select value={startTime || "select-start-time"} onValueChange={(value) => setStartTime(value === "select-start-time" ? "" : value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Start" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="select-start-time">Select start time</SelectItem>
                     {generateTimeSlots().map((time) => (
                       <SelectItem key={time} value={time}>
                         {time}
@@ -238,11 +240,12 @@ export function BookingReassignmentModal({
 
               <div>
                 <label className="text-sm font-medium mb-2 block">End Time</label>
-                <Select value={endTime} onValueChange={setEndTime}>
+                <Select value={endTime || "select-end-time"} onValueChange={(value) => setEndTime(value === "select-end-time" ? "" : value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="End" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="select-end-time">Select end time</SelectItem>
                     {generateTimeSlots().map((time) => (
                       <SelectItem key={time} value={time}>
                         {time}

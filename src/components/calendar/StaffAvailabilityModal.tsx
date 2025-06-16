@@ -184,11 +184,12 @@ export function StaffAvailabilityModal({
         <div className="space-y-4">
           <div>
             <Label>Select Staff Member</Label>
-            <Select value={selectedStaff} onValueChange={setSelectedStaff}>
+            <Select value={selectedStaff || "select-staff-member"} onValueChange={(value) => setSelectedStaff(value === "select-staff-member" ? "" : value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Choose staff member" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="select-staff-member">Choose staff member</SelectItem>
                 {staff.map((member) => (
                   <SelectItem key={member.id} value={member.id}>
                     {member.name} - {member.role}
