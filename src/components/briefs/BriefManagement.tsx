@@ -86,6 +86,7 @@ export function BriefManagement() {
     projectValue: "",
     treatAsOneoff: false,
     contractSigned: false,
+    poRequired: true, // Added poRequired to form data
   });
   const { toast } = useToast();
 
@@ -161,6 +162,7 @@ export function BriefManagement() {
       projectValue: template.project_value?.toString() || "",
       treatAsOneoff: false,
       contractSigned: false,
+      poRequired: true, // Default to true when loading from template, user can change
     });
     setSelectedTemplate(template.id);
   };
@@ -186,6 +188,7 @@ export function BriefManagement() {
         description: "",
         estimatedHours: "",
         projectValue: "",
+        poRequired: true, // Reset to default true
       }));
     } else {
       const template = templates.find(t => t.id === value);
@@ -222,7 +225,7 @@ export function BriefManagement() {
         is_retainer: selectedClient?.is_retainer || false,
         treat_as_oneoff: formData.treatAsOneoff,
         contract_signed: formData.contractSigned,
-        po_required: true,
+        po_required: formData.poRequired, // Use value from form data
       };
 
       const { error } = await supabase
@@ -244,6 +247,7 @@ export function BriefManagement() {
         projectValue: "",
         treatAsOneoff: false,
         contractSigned: false,
+        poRequired: true, // Reset to default true for next brief
       });
       setSelectedTemplate("");
       setShowForm(false);
@@ -491,6 +495,14 @@ export function BriefManagement() {
                       placeholder="Describe the project requirements..."
                       rows={4}
                     />
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="poRequired"
+                      checked={formData.poRequired}
+                      onCheckedChange={(checked) => setFormData({ ...formData, poRequired: checked })}
+                    />
+                    <Label htmlFor="poRequired">PO Required?</Label>
                   </div>
                   <div className="flex space-x-2">
                     <Button type="submit">Create Brief</Button>
