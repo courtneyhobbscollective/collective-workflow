@@ -98,8 +98,10 @@ export function IncomingBriefCard({
   return (
     <Accordion type="single" collapsible className="w-full">
       <AccordionItem value={project.id} className="border rounded-lg bg-white shadow-sm">
-        <AccordionTrigger className="px-4 py-4 hover:no-underline">
-          <div className="flex items-center justify-between w-full pr-2">
+        {/* This div now acts as the header, containing both the AccordionTrigger and the Popover */}
+        <div className="flex items-center justify-between w-full px-4 py-4 hover:bg-muted/50 transition-colors">
+          {/* AccordionTrigger now only contains the content that expands/collapses the accordion */}
+          <AccordionTrigger className="flex-1 text-left hover:no-underline p-0">
             <div className="flex flex-col items-start text-left space-y-2">
               <div className="flex items-center space-x-2">
                 <h3 className="font-semibold text-base">{project.title}</h3>
@@ -140,48 +142,49 @@ export function IncomingBriefCard({
                 )}
               </div>
             </div>
+          </AccordionTrigger>
 
-            <div className="flex items-center space-x-2">
-              {assignedStaff ? (
-                <div className="flex items-center space-x-2 bg-blue-50 px-2 py-1 rounded">
-                  <Avatar className="w-6 h-6">
-                    <AvatarImage src={assignedStaff.profile_picture_url || undefined} />
-                    <AvatarFallback className="text-xs">
-                      {assignedStaff.name.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-xs font-medium">{assignedStaff.name}</span>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-1 text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                  <User className="w-4 h-4" />
-                  <span className="text-xs font-medium">Unassigned</span>
-                </div>
-              )}
-              {/* Project Status Section - Moved here */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Badge 
-                    className={`cursor-pointer ${getStatusColor(project.stage_status || 'in_progress')}`}
-                  >
-                    {formatStatusLabel(project.stage_status || 'in_progress')}
-                  </Badge>
-                </PopoverTrigger>
-                <PopoverContent className="w-48 p-0">
-                  <StatusSelector
-                    currentStage={project.current_stage}
-                    currentStatus={project.stage_status || 'in_progress'}
-                    internalReviewCompleted={project.internal_review_completed || false}
-                    picterLink={project.picter_link}
-                    onStatusChange={handleStatusChange}
-                    onEmailClient={handleEmailClient}
-                    project={project}
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+          {/* This div contains the assigned staff and the status badge, now outside the AccordionTrigger */}
+          <div className="flex items-center space-x-2 ml-4">
+            {assignedStaff ? (
+              <div className="flex items-center space-x-2 bg-blue-50 px-2 py-1 rounded">
+                <Avatar className="w-6 h-6">
+                  <AvatarImage src={assignedStaff.profile_picture_url || undefined} />
+                  <AvatarFallback className="text-xs">
+                    {assignedStaff.name.split(' ').map(n => n[0]).join('')}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-xs font-medium">{assignedStaff.name}</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-1 text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                <User className="w-4 h-4" />
+                <span className="text-xs font-medium">Unassigned</span>
+              </div>
+            )}
+            {/* Project Status Section - Moved here */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Badge 
+                  className={`cursor-pointer ${getStatusColor(project.stage_status || 'in_progress')}`}
+                >
+                  {formatStatusLabel(project.stage_status || 'in_progress')}
+                </Badge>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-0">
+                <StatusSelector
+                  currentStage={project.current_stage}
+                  currentStatus={project.stage_status || 'in_progress'}
+                  internalReviewCompleted={project.internal_review_completed || false}
+                  picterLink={project.picter_link}
+                  onStatusChange={handleStatusChange}
+                  onEmailClient={handleEmailClient}
+                  project={project}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
-        </AccordionTrigger>
+        </div>
         
         <AccordionContent className="px-4 pb-4">
           <div className="space-y-4">
