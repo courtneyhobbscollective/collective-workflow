@@ -14,7 +14,8 @@ import { ProjectStaffSection } from "../ProjectStaffSection";
 import { ProjectCardActions } from "../ProjectCardActions";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button"; // Import Button component
+import { Button } from "@/components/ui/button";
+import { Link } from "lucide-react"; // Import Link icon
 import type { Staff } from "@/types/staff";
 
 interface ProjectStage {
@@ -182,20 +183,27 @@ export function ProjectCardMain({
               <p className="text-xs">Est. Hours: {project.estimated_hours}</p>
             )}
 
+            {/* Picter Link Display */}
+            {project.picter_link && (
+              <div className="flex items-center space-x-1 text-xs text-blue-600 hover:underline">
+                <Link className="w-3 h-3" />
+                <a href={project.picter_link} target="_blank" rel="noopener noreferrer">
+                  View Picter Link
+                </a>
+              </div>
+            )}
+
             {/* Stage Status Selector */}
             {project.current_stage !== 'incoming' && (
               <div className="space-y-1">
                 <label className="text-xs font-medium">Status:</label>
                 <Popover>
-                  <PopoverTrigger asChild={false}> {/* Temporarily set asChild to false */}
-                    <Button
-                      variant="ghost" // Use ghost variant to make it look like a badge
-                      size="sm"
-                      className={`h-auto px-2 py-1 rounded-md text-xs ${getStatusColor(project.stage_status || 'in_progress')}`}
-                      onClick={() => console.log('Button clicked for project:', project.id)}
+                  <PopoverTrigger asChild>
+                    <Badge
+                      className={`cursor-pointer ${getStatusColor(project.stage_status || 'in_progress')}`}
                     >
                       {formatStatusLabel(project.stage_status || 'in_progress')}
-                    </Button>
+                    </Badge>
                   </PopoverTrigger>
                   <PopoverContent className="w-48 p-0 z-50">
                     <StatusSelector
