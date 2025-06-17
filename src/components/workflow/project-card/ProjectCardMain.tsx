@@ -15,7 +15,7 @@ import { ProjectCardActions } from "../ProjectCardActions";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Link } from "lucide-react"; // Import Link icon
+import { Link, Edit2 } from "lucide-react"; // Import Link and Edit2 icons
 import type { Staff } from "@/types/staff";
 
 interface ProjectStage {
@@ -183,13 +183,21 @@ export function ProjectCardMain({
               <p className="text-xs">Est. Hours: {project.estimated_hours}</p>
             )}
 
-            {/* Picter Link Display */}
+            {/* Picter Link Display with Edit Icon */}
             {project.picter_link && (
-              <div className="flex items-center space-x-1 text-xs text-blue-600 hover:underline">
+              <div className="flex items-center space-x-1 text-xs text-blue-600">
                 <Link className="w-3 h-3" />
-                <a href={project.picter_link} target="_blank" rel="noopener noreferrer">
+                <a href={project.picter_link} target="_blank" rel="noopener noreferrer" className="hover:underline">
                   View Picter Link
                 </a>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-5 w-5 p-0 ml-1"
+                  onClick={() => setPicterModalOpen(true)}
+                >
+                  <Edit2 className="w-3 h-3" />
+                </Button>
               </div>
             )}
 
