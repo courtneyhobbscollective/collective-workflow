@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Plus, UserPlus, Edit } from "lucide-react";
+import { Plus, UserPlus, Edit, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { CreateClientUserModal } from "./CreateClientUserModal"; // New import
+import { CreateClientUserModal } from "./CreateClientUserModal";
+import { ResendPasswordModal } from "./ResendPasswordModal"; // New import
 
 interface Client {
   id: string;
@@ -42,13 +43,15 @@ export function ClientManagement() {
     is_retainer: false,
   });
   const { toast } = useToast();
-  const [clientProfiles, setClientProfiles] = useState<ClientProfile[]>([]); // New state
-  const [showCreateUserModal, setShowCreateUserModal] = useState(false); // New state
-  const [selectedClientForUserCreation, setSelectedClientForUserCreation] = useState<Client | null>(null); // New state
+  const [clientProfiles, setClientProfiles] = useState<ClientProfile[]>([]);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [selectedClientForUserCreation, setSelectedClientForUserCreation] = useState<Client | null>(null);
+  const [showResendPasswordModal, setShowResendPasswordModal] = useState(false); // New state
+  const [selectedClientForPasswordReset, setSelectedClientForPasswordReset] = useState<Client | null>(null); // New state
 
   useEffect(() => {
     loadClients();
-    loadClientProfiles(); // Load client profiles on mount
+    loadClientProfiles();
   }, []);
 
   const loadClients = async () => {
@@ -75,12 +78,10 @@ export function ClientManagement() {
 
   const loadClientProfiles = async () => {
     try {
-      // Simplified select to avoid RLS issues with auth.users
       const { data, error } = await supabase
         .from('client_profiles')
         .select('client_id, user_id'); 
       if (error) throw error;
-      console.log("Client Profiles Data:", data); // Keep for debugging if needed
       setClientProfiles(data || []);
     } catch (error) {
       console.error('Error loading client profiles:', error);
@@ -128,7 +129,6 @@ export function ClientManagement() {
 
     try {
       if (editingClient) {
-        // Update existing client
         const { error } = await supabase
           .from('clients')
           .update(formData)
@@ -141,7 +141,6 @@ export function ClientManagement() {
           description: "Client updated successfully",
         });
       } else {
-        // Create new client
         const { error } = await supabase
           .from('clients')
           .insert([formData]);
@@ -156,7 +155,7 @@ export function ClientManagement() {
 
       resetForm();
       await loadClients();
-      await loadClientProfiles(); // Reload profiles after client changes
+      await loadClientProfiles();
       
     } catch (error) {
       console.error('Error saving client:', error);
@@ -174,9 +173,14 @@ export function ClientManagement() {
   };
 
   const handleUserCreated = () => {
-    loadClientProfiles(); // Reload profiles to update button state
+    loadClientProfiles();
     setShowCreateUserModal(false);
     setSelectedClientForUserCreation(null);
+  };
+
+  const handleResendPasswordClick = (client: Client) => {
+    setSelectedClientForPasswordReset(client);
+    setShowResendPasswordModal(true);
   };
 
   if (loading) {
@@ -287,9 +291,8 @@ export function ClientManagement() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {clients.map((client) => {
-          // Check if a client profile exists for this client_id
           const clientUser = clientProfiles.find(profile => profile.client_id === client.id);
-          const hasUser = !!clientUser; // True if a profile exists
+          const hasUser = !!clientUser;
           
           return (
             <Card key={client.id}>
@@ -326,10 +329,20 @@ export function ClientManagement() {
                     </div>
                   )}
                   {hasUser ? (
-                    <div className="p-2 bg-green-50 border border-green-200 rounded-md text-sm">
-                      <p className="font-medium text-green-800">Client User Created</p>
-                      {/* We no longer fetch the email here, so we can't display it */}
-                      <p className="text-xs text-green-600 mt-1">A user account is linked to this client.</p>
+                    <div className="space-y-2">
+                      <div className="p-2 bg-green-50 border border-green-200 rounded-md text-sm">
+                        <p className="font-medium text-green-800">Client User Created</p>
+                        <p className="text-xs text-green-600 mt-1">A user account is linked to this client.</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => handleResendPasswordClick(client)}
+                      >
+                        <Mail className="w-4 h-4 mr-2" />
+                        Resend Password
+                      </Button>
                     </div>
                   ) : (
                     <Button
@@ -354,6 +367,14 @@ export function ClientManagement() {
           onClose={() => setShowCreateUserModal(false)}
           client={selectedClientForUserCreation}
           onUserCreated={handleUserCreated}
+        />
+      )}
+
+      {selectedClientForPasswordReset && (
+        <ResendPasswordModal
+          isOpen={showResendPasswordModal}
+          onClose={() => setShowResendPasswordModal(false)}
+          clientEmail={selectedClientForPasswordReset.email}
         />
       )}
     </div>
