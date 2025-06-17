@@ -14,6 +14,7 @@ import { ProjectStaffSection } from "../ProjectStaffSection";
 import { ProjectCardActions } from "../ProjectCardActions";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button"; // Import Button component
 import type { Staff } from "@/types/staff";
 
 interface ProjectStage {
@@ -186,12 +187,15 @@ export function ProjectCardMain({
               <div className="space-y-1">
                 <label className="text-xs font-medium">Status:</label>
                 <Popover>
-                  <PopoverTrigger asChild>
-                    <Badge 
-                      className={`cursor-pointer ${getStatusColor(project.stage_status || 'in_progress')}`}
+                  <PopoverTrigger asChild={false}> {/* Temporarily set asChild to false */}
+                    <Button
+                      variant="ghost" // Use ghost variant to make it look like a badge
+                      size="sm"
+                      className={`h-auto px-2 py-1 rounded-md text-xs ${getStatusColor(project.stage_status || 'in_progress')}`}
+                      onClick={() => console.log('Button clicked for project:', project.id)}
                     >
                       {formatStatusLabel(project.stage_status || 'in_progress')}
-                    </Badge>
+                    </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-48 p-0 z-50">
                     <StatusSelector
