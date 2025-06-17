@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } = "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -24,6 +24,9 @@ interface Client {
 interface ClientProfile {
   user_id: string;
   client_id: string;
+  user: { // Added user object to ClientProfile interface
+    email: string;
+  } | null;
 }
 
 export function ClientManagement() {
@@ -76,7 +79,10 @@ export function ClientManagement() {
     try {
       const { data, error } = await supabase
         .from('client_profiles')
-        .select('*');
+        .select(`
+          *,
+          user:auth.users(email)
+        `); // Fetch user email
       if (error) throw error;
       setClientProfiles(data || []);
     } catch (error) {
@@ -284,7 +290,9 @@ export function ClientManagement() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {clients.map((client) => {
-          const hasUser = clientProfiles.some(profile => profile.client_id === client.id);
+          const clientUser = clientProfiles.find(profile => profile.client_id === client.id);
+          const hasUser = !!clientUser;
+          
           return (
             <Card key={client.id}>
               <CardHeader>
@@ -319,14 +327,22 @@ export function ClientManagement() {
                       <p className="text-sm font-medium text-blue-800">Project Client</p>
                     </div>
                   )}
-                  <Button
-                    size="sm"
-                    className="w-full mt-2"
-                    onClick={() => handleCreateUserClick(client)}
-                    disabled={hasUser}
-                  >
-                    {hasUser ? "Client User Exists" : "Create Client User"}
-                  </Button>
+                  {hasUser ? (
+                    <div className="p-2 bg-green-50 border border-green-200 rounded-md text-sm">
+                      <p className="font-medium text-green-800">Client User Created:</p>
+                      <p className="text-green-700">{clientUser?.user?.email}</p>
+                      <p className="text-xs text-green-600 mt-1">Password was set during creation.</p>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="w-full mt-2"
+                      onClick={() => handleCreateUserClick(client)}
+                      disabled={hasUser}
+                    >
+                      Create Client User
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
