@@ -40,6 +40,7 @@ interface Project {
 }
 
 export function ClientDashboardPage() {
+  console.log("ClientDashboardPage component rendering...");
   const { user, clientProfile } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
