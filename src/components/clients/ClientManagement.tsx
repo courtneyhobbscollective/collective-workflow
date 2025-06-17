@@ -24,9 +24,7 @@ interface Client {
 interface ClientProfile {
   user_id: string;
   client_id: string;
-  user: { // Added user object to ClientProfile interface
-    email: string;
-  } | null;
+  // Removed 'user' object as it's not needed for this check and causes RLS issues
 }
 
 export function ClientManagement() {
@@ -77,14 +75,12 @@ export function ClientManagement() {
 
   const loadClientProfiles = async () => {
     try {
+      // Simplified select to avoid RLS issues with auth.users
       const { data, error } = await supabase
         .from('client_profiles')
-        .select(`
-          *,
-          user:auth.users(email)
-        `); // Fetch user email
+        .select('client_id, user_id'); 
       if (error) throw error;
-      console.log("Client Profiles Data:", data); // <--- Added this console.log
+      console.log("Client Profiles Data:", data); // Keep for debugging if needed
       setClientProfiles(data || []);
     } catch (error) {
       console.error('Error loading client profiles:', error);
@@ -291,8 +287,9 @@ export function ClientManagement() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {clients.map((client) => {
+          // Check if a client profile exists for this client_id
           const clientUser = clientProfiles.find(profile => profile.client_id === client.id);
-          const hasUser = !!clientUser;
+          const hasUser = !!clientUser; // True if a profile exists
           
           return (
             <Card key={client.id}>
@@ -330,9 +327,9 @@ export function ClientManagement() {
                   )}
                   {hasUser ? (
                     <div className="p-2 bg-green-50 border border-green-200 rounded-md text-sm">
-                      <p className="font-medium text-green-800">Client User Created:</p>
-                      <p className="text-green-700">{clientUser?.user?.email}</p>
-                      <p className="text-xs text-green-600 mt-1">Password was set during creation.</p>
+                      <p className="font-medium text-green-800">Client User Created</p>
+                      {/* We no longer fetch the email here, so we can't display it */}
+                      <p className="text-xs text-green-600 mt-1">A user account is linked to this client.</p>
                     </div>
                   ) : (
                     <Button
