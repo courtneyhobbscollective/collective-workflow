@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { WorkflowBoard } from "@/components/workflow/WorkflowBoard";
@@ -15,9 +14,15 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
-  const { staff } = useAuth();
+  const { staff, clientProfile } = useAuth(); // Get clientProfile as well
 
   const renderContent = () => {
+    // If it's a client, they should be redirected by ProtectedRoute,
+    // but as a fallback, ensure they don't see staff dashboard.
+    if (clientProfile) {
+      return <p className="text-center text-muted-foreground py-8">Access Denied: Please use your client dashboard.</p>;
+    }
+
     // Show staff dashboard for Staff role, full dashboard for Admin
     if (activeTab === "dashboard") {
       return staff?.role === "Staff" ? <StaffDashboard /> : <Dashboard />;

@@ -4,11 +4,11 @@ import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'Admin' | 'Staff' | 'Client'; // Added 'Client' role
+  requiredRole?: 'Admin' | 'Staff' | 'Client';
 }
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { user, staff, loading } = useAuth();
+  const { user, staff, clientProfile, loading } = useAuth();
 
   if (loading) {
     return (
@@ -18,26 +18,25 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     );
   }
 
+  // If no user is logged in, redirect to appropriate login page
   if (!user) {
-    // If no user, redirect to staff login by default, or client login if requiredRole is Client
     return <Navigate to={requiredRole === "Client" ? "/client-auth" : "/auth"} replace />;
   }
 
-  // If a specific role is required
-  if (requiredRole) {
-    if (requiredRole === "Client") {
-      // For client role, check if user is linked to a client_profile
-      // This requires fetching the client_profile, which useAuth doesn't currently do.
-      // For now, we'll assume if requiredRole is 'Client' and user exists, it's a client.
-      // A more robust solution would involve fetching client_profile in AuthContext.
-      // For this step, we'll just allow if user exists and requiredRole is Client.
-      // We'll refine this in the next steps when we build the client dashboard.
-      // For now, if user exists and requiredRole is Client, allow access.
-      // The ClientAuthPage already checks for client_profile association.
+  // User is logged in, now check roles and required access
+  if (requiredRole === "Client") {
+    // If this route requires a client role, check if clientProfile exists
+    if (clientProfile) {
       return <>{children}</>;
     } else {
-      // For Admin/Staff roles, check staff object
-      if (!staff || staff.role !== requiredRole) {
+      // User is logged in but not a client, redirect to staff login or access denied
+      return <Navigate to="/auth" replace />; // Or show an access denied message
+    }
+  } else {
+    // This route requires Admin/Staff role, or no specific role (like the root '/')
+    if (staff) {
+      // If a specific staff role is required, check it
+      if (requiredRole && staff.role !== requiredRole && requiredRole !== 'Staff') { // 'Staff' role covers both Admin and regular Staff for general access
         return (
           <div className="min-h-screen flex items-center justify-center">
             <div className="text-center">
@@ -47,8 +46,16 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
           </div>
         );
       }
+      // Staff user is authorized for this route
+      return <>{children}</>;
+    } else if (clientProfile) {
+      // User is a client, but trying to access a non-client route (e.g., '/')
+      // Redirect them to their client dashboard
+      return <Navigate to="/client-dashboard" replace />;
+    } else {
+      // User is logged in but has neither a staff nor a client profile (unassigned or new user)
+      // Redirect to staff login for now, or a dedicated onboarding page
+      return <Navigate to="/auth" replace />;
     }
   }
-
-  return <>{children}</>;
 }
