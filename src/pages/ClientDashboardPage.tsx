@@ -140,112 +140,112 @@ export function ClientDashboardPage() {
 
   console.log("ClientDashboardPage returning JSX...");
   return (
-    <div className="space-y-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <h2 className="text-4xl font-extrabold text-gray-900 tracking-tight">
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <h2 className="text-3xl font-bold text-foreground">
           Welcome, {clientProfile.client.name} from {clientProfile.client.company}!
         </h2>
         <Button 
           onClick={() => setShowBriefFormModal(true)} 
-          className="px-8 py-4 text-lg font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200"
+          size="lg"
         >
-          <Plus className="w-6 h-6 mr-3" />
+          <Plus className="w-4 h-4 mr-2" />
           Submit New Brief
         </Button>
       </div>
       
       <Tabs defaultValue="projects" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 bg-white border border-gray-200 rounded-xl shadow-sm p-1">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger 
             value="projects" 
-            className="data-[state=active]:bg-gray-50 data-[state=active]:shadow-inner data-[state=active]:text-gray-900 rounded-lg transition-all duration-200 py-3 text-base font-medium"
+            className="py-2 text-sm font-medium"
           >
-            <FileText className="w-5 h-5 mr-2" />
+            <FileText className="w-4 h-4 mr-2" />
             Your Projects
           </TabsTrigger>
           <TabsTrigger 
             value="chat" 
-            className="data-[state=active]:bg-gray-50 data-[state=active]:shadow-inner data-[state=active]:text-gray-900 rounded-lg transition-all duration-200 py-3 text-base font-medium"
+            className="py-2 text-sm font-medium"
           >
-            <MessageSquare className="w-5 h-5 mr-2" />
+            <MessageSquare className="w-4 h-4 mr-2" />
             Client Chat
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="projects" className="space-y-8 mt-8">
-          <p className="text-xl text-gray-800 font-semibold">Here are your current live projects:</p>
+        <TabsContent value="projects" className="space-y-4 mt-4">
+          <p className="text-muted-foreground">Here are your current live projects:</p>
           {projects.length === 0 ? (
-            <Card className="shadow-lg border-dashed border-2 border-gray-300 bg-gray-50 rounded-2xl">
-              <CardContent className="p-10 text-center text-muted-foreground">
-                <FileText className="mx-auto h-20 w-20 mb-8 opacity-50 text-gray-400" />
-                <p className="text-2xl font-bold mb-3">You currently have no active projects.</p>
-                <p className="text-lg">New projects will appear here once they begin.</p>
+            <Card className="shadow-sm border border-gray-200 bg-gray-50 rounded-lg">
+              <CardContent className="p-6 text-center text-muted-foreground">
+                <FileText className="mx-auto h-12 w-12 mb-4 opacity-50" />
+                <p className="text-lg font-bold mb-2">You currently have no active projects.</p>
+                <p className="text-sm">New projects will appear here once they begin.</p>
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {projects.map((project) => (
                 <Accordion key={project.id} type="single" collapsible className="w-full">
-                  <AccordionItem value={project.id} className="border border-gray-200 rounded-2xl bg-white shadow-lg hover:shadow-xl transition-shadow duration-200">
-                    <AccordionTrigger className="flex-1 text-left hover:no-underline p-6">
-                      <div className="flex flex-col items-start text-left space-y-2">
-                        <h3 className="font-bold text-xl text-gray-900">{project.title}</h3>
-                        <div className="flex items-center space-x-4 text-base text-gray-600">
+                  <AccordionItem value={project.id} className="border rounded-lg bg-white shadow-sm">
+                    <AccordionTrigger className="flex-1 text-left hover:no-underline p-4">
+                      <div className="flex flex-col items-start text-left space-y-1">
+                        <h3 className="font-medium text-base">{project.title}</h3>
+                        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                           <span className="font-medium">{project.work_type}</span>
                           {project.due_date && (
                             <>
                               <span className="text-sm">•</span>
-                              <div className="flex items-center space-x-2">
-                                <Clock className="w-5 h-5" />
+                              <div className="flex items-center space-x-1">
+                                <Clock className="w-4 h-4" />
                                 <span>Due: {format(new Date(project.due_date), 'MMM d, yyyy')}</span>
                               </div>
                             </>
                           )}
                         </div>
                       </div>
-                      <Badge className={`${getStatusColor(project.stage_status)} px-4 py-2 text-base font-semibold rounded-full`}>
+                      <Badge className={`${getStatusColor(project.stage_status)} text-xs`}>
                         {project.project_stages?.name || 'N/A'}
                       </Badge>
                     </AccordionTrigger>
-                    <AccordionContent className="px-6 pb-6">
-                      <div className="space-y-5 text-lg">
+                    <AccordionContent className="px-4 pb-4">
+                      <div className="space-y-3 text-sm">
                         {project.description && (
                           <div>
-                            <p className="font-semibold text-gray-800">Description:</p>
-                            <p className="text-gray-700">{project.description}</p>
+                            <p className="font-medium text-sm">Description:</p>
+                            <p className="text-muted-foreground">{project.description}</p>
                           </div>
                         )}
-                        <div className="grid grid-cols-2 gap-6">
+                        <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <p className="font-semibold text-gray-800">Current Stage:</p>
-                            <p className="text-gray-700">{project.project_stages?.name || 'N/A'}</p>
+                            <p className="font-medium text-sm">Current Stage:</p>
+                            <p className="text-muted-foreground">{project.project_stages?.name || 'N/A'}</p>
                           </div>
                           <div>
-                            <p className="font-semibold text-gray-800">Stage Status:</p>
-                            <p className="text-gray-700">{formatStageStatusLabel(project.stage_status)}</p>
+                            <p className="font-medium text-sm">Stage Status:</p>
+                            <p className="text-muted-foreground">{formatStageStatusLabel(project.stage_status)}</p>
                           </div>
                           {project.deliverables && (
                             <div>
-                              <p className="font-semibold text-gray-800">Deliverables:</p>
-                              <p className="text-gray-700">{project.deliverables}</p>
+                              <p className="font-medium text-sm">Deliverables:</p>
+                              <p className="text-muted-foreground">{project.deliverables}</p>
                             </div>
                           )}
                           {project.estimated_hours && (
                             <div>
-                              <p className="font-semibold text-gray-800">Estimated Hours:</p>
-                              <p className="text-gray-700">{project.estimated_hours}h</p>
+                              <p className="font-medium text-sm">Estimated Hours:</p>
+                              <p className="text-muted-foreground">{project.estimated_hours}h</p>
                             </div>
                           )}
                           {project.project_value && (
                             <div>
-                              <p className="font-semibold text-gray-800">Project Value:</p>
-                              <p className="text-gray-700">£{project.project_value.toLocaleString()}</p>
+                              <p className="font-medium text-sm">Project Value:</p>
+                              <p className="text-muted-foreground">£{project.project_value.toLocaleString()}</p>
                             </div>
                           )}
                         </div>
                         {project.picter_link && (
                           <div>
-                            <p className="font-semibold text-gray-800">Picter Link:</p>
+                            <p className="font-medium text-sm">Picter Link:</p>
                             <a 
                               href={project.picter_link} 
                               target="_blank" 
