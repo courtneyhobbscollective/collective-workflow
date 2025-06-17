@@ -41,16 +41,23 @@ export function PasswordSetupPage() {
   const accessToken = searchParams.get('access_token'); // For password reset
 
   useEffect(() => {
+    console.log('PasswordSetupPage useEffect triggered');
+    console.log('Current URL:', window.location.href);
+    console.log('searchParams:', Array.from(searchParams.entries()));
+    console.log('token (from searchParams):', token);
+    console.log('type (from searchParams):', type);
+    console.log('accessToken (from searchParams):', accessToken);
+
     if (type === 'recovery' && accessToken) {
-      // Handle password reset flow
+      console.log('Handling recovery flow: type and accessToken found.');
       setValidating(false); // No need to validate invitation via RPC
       setInvitation(null); // Ensure no invitation data is used
       setValidationError(null); // Clear any previous validation errors
     } else if (token) {
-      // Handle staff invitation flow
+      console.log('Handling invitation flow: token found.');
       validateToken();
     } else {
-      console.log('No token or recovery type provided in URL');
+      console.log('No valid token or recovery type provided in URL, setting validation error.');
       setValidationError('No valid token or recovery link provided.');
       setValidating(false);
     }
@@ -175,7 +182,7 @@ export function PasswordSetupPage() {
           .eq('id', invitation.staff_id);
 
         if (updateStaffError) {
-          console.error('Error updating staff status:', updateStaffError);
+          console.error('Error updating staff status:', updateStaff);
         }
 
         toast({
