@@ -9,7 +9,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { format } from "date-fns";
 import { Clock, FileText, Plus, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } => "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ClientBriefSubmissionForm } from "@/components/clients/ClientBriefSubmissionForm";
 import { ClientChatInterface } from "@/components/clients/ClientChatInterface";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -164,7 +164,7 @@ export function ClientDashboardPage() {
           </TabsTrigger>
           <TabsTrigger 
             value="chat" 
-            className="data-[state=active]:bg-gray-50 data-[state=active]:shadow-inner data-[state=active]:text-gray-900 rounded-lg transition-all duration-200 py-3 text-base font-medium" {/* Softer active state, larger text */}
+            className="data-[state=active]:bg-gray-50 data-[state=active]:shadow-inner data-[state=active]:active:text-gray-900 rounded-lg transition-all duration-200 py-3 text-base font-medium" {/* Softer active state, larger text */}
           >
             <MessageSquare className="w-5 h-5 mr-2" /> {/* Larger icon */}
             Client Chat
