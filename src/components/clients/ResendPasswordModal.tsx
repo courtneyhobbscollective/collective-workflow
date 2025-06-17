@@ -32,9 +32,9 @@ export function ResendPasswordModal({ isOpen, onClose, clientEmail }: ResendPass
     setLoading(true);
     try {
       // Supabase will send a password reset email to this address
-      // The user will be redirected to /reset-password after clicking the link in the email
+      // The user will be redirected to /setup-password after clicking the link in the email
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}/setup-password`, // Changed from /reset-password
       });
 
       if (error) {
