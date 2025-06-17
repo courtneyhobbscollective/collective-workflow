@@ -84,6 +84,7 @@ export function ClientManagement() {
           user:auth.users(email)
         `); // Fetch user email
       if (error) throw error;
+      console.log("Client Profiles Data:", data); // <--- Added this console.log
       setClientProfiles(data || []);
     } catch (error) {
       console.error('Error loading client profiles:', error);
