@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, UserPlus, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { CreateClientUserModal } from "./CreateClientUserModal"; // New import
 
 interface Client {
   id: string;
@@ -19,6 +19,11 @@ interface Client {
   address: string;
   is_retainer: boolean;
   is_active: boolean;
+}
+
+interface ClientProfile {
+  user_id: string;
+  client_id: string;
 }
 
 export function ClientManagement() {
@@ -36,9 +41,13 @@ export function ClientManagement() {
     is_retainer: false,
   });
   const { toast } = useToast();
+  const [clientProfiles, setClientProfiles] = useState<ClientProfile[]>([]); // New state
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false); // New state
+  const [selectedClientForUserCreation, setSelectedClientForUserCreation] = useState<Client | null>(null); // New state
 
   useEffect(() => {
     loadClients();
+    loadClientProfiles(); // Load client profiles on mount
   }, []);
 
   const loadClients = async () => {
@@ -60,6 +69,18 @@ export function ClientManagement() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadClientProfiles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('client_profiles')
+        .select('*');
+      if (error) throw error;
+      setClientProfiles(data || []);
+    } catch (error) {
+      console.error('Error loading client profiles:', error);
     }
   };
 
@@ -132,6 +153,7 @@ export function ClientManagement() {
 
       resetForm();
       await loadClients();
+      await loadClientProfiles(); // Reload profiles after client changes
       
     } catch (error) {
       console.error('Error saving client:', error);
@@ -141,6 +163,17 @@ export function ClientManagement() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleCreateUserClick = (client: Client) => {
+    setSelectedClientForUserCreation(client);
+    setShowCreateUserModal(true);
+  };
+
+  const handleUserCreated = () => {
+    loadClientProfiles(); // Reload profiles to update button state
+    setShowCreateUserModal(false);
+    setSelectedClientForUserCreation(null);
   };
 
   if (loading) {
@@ -250,45 +283,65 @@ export function ClientManagement() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {clients.map((client) => (
-          <Card key={client.id}>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <UserPlus className="w-5 h-5" />
-                  <span>{client.name}</span>
+        {clients.map((client) => {
+          const hasUser = clientProfiles.some(profile => profile.client_id === client.id);
+          return (
+            <Card key={client.id}>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <UserPlus className="w-5 h-5" />
+                    <span>{client.name}</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleEdit(client)}
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">{client.company}</p>
+                  <p className="text-sm text-muted-foreground">{client.email}</p>
+                  <p className="text-sm text-muted-foreground">{client.phone}</p>
+                  {client.contact_person && (
+                    <p className="text-sm text-muted-foreground">Contact: {client.contact_person}</p>
+                  )}
+                  {client.is_retainer ? (
+                    <div className="p-2 bg-green-50 rounded-md">
+                      <p className="text-sm font-medium text-green-800">Retainer Client</p>
+                    </div>
+                  ) : (
+                    <div className="p-2 bg-blue-50 rounded-md">
+                      <p className="text-sm font-medium text-blue-800">Project Client</p>
+                    </div>
+                  )}
+                  <Button
+                    size="sm"
+                    className="w-full mt-2"
+                    onClick={() => handleCreateUserClick(client)}
+                    disabled={hasUser}
+                  >
+                    {hasUser ? "Client User Exists" : "Create Client User"}
+                  </Button>
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleEdit(client)}
-                >
-                  <Edit className="w-4 h-4" />
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <p className="text-sm font-medium">{client.company}</p>
-                <p className="text-sm text-muted-foreground">{client.email}</p>
-                <p className="text-sm text-muted-foreground">{client.phone}</p>
-                {client.contact_person && (
-                  <p className="text-sm text-muted-foreground">Contact: {client.contact_person}</p>
-                )}
-                {client.is_retainer ? (
-                  <div className="p-2 bg-green-50 rounded-md">
-                    <p className="text-sm font-medium text-green-800">Retainer Client</p>
-                  </div>
-                ) : (
-                  <div className="p-2 bg-blue-50 rounded-md">
-                    <p className="text-sm font-medium text-blue-800">Project Client</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
+
+      {selectedClientForUserCreation && (
+        <CreateClientUserModal
+          isOpen={showCreateUserModal}
+          onClose={() => setShowCreateUserModal(false)}
+          client={selectedClientForUserCreation}
+          onUserCreated={handleUserCreated}
+        />
+      )}
     </div>
   );
 }
