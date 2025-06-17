@@ -8,7 +8,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   staff: Staff | null;
-  clientProfile: { client_id: string; client: { company: string; name: string; } } | null; // Added clientProfile
+  clientProfile: { client_id: string; client: { company: string; name: string; } } | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [staff, setStaff] = useState<Staff | null>(null);
-  const [clientProfile, setClientProfile] = useState<{ client_id: string; client: { company: string; name: string; } } | null>(null); // Added clientProfile state
+  const [clientProfile, setClientProfile] = useState<{ client_id: string; client: { company: string; name: string; } } | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -47,14 +47,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (profileError && profileError.code !== 'PGRST116') { // PGRST116 means no rows found
         console.error('Error loading staff profile:', profileError);
-        // Don't throw, try to load client profile next
       }
 
       if (profile?.staff) {
         setStaff(profile.staff as Staff);
-        setClientProfile(null); // Ensure clientProfile is null if staff
+        setClientProfile(null);
       } else {
-        setStaff(null); // Ensure staff is null if not found
+        setStaff(null);
 
         // If not staff, attempt to load client profile
         const { data: clientProfileData, error: clientProfileError } = await supabase
@@ -79,16 +78,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Set up auth state listener
+    // This useEffect should be the primary source of truth for auth state changes.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Load user profile when logged in
         if (session?.user) {
+          // Only load profile if user is present
           await loadUserProfile();
         } else {
+          // Clear profiles if user is null (signed out)
           setStaff(null);
           setClientProfile(null);
         }
@@ -97,12 +97,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // Check for existing session
+    // Initial check for existing session on mount
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
+        // Load profile if session exists on initial load
         await loadUserProfile();
       }
       
@@ -110,14 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
-
-  // Re-load profile if user changes (e.g., after signup/login)
-  useEffect(() => {
-    if (user) {
-      loadUserProfile();
-    }
-  }, [user]);
+  }, []); // This useEffect runs only once on mount.
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -192,7 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setSession(null);
       setStaff(null);
-      setClientProfile(null); // Clear client profile on sign out
+      setClientProfile(null);
       toast({
         title: "Success",
         description: "Signed out successfully",
@@ -205,7 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       session,
       staff,
-      clientProfile, // Provide clientProfile
+      clientProfile,
       loading,
       signIn,
       signOut,
