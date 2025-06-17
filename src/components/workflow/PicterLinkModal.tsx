@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,12 @@ export function PicterLinkModal({ isOpen, onClose, onSubmit, currentLink }: Pict
 
   const handleSubmit = () => {
     if (picterLink.trim()) {
-      onSubmit(picterLink.trim());
+      let formattedLink = picterLink.trim();
+      // Prepend https:// if no protocol is specified
+      if (!formattedLink.startsWith('http://') && !formattedLink.startsWith('https://')) {
+        formattedLink = `https://${formattedLink}`;
+      }
+      onSubmit(formattedLink);
       onClose();
     }
   };
@@ -35,7 +39,7 @@ export function PicterLinkModal({ isOpen, onClose, onSubmit, currentLink }: Pict
               id="picter-link"
               value={picterLink}
               onChange={(e) => setPicterLink(e.target.value)}
-              placeholder="Enter Picter link"
+              placeholder="Enter Picter link (e.g., picter.com/your-project)"
               className="mt-1"
             />
           </div>
