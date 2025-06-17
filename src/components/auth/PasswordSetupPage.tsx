@@ -36,23 +36,30 @@ export function PasswordSetupPage() {
   const [validationError, setValidationError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const token = searchParams.get('token');
+  const token = searchParams.get('token'); // For staff invitations
+  const type = searchParams.get('type'); // For password reset (e.g., 'recovery')
+  const accessToken = searchParams.get('access_token'); // For password reset
 
   useEffect(() => {
-    if (token) {
+    if (type === 'recovery' && accessToken) {
+      // Handle password reset flow
+      setValidating(false); // No need to validate invitation via RPC
+      setInvitation(null); // Ensure no invitation data is used
+      setValidationError(null); // Clear any previous validation errors
+    } else if (token) {
+      // Handle staff invitation flow
       validateToken();
     } else {
-      console.log('No token provided in URL');
-      setValidationError('No invitation token provided');
+      console.log('No token or recovery type provided in URL');
+      setValidationError('No valid token or recovery link provided.');
       setValidating(false);
     }
-  }, [token]);
+  }, [token, type, accessToken]);
 
   const validateToken = async () => {
     try {
-      console.log('Validating token:', token);
+      console.log('Validating invitation token:', token);
       
-      // Query with proper RPC call - handle as array since that's what the function returns
       const { data: invitationData, error: invitationError } = await supabase
         .rpc('validate_invitation_token', { token_param: token as string });
 
@@ -60,7 +67,7 @@ export function PasswordSetupPage() {
 
       if (invitationError) {
         console.error('Error fetching invitation:', invitationError);
-        setValidationError('Failed to validate invitation');
+        setValidationError('Failed to validate invitation.');
         toast({
           title: "Error",
           description: "Failed to validate invitation.",
@@ -70,10 +77,9 @@ export function PasswordSetupPage() {
         return;
       }
 
-      // The RPC function returns an array, so we need to check if it has any results
       if (!invitationData || invitationData.length === 0) {
         console.log('No valid invitation found for token');
-        setValidationError('This invitation link is invalid or has expired');
+        setValidationError('This invitation link is invalid or has expired.');
         toast({
           title: "Invalid Invitation",
           description: "This invitation link is invalid or has expired.",
@@ -83,14 +89,13 @@ export function PasswordSetupPage() {
         return;
       }
 
-      // Get the first (and only) result from the array
       const invitationRecord = invitationData[0];
       console.log('Validation successful, setting invitation data:', invitationRecord);
       setInvitation(invitationRecord as InvitationData);
       setValidationError(null);
     } catch (error) {
       console.error('Error validating token:', error);
-      setValidationError('Failed to validate invitation');
+      setValidationError('Failed to validate invitation.');
       toast({
         title: "Error",
         description: "Failed to validate invitation.",
@@ -103,8 +108,6 @@ export function PasswordSetupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!invitation) return;
     
     if (password !== confirmPassword) {
       toast({
@@ -127,47 +130,63 @@ export function PasswordSetupPage() {
     setLoading(true);
 
     try {
-      console.log('Creating auth user for email:', invitation.email);
-      
-      // Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: invitation.email,
-        password: password,
-        options: {
-          emailRedirectTo: `${import.meta.env.VITE_PUBLIC_APP_URL}/setup-password` // Use environment variable
+      if (type === 'recovery' && accessToken) {
+        // Password reset flow: update user's password
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: password,
+        });
+
+        if (updateError) throw updateError;
+
+        toast({
+          title: "Password Updated",
+          description: "Your password has been updated successfully.",
+        });
+      } else if (invitation) {
+        // Staff invitation flow: create new auth user
+        console.log('Creating auth user for email:', invitation.email);
+        
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: invitation.email,
+          password: password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/setup-password`
+          }
+        });
+
+        console.log('Auth signup result:', { authData, authError });
+
+        if (authError) throw authError;
+
+        // Mark invitation as accepted
+        const { error: updateInvitationError } = await supabase
+          .from('staff_invitations')
+          .update({ accepted_at: new Date().toISOString() })
+          .eq('id', invitation.id);
+
+        if (updateInvitationError) {
+          console.error('Error updating invitation:', updateInvitationError);
         }
-      });
 
-      console.log('Auth signup result:', { authData, authError });
+        // Update staff status
+        const { error: updateStaffError } = await supabase
+          .from('staff')
+          .update({ invitation_status: 'accepted' })
+          .eq('id', invitation.staff_id);
 
-      if (authError) throw authError;
+        if (updateStaffError) {
+          console.error('Error updating staff status:', updateStaffError);
+        }
 
-      // Mark invitation as accepted
-      const { error: updateInvitationError } = await supabase
-        .from('staff_invitations')
-        .update({ accepted_at: new Date().toISOString() })
-        .eq('id', invitation.id);
-
-      if (updateInvitationError) {
-        console.error('Error updating invitation:', updateInvitationError);
-      }
-
-      // Update staff status
-      const { error: updateStaffError } = await supabase
-        .from('staff')
-        .update({ invitation_status: 'accepted' })
-        .eq('id', invitation.staff_id);
-
-      if (updateStaffError) {
-        console.error('Error updating staff status:', updateStaffError);
+        toast({
+          title: "Account Created",
+          description: "Your account has been created successfully. You can now sign in.",
+        });
+      } else {
+        throw new Error("Invalid state for password setup.");
       }
 
       setCompleted(true);
-      
-      toast({
-        title: "Account Created",
-        description: "Your account has been created successfully. You can now sign in.",
-      });
 
     } catch (error: any) {
       console.error('Error setting up password:', error);
@@ -181,6 +200,11 @@ export function PasswordSetupPage() {
     }
   };
 
+  // Determine the email to display based on flow
+  const displayEmail = type === 'recovery' && supabase.auth.currentUser ? supabase.auth.currentUser.email : invitation?.email;
+  const pageTitle = type === 'recovery' ? 'Reset Your Password' : 'Set Up Your Password';
+  const pageDescription = type === 'recovery' ? 'Enter your new password below.' : `Welcome ${invitation?.name || ''}! Please set up your password to complete your account.`;
+
   // Show loading while validating
   if (validating) {
     return (
@@ -189,7 +213,7 @@ export function PasswordSetupPage() {
           <Card className="w-full max-w-md">
             <CardContent className="flex flex-col items-center justify-center p-8">
               <Loader2 className="w-8 h-8 animate-spin mb-4" />
-              <p className="text-muted-foreground">Validating invitation...</p>
+              <p className="text-muted-foreground">Validating link...</p>
             </CardContent>
           </Card>
         </div>
@@ -198,8 +222,8 @@ export function PasswordSetupPage() {
     );
   }
 
-  // Show error state if validation failed
-  if (validationError || !invitation) {
+  // Show error state if validation failed or no valid flow
+  if (validationError || (!invitation && type !== 'recovery')) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <div className="flex-1 flex items-center justify-center p-4">
@@ -208,9 +232,9 @@ export function PasswordSetupPage() {
               <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
                 <AlertCircle className="w-6 h-6 text-red-600" />
               </div>
-              <CardTitle className="text-2xl font-bold">Invalid Invitation</CardTitle>
+              <CardTitle className="text-2xl font-bold">Invalid Link</CardTitle>
               <p className="text-muted-foreground">
-                {validationError || 'This invitation link is not valid.'}
+                {validationError || 'This link is not valid or has expired.'}
               </p>
             </CardHeader>
             <CardContent className="text-center">
@@ -236,7 +260,7 @@ export function PasswordSetupPage() {
                 <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
               <CardTitle className="text-2xl font-bold">Setup Complete!</CardTitle>
-              <p className="text-muted-foreground">Your account has been created successfully.</p>
+              <p className="text-muted-foreground">Your account has been created/updated successfully.</p>
             </CardHeader>
             <CardContent className="text-center">
               <Button asChild>
@@ -260,9 +284,9 @@ export function PasswordSetupPage() {
               <div className="flex justify-center mb-4">
                 <Logo size="md" />
               </div>
-              <CardTitle className="text-2xl font-bold">Set Up Your Password</CardTitle>
+              <CardTitle className="text-2xl font-bold">{pageTitle}</CardTitle>
               <p className="text-muted-foreground">
-                Welcome {invitation.name}! Please set up your password to complete your account.
+                {pageDescription}
               </p>
             </CardHeader>
             <CardContent>
@@ -272,7 +296,7 @@ export function PasswordSetupPage() {
                   <Input
                     id="email"
                     type="email"
-                    value={invitation.email}
+                    value={displayEmail || ''}
                     disabled
                     className="bg-gray-100"
                   />
@@ -307,7 +331,7 @@ export function PasswordSetupPage() {
                   ) : (
                     <CheckCircle className="w-4 h-4 mr-2" />
                   )}
-                  Create Account
+                  {type === 'recovery' ? 'Set New Password' : 'Create Account'}
                 </Button>
               </form>
             </CardContent>
