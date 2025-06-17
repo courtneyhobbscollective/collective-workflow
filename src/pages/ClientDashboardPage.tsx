@@ -6,13 +6,17 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { format } from "date-fns";
-import { Clock, FileText } from "lucide-react";
+import { Clock, FileText, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ClientBriefSubmissionForm } from "@/components/clients/ClientBriefSubmissionForm";
 
 interface ClientProfile {
   client_id: string;
   client: {
     company: string;
     name: string;
+    is_retainer: boolean; // Added is_retainer to client profile
   };
 }
 
@@ -34,71 +38,58 @@ interface Project {
 }
 
 export function ClientDashboardPage() {
-  const { user } = useAuth();
-  const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
+  const { user, clientProfile } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showBriefFormModal, setShowBriefFormModal] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchClientData = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-      try {
-        // Fetch client profile
-        const { data: profileData, error: profileError } = await supabase
-          .from('client_profiles')
+  const fetchClientData = async () => {
+    if (!user || !clientProfile) {
+      setLoading(false);
+      return;
+    }
+    try {
+      // Fetch projects for this client
+      if (clientProfile?.client_id) {
+        const { data: projectsData, error: projectsError } = await supabase
+          .from('projects')
           .select(`
-            client_id,
-            client:clients(company, name)
+            id,
+            title,
+            description,
+            current_stage,
+            work_type,
+            deliverables,
+            due_date,
+            estimated_hours,
+            project_value,
+            stage_status,
+            picter_link,
+            project_stages(name)
           `)
-          .eq('user_id', user.id)
-          .single();
+          .eq('client_id', clientProfile.client_id)
+          .in('status', ['active', 'on_hold']) // Only show active or on-hold projects
+          .order('due_date', { ascending: true });
 
-        if (profileError) throw profileError;
-        setClientProfile(profileData);
-
-        // Fetch projects for this client
-        if (profileData?.client_id) {
-          const { data: projectsData, error: projectsError } = await supabase
-            .from('projects')
-            .select(`
-              id,
-              title,
-              description,
-              current_stage,
-              work_type,
-              deliverables,
-              due_date,
-              estimated_hours,
-              project_value,
-              stage_status,
-              picter_link,
-              project_stages(name)
-            `)
-            .eq('client_id', profileData.client_id)
-            .in('status', ['active', 'on_hold']) // Only show active or on-hold projects
-            .order('due_date', { ascending: true });
-
-          if (projectsError) throw projectsError;
-          setProjects(projectsData || []);
-        }
-      } catch (error: any) {
-        console.error("Error fetching client data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load client data.",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
+        if (projectsError) throw projectsError;
+        setProjects(projectsData || []);
       }
-    };
+    } catch (error: any) {
+      console.error("Error fetching client data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load client data.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchClientData();
-  }, [user, toast]);
+  }, [user, clientProfile, toast]); // Re-fetch when user or clientProfile changes
 
   const getStatusColor = (status: string | null) => {
     switch (status) {
@@ -123,6 +114,11 @@ export function ClientDashboardPage() {
     return status ? labels[status] || status.replace(/_/g, ' ') : 'N/A';
   };
 
+  const handleBriefSubmitted = () => {
+    fetchClientData(); // Refresh projects after a new brief is submitted
+    setShowBriefFormModal(false);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -141,9 +137,15 @@ export function ClientDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-3xl font-bold text-foreground">
-        Welcome, {clientProfile.client.name} from {clientProfile.client.company}!
-      </h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-3xl font-bold text-foreground">
+          Welcome, {clientProfile.client.name} from {clientProfile.client.company}!
+        </h2>
+        <Button onClick={() => setShowBriefFormModal(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Submit New Brief
+        </Button>
+      </div>
       <p className="text-muted-foreground">Here are your current live projects:</p>
 
       {projects.length === 0 ? (
@@ -235,6 +237,18 @@ export function ClientDashboardPage() {
           ))}
         </div>
       )}
+
+      <Dialog open={showBriefFormModal} onOpenChange={setShowBriefFormModal}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Submit New Brief</DialogTitle>
+          </DialogHeader>
+          <ClientBriefSubmissionForm
+            onBriefSubmitted={handleBriefSubmitted}
+            onClose={() => setShowBriefFormModal(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

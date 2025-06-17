@@ -8,7 +8,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   staff: Staff | null;
-  clientProfile: { client_id: string; client: { company: string; name: string; } } | null;
+  clientProfile: { client_id: string; client: { company: string; name: string; is_retainer: boolean; } } | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [staff, setStaff] = useState<Staff | null>(null);
-  const [clientProfile, setClientProfile] = useState<{ client_id: string; client: { company: string; name: string; } } | null>(null);
+  const [clientProfile, setClientProfile] = useState<{ client_id: string; client: { company: string; name: string; is_retainer: boolean; } } | null>(null);
   const [loading, setLoading] = useState(true); // This should indicate if auth state AND profile are loaded
   const { toast } = useToast();
 
@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('client_profiles')
         .select(`
           client_id,
-          client:clients(company, name)
+          client:clients(company, name, is_retainer)
         `)
         .eq('user_id', currentUser.id) // Use currentUser.id
         .single();
