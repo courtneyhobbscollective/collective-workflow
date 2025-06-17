@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
@@ -8,7 +9,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { format } from "date-fns";
 import { Clock, FileText, Plus, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } => "@/components/ui/dialog";
 import { ClientBriefSubmissionForm } from "@/components/clients/ClientBriefSubmissionForm";
 import { ClientChatInterface } from "@/components/clients/ClientChatInterface";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
