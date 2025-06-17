@@ -134,7 +134,7 @@ export function PasswordSetupPage() {
         email: invitation.email,
         password: password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`
+          emailRedirectTo: `${import.meta.env.VITE_PUBLIC_APP_URL}/setup-password` // Use environment variable
         }
       });
 
