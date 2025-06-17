@@ -1,6 +1,8 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button"; // Import Button for sign out
+import { supabase } from "@/integrations/supabase/client"; // Import supabase for sign out
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -8,7 +10,7 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { user, staff, clientProfile, loading } = useAuth();
+  const { user, staff, clientProfile, loading, signOut } = useAuth();
 
   if (loading) {
     return (
@@ -29,8 +31,11 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     if (clientProfile) {
       return <>{children}</>;
     } else {
-      // User is logged in but not a client, redirect to staff login or access denied
-      return <Navigate to="/auth" replace />; // Or show an access denied message
+      // User is logged in but not a client, redirect to staff login or show access denied
+      // If they are logged in but not a client, and trying to access a client route,
+      // it's better to show an access denied message or redirect to staff login.
+      // For now, let's redirect to staff login as a default.
+      return <Navigate to="/auth" replace />; 
     }
   } else {
     // This route requires Admin/Staff role, or no specific role (like the root '/')
@@ -54,8 +59,16 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
       return <Navigate to="/client-dashboard" replace />;
     } else {
       // User is logged in but has neither a staff nor a client profile (unassigned or new user)
-      // Redirect to staff login for now, or a dedicated onboarding page
-      return <Navigate to="/auth" replace />;
+      // This is the most likely cause of the loop. Instead of redirecting, show an error.
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-red-600">Profile Not Found</h1>
+            <p className="text-muted-foreground">Your user account is not associated with a staff or client profile. Please contact support.</p>
+            <Button onClick={signOut} className="mt-4">Sign Out</Button>
+          </div>
+        </div>
+      );
     }
   }
 }
