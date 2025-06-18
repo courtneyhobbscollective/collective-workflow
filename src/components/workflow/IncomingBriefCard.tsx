@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Clock, User, FileText, Calendar } from "lucide-react";
 import { IncomingProjectCardMain } from "./project-card/IncomingProjectCardMain";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { StatusSelector, formatStatusLabel } from "./StatusSelector"; // Import formatStatusLabel
+import { StatusSelector, formatStatusLabel } from "./StatusSelector";
 import type { Staff } from "@/types/staff";
 
 interface ProjectStage {
@@ -58,6 +58,7 @@ interface IncomingBriefCardProps {
   onMoveProject: (projectId: string, newStageId: string) => void;
   onUpdateStatus: (projectId: string, status: string, picterLink?: string) => void;
   onBookingCreated?: () => void;
+  onMoveProjectBack: (projectId: string, newStageId: string) => void;
 }
 
 export function IncomingBriefCard({
@@ -69,7 +70,8 @@ export function IncomingBriefCard({
   onUpdatePoNumber,
   onMoveProject,
   onUpdateStatus,
-  onBookingCreated = () => {}
+  onBookingCreated = () => {},
+  onMoveProjectBack
 }: IncomingBriefCardProps) {
   const assignedStaff = staff.find(s => s.id === project.assigned_staff_id);
   const dueDate = new Date(project.due_date);
@@ -84,15 +86,12 @@ export function IncomingBriefCard({
   };
 
   const handleStatusChange = (newStatus: string) => {
-    // For incoming briefs, we only expect 'in_progress' or 'on_hold'
-    // No picter link or closure logic needed here
     onUpdateStatus(project.id, newStatus);
   };
 
   const handleEmailClient = (emailData: { subject: string; body: string; to: string }) => {
     const mailtoLink = `mailto:${emailData.to}?subject=${encodeURIComponent(emailData.subject)}&body=${encodeURIComponent(emailData.body)}`;
     window.open(mailtoLink);
-    // No status update to 'sent_to_client' for incoming briefs
   };
 
   return (
@@ -213,7 +212,7 @@ export function IncomingBriefCard({
               </CardContent>
             </Card>
 
-            {/* Main Project Card Content */}
+            {/* Main Project Card Content - Fixed the prop passing */}
             <IncomingProjectCardMain
               project={project}
               staff={staff}
@@ -224,7 +223,7 @@ export function IncomingBriefCard({
               onMoveProject={onMoveProject}
               onUpdateStatus={onUpdateStatus}
               onBookingCreated={onBookingCreated}
-              onMoveProjectBack={(newStageId) => onMoveProject(project.id, newStageId)}
+              onMoveProjectBack={onMoveProjectBack}
             />
           </div>
         </AccordionContent>

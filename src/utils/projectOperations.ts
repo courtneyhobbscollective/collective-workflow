@@ -1,7 +1,8 @@
+
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getValidationIssues, canMoveToStageOne } from "@/components/workflow/ProjectValidation";
-import type { Dispatch, SetStateAction } from "react"; // Import Dispatch and SetStateAction
+import type { Dispatch, SetStateAction } from "react";
 
 interface ProjectStage {
   id: string;
@@ -21,13 +22,13 @@ interface Project {
   po_required: boolean;
   po_number: string;
   assigned_staff_id: string | null;
-  picter_link?: string | null; // Added to match Project interface in useWorkflowData
-  internal_review_completed?: boolean; // Added to match Project interface in useWorkflowData
-  status?: string; // Added to match Project interface in useWorkflowData
+  picter_link?: string | null;
+  internal_review_completed?: boolean;
+  status?: string;
 }
 
 export function useProjectOperations(
-  setProjects: Dispatch<SetStateAction<Project[]>>, // Accept setProjects
+  setProjects: Dispatch<SetStateAction<Project[]>>,
   stages: ProjectStage[]
 ) {
   const { toast } = useToast();
@@ -41,10 +42,16 @@ export function useProjectOperations(
   };
 
   const assignStaff = async (projectId: string, staffId: string) => {
-    const originalProject = projects.find(p => p.id === projectId);
-    if (!originalProject) return;
+    // Get current project from state via callback
+    let originalProject: Project | undefined;
+    setProjects(prevProjects => {
+      originalProject = prevProjects.find(p => p.id === projectId);
+      return prevProjects.map(project => 
+        project.id === projectId ? { ...project, assigned_staff_id: staffId } : project
+      );
+    });
 
-    updateProjectInState(projectId, { assigned_staff_id: staffId });
+    if (!originalProject) return;
 
     try {
       const { error } = await supabase
@@ -60,7 +67,7 @@ export function useProjectOperations(
       });
     } catch (error) {
       console.error('Error assigning staff:', error);
-      updateProjectInState(projectId, { assigned_staff_id: originalProject.assigned_staff_id }); // Revert
+      updateProjectInState(projectId, { assigned_staff_id: originalProject.assigned_staff_id });
       toast({
         title: "Error",
         description: "Failed to assign staff member",
@@ -70,10 +77,15 @@ export function useProjectOperations(
   };
 
   const updateContractStatus = async (projectId: string, signed: boolean) => {
-    const originalProject = projects.find(p => p.id === projectId);
-    if (!originalProject) return;
+    let originalProject: Project | undefined;
+    setProjects(prevProjects => {
+      originalProject = prevProjects.find(p => p.id === projectId);
+      return prevProjects.map(project => 
+        project.id === projectId ? { ...project, contract_signed: signed } : project
+      );
+    });
 
-    updateProjectInState(projectId, { contract_signed: signed });
+    if (!originalProject) return;
 
     try {
       const { error } = await supabase
@@ -89,7 +101,7 @@ export function useProjectOperations(
       });
     } catch (error) {
       console.error('Error updating contract status:', error);
-      updateProjectInState(projectId, { contract_signed: originalProject.contract_signed }); // Revert
+      updateProjectInState(projectId, { contract_signed: originalProject.contract_signed });
       toast({
         title: "Error",
         description: "Failed to update contract status",
@@ -99,10 +111,15 @@ export function useProjectOperations(
   };
 
   const updatePoNumber = async (projectId: string, poNumber: string) => {
-    const originalProject = projects.find(p => p.id === projectId);
-    if (!originalProject) return;
+    let originalProject: Project | undefined;
+    setProjects(prevProjects => {
+      originalProject = prevProjects.find(p => p.id === projectId);
+      return prevProjects.map(project => 
+        project.id === projectId ? { ...project, po_number: poNumber } : project
+      );
+    });
 
-    updateProjectInState(projectId, { po_number: poNumber });
+    if (!originalProject) return;
 
     try {
       const { error } = await supabase
@@ -118,7 +135,7 @@ export function useProjectOperations(
       });
     } catch (error) {
       console.error('Error updating PO number:', error);
-      updateProjectInState(projectId, { po_number: originalProject.po_number }); // Revert
+      updateProjectInState(projectId, { po_number: originalProject.po_number });
       toast({
         title: "Error",
         description: "Failed to update PO number",
@@ -205,7 +222,7 @@ export function useProjectOperations(
         picter_link: originalPicterLink,
         internal_review_completed: originalInternalReviewCompleted,
         status: originalStatus
-      }); // Revert
+      });
       toast({
         title: "Error",
         description: "Failed to update project status",
@@ -219,7 +236,6 @@ export function useProjectOperations(
     
     if (!project) return;
 
-    // Check validation for moving from incoming to stage01
     if (project.current_stage === 'incoming' && !canMoveToStageOne(project)) {
       const issues = getValidationIssues(project);
       toast({
@@ -258,7 +274,7 @@ export function useProjectOperations(
       });
     } catch (error) {
       console.error('Error moving project:', error);
-      updateProjectInState(projectId, { current_stage: originalCurrentStage }); // Revert
+      updateProjectInState(projectId, { current_stage: originalCurrentStage });
       toast({
         title: "Error",
         description: "Failed to move project",
@@ -288,7 +304,7 @@ export function useProjectOperations(
       });
     } catch (error) {
       console.error('Error moving project back:', error);
-      updateProjectInState(projectId, { current_stage: originalCurrentStage }); // Revert
+      updateProjectInState(projectId, { current_stage: originalCurrentStage });
       toast({
         title: "Error",
         description: "Failed to move project back",

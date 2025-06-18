@@ -52,6 +52,7 @@ interface ProjectCardProps {
   onMoveProject: (projectId: string, newStageId: string) => void;
   onUpdateStatus: (projectId: string, status: string, picterLink?: string) => void;
   onBookingCreated?: () => void;
+  onMoveProjectBack: (projectId: string, newStageId: string) => void;
 }
 
 export function ProjectCard(props: ProjectCardProps) {

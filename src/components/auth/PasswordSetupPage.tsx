@@ -175,14 +175,14 @@ export function PasswordSetupPage() {
           console.error('Error updating invitation:', updateInvitationError);
         }
 
-        // Update staff status
+        // Update staff status - Fixed the variable name
         const { error: updateStaffError } = await supabase
           .from('staff')
           .update({ invitation_status: 'accepted' })
           .eq('id', invitation.staff_id);
 
         if (updateStaffError) {
-          console.error('Error updating staff status:', updateStaff);
+          console.error('Error updating staff status:', updateStaffError);
         }
 
         toast({
@@ -207,8 +207,22 @@ export function PasswordSetupPage() {
     }
   };
 
-  // Determine the email to display based on flow
-  const displayEmail = type === 'recovery' && supabase.auth.currentUser ? supabase.auth.currentUser.email : invitation?.email;
+  // Get current user for password reset flow - Fixed the API call
+  const getCurrentUserEmail = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user?.email;
+  };
+
+  // Determine the email to display based on flow - Fixed currentUser reference
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (type === 'recovery') {
+      getCurrentUserEmail().then(setUserEmail);
+    }
+  }, [type]);
+
+  const displayEmail = type === 'recovery' ? userEmail : invitation?.email;
   const pageTitle = type === 'recovery' ? 'Reset Your Password' : 'Set Up Your Password';
   const pageDescription = type === 'recovery' ? 'Enter your new password below.' : `Welcome ${invitation?.name || ''}! Please set up your password to complete your account.`;
 

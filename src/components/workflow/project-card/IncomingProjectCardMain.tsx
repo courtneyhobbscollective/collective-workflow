@@ -60,6 +60,7 @@ interface IncomingProjectCardMainProps {
   onMoveProject: (projectId: string, newStageId: string) => void;
   onUpdateStatus: (projectId: string, status: string, picterLink?: string) => void;
   onBookingCreated?: () => void;
+  onMoveProjectBack: (projectId: string, newStageId: string) => void;
 }
 
 export function IncomingProjectCardMain({
@@ -71,7 +72,8 @@ export function IncomingProjectCardMain({
   onUpdatePoNumber,
   onMoveProject,
   onUpdateStatus,
-  onBookingCreated = () => {}
+  onBookingCreated = () => {},
+  onMoveProjectBack
 }: IncomingProjectCardMainProps) {
   const [hasCapacity, setHasCapacity] = useState(true);
   const [alternativeStaff, setAlternativeStaff] = useState<Staff[]>([]);
@@ -159,6 +161,7 @@ export function IncomingProjectCardMain({
           stages={stages}
           canProgress={canProgress}
           onMoveProject={(newStageId) => onMoveProject(project.id, newStageId)}
+          onMoveProjectBack={(newStageId) => onMoveProjectBack(project.id, newStageId)}
         />
       </div>
     </div>
