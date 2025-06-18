@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,14 +24,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [staff, setStaff] = useState<Staff | null>(null);
   const [clientProfile, setClientProfile] = useState<{ client_id: string; client: { company: string; name: string; is_retainer: boolean; } } | null>(null);
-  const [loading, setLoading] = useState(true); // This should indicate if auth state AND profile are loaded
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const loadUserProfile = async (currentUser: User) => { // Pass user directly
-    setStaff(null); // Reset before loading
-    setClientProfile(null); // Reset before loading
+  const loadUserProfile = async (currentUser: User) => {
+    setStaff(null);
+    setClientProfile(null);
 
     try {
+      console.log('Loading user profile for:', currentUser.id);
+      
       // Attempt to load staff profile
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -38,16 +41,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           staff_id,
           staff:staff(*)
         `)
-        .eq('id', currentUser.id) // Use currentUser.id
+        .eq('id', currentUser.id)
         .single();
 
-      if (profileError && profileError.code !== 'PGRST116') { // PGRST116 means no rows found
+      if (profileError && profileError.code !== 'PGRST116') {
         console.error('Error loading staff profile:', profileError);
       }
 
       if (profile?.staff) {
+        console.log('Staff profile loaded:', profile.staff);
         setStaff(profile.staff as Staff);
-        return; // Profile found, no need to check client
+        return;
       }
 
       // If not staff, attempt to load client profile
@@ -57,11 +61,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           client_id,
           client:clients(company, name, is_retainer)
         `)
-        .eq('user_id', currentUser.id) // Use currentUser.id
+        .eq('user_id', currentUser.id)
         .single();
 
       if (clientProfileError && clientProfileError.code !== 'PGRST116') {
         console.error('Error loading client profile:', clientProfileError);
+      }
+      
+      if (clientProfileData) {
+        console.log('Client profile loaded:', clientProfileData);
       }
       setClientProfile(clientProfileData || null);
 
@@ -73,54 +81,101 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    console.log('AuthContext initializing...');
+    
     const handleAuthStateChange = async (event: string, session: Session | null) => {
+      console.log('Auth state change:', event, session?.user?.id || 'no user');
+      
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        await loadUserProfile(session.user); // Wait for profile to load
+        try {
+          await loadUserProfile(session.user);
+        } catch (error) {
+          console.error('Error loading profile during auth state change:', error);
+          toast({
+            title: "Profile Loading Error",
+            description: "There was an issue loading your profile. Please try refreshing the page.",
+            variant: "destructive",
+          });
+        }
       } else {
         setStaff(null);
         setClientProfile(null);
       }
-      setLoading(false); // Set loading to false only after everything is done
+      setLoading(false);
     };
 
-    // Initial check for existing session on mount
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      await handleAuthStateChange('INITIAL_LOAD', session); // Use the same handler
-    });
-
+    // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
 
-    return () => subscription.unsubscribe();
-  }, []); // Empty dependency array, runs once on mount.
+    // Then check for existing session
+    const initializeAuth = async () => {
+      try {
+        console.log('Checking for existing session...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          toast({
+            title: "Authentication Error",
+            description: "There was an issue with authentication. Please try signing in again.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+        
+        console.log('Initial session check:', session?.user?.id || 'no session');
+        await handleAuthStateChange('INITIAL_LOAD', session);
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+
+    return () => {
+      console.log('Cleaning up auth subscription');
+      subscription.unsubscribe();
+    };
+  }, [toast]);
 
   const signIn = async (email: string, password: string) => {
+    console.log('Attempting sign in for:', email);
+    
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     
     if (error) {
+      console.error('Sign in error:', error);
       toast({
         title: "Login Failed",
         description: error.message,
         variant: "destructive",
       });
+    } else {
+      console.log('Sign in successful');
     }
     
     return { error };
   };
 
   const resetPassword = async (email: string) => {
+    // Use current domain for redirect
     const redirectUrl = `${window.location.origin}/setup-password`;
+    console.log('Password reset redirect URL:', redirectUrl);
     
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: redirectUrl
     });
     
     if (error) {
+      console.error('Password reset error:', error);
       toast({
         title: "Password Reset Failed",
         description: error.message,
@@ -158,8 +213,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    console.log('Signing out...');
     const { error } = await supabase.auth.signOut();
     if (error) {
+      console.error('Sign out error:', error);
       toast({
         title: "Error",
         description: "Failed to sign out",
@@ -183,7 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       staff,
       clientProfile,
-      loading, // This loading now correctly reflects profile loading too
+      loading,
       signIn,
       signOut,
       resetPassword,

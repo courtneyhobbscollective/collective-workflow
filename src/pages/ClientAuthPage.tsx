@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +14,7 @@ export function ClientAuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [loggedIn, setLoggedIn] = useState(false); // State to track successful login
+  const [loggedIn, setLoggedIn] = useState(false);
   const { toast } = useToast();
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -28,6 +29,8 @@ export function ClientAuthPage() {
     }
 
     setLoading(true);
+    console.log('Client auth attempt for:', email);
+    
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -38,6 +41,8 @@ export function ClientAuthPage() {
         throw error;
       }
 
+      console.log('Auth successful, checking client profile...');
+
       // Check if the logged-in user is associated with a client profile
       const { data: clientProfile, error: profileError } = await supabase
         .from('client_profiles')
@@ -46,6 +51,7 @@ export function ClientAuthPage() {
         .single();
 
       if (profileError || !clientProfile) {
+        console.error('No client profile found:', profileError);
         // If no client profile found, sign out and show error
         await supabase.auth.signOut();
         toast({
@@ -56,11 +62,12 @@ export function ClientAuthPage() {
         return;
       }
 
+      console.log('Client profile found, login successful');
       toast({
         title: "Success",
         description: "Logged in successfully!",
       });
-      setLoggedIn(true); // Set loggedIn to true on successful login
+      setLoggedIn(true);
     } catch (error: any) {
       console.error("Login error:", error);
       toast({
