@@ -4,12 +4,23 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import type { Staff } from '@/types/staff';
 
+interface ClientProfile {
+  client_id: string;
+  client: {
+    company: string;
+    name: string;
+    is_retainer: boolean;
+  };
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   staff: Staff | null;
+  clientProfile: ClientProfile | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,6 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [staff, setStaff] = useState<Staff | null>(null);
+  const [clientProfile, setClientProfile] = useState<ClientProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   console.log('AuthContext initializing...');
@@ -55,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(initialSession);
           setUser(initialSession.user);
           
-          // Try to fetch staff profile with timeout
+          // Try to fetch staff profile first
           try {
             const { data: staffData, error: staffError } = await supabase
               .from('staff')
@@ -68,7 +80,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               console.error('Staff fetch error:', staffError);
             } else if (staffData && mounted) {
               console.log('Staff profile loaded:', staffData.name);
-              setStaff(staffData);
+              // Add default department if missing
+              const staffWithDepartment = {
+                ...staffData,
+                department: staffData.department || 'General'
+              };
+              setStaff(staffWithDepartment);
+            } else {
+              // If no staff profile, try to fetch client profile
+              try {
+                const { data: clientData, error: clientError } = await supabase
+                  .from('client_profiles')
+                  .select(`
+                    client_id,
+                    client:clients(
+                      company,
+                      name,
+                      is_retainer
+                    )
+                  `)
+                  .eq('user_id', initialSession.user.id)
+                  .single();
+
+                if (clientError && clientError.code !== 'PGRST116') {
+                  console.error('Client profile fetch error:', clientError);
+                } else if (clientData && mounted) {
+                  console.log('Client profile loaded:', clientData.client.name);
+                  setClientProfile(clientData);
+                }
+              } catch (clientFetchError) {
+                console.error('Client profile fetch exception:', clientFetchError);
+              }
             }
           } catch (staffFetchError) {
             console.error('Staff fetch exception:', staffFetchError);
@@ -107,12 +149,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .then(({ data: staffData, error }) => {
               if (error && error.code !== 'PGRST116') {
                 console.error('Staff profile error:', error);
+                // Try client profile if staff fails
+                return supabase
+                  .from('client_profiles')
+                  .select(`
+                    client_id,
+                    client:clients(
+                      company,
+                      name,
+                      is_retainer
+                    )
+                  `)
+                  .eq('user_id', session.user.id)
+                  .single();
               } else if (staffData && mounted) {
-                setStaff(staffData);
+                // Add default department if missing
+                const staffWithDepartment = {
+                  ...staffData,
+                  department: staffData.department || 'General'
+                };
+                setStaff(staffWithDepartment);
+                return null;
+              }
+              return null;
+            })
+            .then((clientResult) => {
+              if (clientResult) {
+                const { data: clientData, error: clientError } = clientResult;
+                if (clientError && clientError.code !== 'PGRST116') {
+                  console.error('Client profile error:', clientError);
+                } else if (clientData && mounted) {
+                  setClientProfile(clientData);
+                }
               }
             });
         } else {
           setStaff(null);
+          setClientProfile(null);
         }
         
         if (!loading) {
@@ -131,6 +204,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const signIn = async (email: string, password: string) => {
+    try {
+      console.log('Attempting sign in for:', email);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) {
+        console.error('Sign in error:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('Sign in exception:', error);
+      throw error;
+    }
+  };
+
   const signOut = async () => {
     try {
       console.log('Signing out...');
@@ -141,6 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setSession(null);
         setStaff(null);
+        setClientProfile(null);
         console.log('Signed out successfully');
       }
     } catch (error) {
@@ -152,19 +243,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     console.log('Auth state:', { 
       user: user?.email, 
-      staff: staff?.name, 
+      staff: staff?.name,
+      clientProfile: clientProfile?.client?.name,
       loading,
       hasSession: !!session 
     });
-  }, [user, staff, loading, session]);
+  }, [user, staff, clientProfile, loading, session]);
 
   return (
     <AuthContext.Provider value={{
       user,
       session,
       staff,
+      clientProfile,
       loading,
-      signOut
+      signOut,
+      signIn
     }}>
       {children}
     </AuthContext.Provider>
