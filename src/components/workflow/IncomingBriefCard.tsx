@@ -199,7 +199,11 @@ export function IncomingBriefCard({
                   {project.description && (
                     <div>
                       <h4 className="font-medium text-sm mb-2">Description</h4>
-                      <p className="text-xs text-muted-foreground">{project.description}</p>
+                      <ul className="list-disc list-inside text-xs text-muted-foreground mt-1">
+                        {(project.description || '').split('\n').filter(line => line.trim() !== '').map((line, idx) => (
+                          <li key={idx}>{line}</li>
+                        ))}
+                      </ul>
                     </div>
                   )}
                 </div>

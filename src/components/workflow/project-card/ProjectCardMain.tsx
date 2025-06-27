@@ -93,8 +93,8 @@ export function ProjectCardMain({
   const [alternativeStaff, setAlternativeStaff] = useState<Staff[]>([]);
   const [picterModalOpen, setPicterModalOpen] = useState(false);
   const [closureModalOpen, setClosureModalOpen] = useState(false);
-  const [checklist, setChecklist] = useState<{ label: string; completed: boolean }[]>(project.checklist);
-  const [notes, setNotes] = useState(project.notes);
+  const [checklist, setChecklist] = useState<{ label: string; completed: boolean }[]>(project.checklist || []);
+  const [notes, setNotes] = useState(project.notes || "");
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
@@ -147,25 +147,25 @@ export function ProjectCardMain({
   const handleChecklistChange = async (idx: number, checked: boolean) => {
     const updated = checklist.map((item, i) => i === idx ? { ...item, completed: checked } : item);
     setChecklist(updated);
-    await saveProjectDetails(project.description, updated);
+    await saveProjectDetails(project.description || '', updated);
   };
 
   const handleChecklistLabelChange = async (idx: number, label: string) => {
     const updated = checklist.map((item, i) => i === idx ? { ...item, label } : item);
     setChecklist(updated);
-    await saveProjectDetails(project.description, updated);
+    await saveProjectDetails(project.description || '', updated);
   };
 
   const handleAddChecklistItem = async () => {
     const updated = [...checklist, { label: '', completed: false }];
     setChecklist(updated);
-    await saveProjectDetails(project.description, updated);
+    await saveProjectDetails(project.description || '', updated);
   };
 
   const handleRemoveChecklistItem = async (idx: number) => {
     const updated = checklist.filter((_, i) => i !== idx);
     setChecklist(updated);
-    await saveProjectDetails(project.description, updated);
+    await saveProjectDetails(project.description || '', updated);
   };
 
   const handleSaveNotes = async () => {
@@ -181,10 +181,10 @@ export function ProjectCardMain({
   const handleConvertDescriptionToTasks = async () => {
     if (!(project.description || '').trim()) return;
     setIsSaving(true);
-    const lines = project.description.split('\n').map(line => line.trim()).filter(line => line !== '');
+    const lines = (project.description || '').split('\n').map(line => line.trim()).filter(line => line !== '');
     const newChecklist = lines.map(line => ({ label: line, completed: false }));
     setChecklist(newChecklist);
-    await saveProjectDetails(project.description, newChecklist);
+    await saveProjectDetails(project.description || '', newChecklist);
     setIsSaving(false);
   };
 
@@ -209,6 +209,27 @@ export function ProjectCardMain({
   return (
     <>
       <div className={isProductionStage ? "space-y-2 p-0" : "space-y-2 p-4"}>
+        {isProductionStage && (project.description || '').trim() && (
+          <div className="mt-2">
+            <label className="text-xs font-medium">Description:</label>
+            <ul className="list-disc list-inside text-xs text-muted-foreground mt-1">
+              {(project.description || '').split('\n').filter(line => line.trim() !== '').map((line, idx) => (
+                <li key={idx}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {isProductionStage && canConvertDescriptionToTasks && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mb-2 text-xs"
+            onClick={handleConvertDescriptionToTasks}
+            disabled={isSaving}
+          >
+            Convert Description to Tasks
+          </Button>
+        )}
         <div>
           <label className="text-xs font-medium">Checklist:</label>
           <ul className="space-y-1 mt-1">
@@ -316,17 +337,6 @@ export function ProjectCardMain({
           onMoveProject={(newStageId) => onMoveProject(project.id, newStageId)}
           onMoveProjectBack={(newStageId) => onMoveProjectBack(project.id, newStageId)}
         />
-        {canConvertDescriptionToTasks && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="mb-2 text-xs"
-            onClick={handleConvertDescriptionToTasks}
-            disabled={isSaving}
-          >
-            Convert Description to Tasks
-          </Button>
-        )}
       </div>
       <PicterLinkModal
         isOpen={picterModalOpen}

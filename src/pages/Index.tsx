@@ -51,14 +51,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50/30 to-indigo-100/30 flex flex-col">
-      <div className="sticky top-0 z-50">
-        <TopNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      </div>
-      
+      <TopNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       <div className="container mx-auto px-4 py-6 flex-1">
         {renderContent()}
       </div>
-      
       <Footer />
     </div>
   );

@@ -42,6 +42,8 @@ interface Project {
   google_review_link?: string;
   client: Client;
   assigned_staff: Staff | null;
+  notes?: string;
+  checklist?: string[];
 }
 
 interface CollapsibleProjectCardProps {
@@ -55,6 +57,7 @@ interface CollapsibleProjectCardProps {
   onUpdateStatus: (projectId: string, status: string, picterLink?: string) => void;
   onBookingCreated?: () => void;
   onMoveProjectBack: (projectId: string, newStageId: string) => void;
+  reload?: () => void;
 }
 
 export function CollapsibleProjectCard({
@@ -67,7 +70,8 @@ export function CollapsibleProjectCard({
   onMoveProject,
   onUpdateStatus,
   onBookingCreated = () => {},
-  onMoveProjectBack
+  onMoveProjectBack,
+  reload
 }: CollapsibleProjectCardProps) {
   // Use specialized incoming brief card for incoming stage
   if (project.current_stage === 'incoming') {
@@ -139,8 +143,28 @@ export function CollapsibleProjectCard({
           </div>
         </AccordionTrigger>
         <AccordionContent className="px-4 pb-4">
+          {(project.description || '').trim() && (
+            <div className="mt-2">
+              <label className="text-xs font-medium">Description:</label>
+              <ul className="list-disc list-inside text-xs text-muted-foreground mt-1">
+                {(project.description || '').split('\n').filter(line => line.trim() !== '').map((line, idx) => (
+                  <li key={idx}>{line}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <ProjectCardMain
-            project={project}
+            project={{
+              ...project,
+              notes: project.notes || "",
+              checklist: Array.isArray(project.checklist)
+                ? project.checklist.map(item =>
+                    typeof item === 'string'
+                      ? { label: item, completed: false }
+                      : item
+                  )
+                : []
+            }}
             staff={staff}
             stages={stages}
             onAssignStaff={onAssignStaff}
@@ -150,6 +174,7 @@ export function CollapsibleProjectCard({
             onUpdateStatus={onUpdateStatus}
             onBookingCreated={onBookingCreated}
             onMoveProjectBack={onMoveProjectBack}
+            reload={reload}
           />
         </AccordionContent>
       </AccordionItem>

@@ -25,15 +25,17 @@ function App() {
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <div className="min-h-screen bg-background">
-                <main>
+              <div className="min-h-screen bg-background flex flex-col">
+                {/* Header/Nav should be rendered here, edge-to-edge */}
+                {/* Main content boxed */}
+                <main className="container mx-auto max-w-4xl w-full flex-1">
                   <Routes>
                     <Route path="/auth" element={<AuthPage />} />
                     <Route path="/client-auth" element={<ClientAuthPage />} />
                     <Route path="/setup-password" element={<PasswordSetupPage />} />
                     <Route path="/client-dashboard" element={
                       <ProtectedRoute requiredRole="Client">
-                        <ClientDashboardLayout> {/* Wrap with the new layout */}
+                        <ClientDashboardLayout>
                           <ClientDashboardPage />
                         </ClientDashboardLayout>
                       </ProtectedRoute>
@@ -46,6 +48,7 @@ function App() {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </main>
+                {/* Footer should be rendered here, edge-to-edge */}
               </div>
             </BrowserRouter>
           </TooltipProvider>
