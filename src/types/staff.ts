@@ -6,7 +6,7 @@ export interface Staff {
   role: 'Admin' | 'Staff';
   department?: string;
   profile_picture_url?: string | null;
-  invitation_status?: 'pending' | 'invited' | 'accepted';
-  is_active?: boolean;
+  invitation_status?: 'pending' | 'invited' | 'accepted' | null;
+  is_active?: boolean | null;
   created_at?: string;
 }

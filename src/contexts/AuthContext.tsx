@@ -80,12 +80,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               console.error('Staff fetch error:', staffError);
             } else if (staffData && mounted) {
               console.log('Staff profile loaded:', staffData.name);
-              // Add default department if missing
-              const staffWithDepartment = {
+              // Transform database data to match our Staff interface
+              const transformedStaff: Staff = {
                 ...staffData,
-                department: staffData.department || 'General'
+                department: staffData.department || 'General',
+                invitation_status: (staffData.invitation_status as 'pending' | 'invited' | 'accepted') || 'pending'
               };
-              setStaff(staffWithDepartment);
+              setStaff(transformedStaff);
             } else {
               // If no staff profile, try to fetch client profile
               try {
@@ -163,12 +164,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   .eq('user_id', session.user.id)
                   .single();
               } else if (staffData && mounted) {
-                // Add default department if missing
-                const staffWithDepartment = {
+                // Transform database data to match our Staff interface
+                const transformedStaff: Staff = {
                   ...staffData,
-                  department: staffData.department || 'General'
+                  department: staffData.department || 'General',
+                  invitation_status: (staffData.invitation_status as 'pending' | 'invited' | 'accepted') || 'pending'
                 };
-                setStaff(staffWithDepartment);
+                setStaff(transformedStaff);
                 return null;
               }
               return null;
