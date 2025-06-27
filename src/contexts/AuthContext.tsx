@@ -1,20 +1,15 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 import type { Staff } from '@/types/staff';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   staff: Staff | null;
-  clientProfile: { client_id: string; client: { company: string; name: string; is_retainer: boolean; } } | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error: any }>;
-  updatePassword: (password: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,228 +18,153 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [staff, setStaff] = useState<Staff | null>(null);
-  const [clientProfile, setClientProfile] = useState<{ client_id: string; client: { company: string; name: string; is_retainer: boolean; } } | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
-  const loadUserProfile = async (currentUser: User) => {
-    setStaff(null);
-    setClientProfile(null);
-
-    try {
-      console.log('Loading user profile for:', currentUser.id);
-      
-      // Attempt to load staff profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select(`
-          staff_id,
-          staff:staff(*)
-        `)
-        .eq('id', currentUser.id)
-        .single();
-
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Error loading staff profile:', profileError);
-      }
-
-      if (profile?.staff) {
-        console.log('Staff profile loaded:', profile.staff);
-        setStaff(profile.staff as Staff);
-        return;
-      }
-
-      // If not staff, attempt to load client profile
-      const { data: clientProfileData, error: clientProfileError } = await supabase
-        .from('client_profiles')
-        .select(`
-          client_id,
-          client:clients(company, name, is_retainer)
-        `)
-        .eq('user_id', currentUser.id)
-        .single();
-
-      if (clientProfileError && clientProfileError.code !== 'PGRST116') {
-        console.error('Error loading client profile:', clientProfileError);
-      }
-      
-      if (clientProfileData) {
-        console.log('Client profile loaded:', clientProfileData);
-      }
-      setClientProfile(clientProfileData || null);
-
-    } catch (error) {
-      console.error('Error in loadUserProfile:', error);
-      setStaff(null);
-      setClientProfile(null);
-    }
-  };
+  console.log('AuthContext initializing...');
 
   useEffect(() => {
-    console.log('AuthContext initializing...');
-    
-    const handleAuthStateChange = async (event: string, session: Session | null) => {
-      console.log('Auth state change:', event, session?.user?.id || 'no user');
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        try {
-          await loadUserProfile(session.user);
-        } catch (error) {
-          console.error('Error loading profile during auth state change:', error);
-          toast({
-            title: "Profile Loading Error",
-            description: "There was an issue loading your profile. Please try refreshing the page.",
-            variant: "destructive",
-          });
-        }
-      } else {
-        setStaff(null);
-        setClientProfile(null);
+    let mounted = true;
+    let loadingTimeout: NodeJS.Timeout;
+
+    // Set a timeout to prevent infinite loading
+    loadingTimeout = setTimeout(() => {
+      if (mounted) {
+        console.log('Auth loading timeout reached, setting loading to false');
+        setLoading(false);
       }
-      setLoading(false);
-    };
+    }, 10000); // 10 second timeout
 
-    // Set up auth state listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange);
-
-    // Then check for existing session
     const initializeAuth = async () => {
       try {
         console.log('Checking for existing session...');
-        const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (error) {
-          console.error('Error getting session:', error);
-          toast({
-            title: "Authentication Error",
-            description: "There was an issue with authentication. Please try signing in again.",
-            variant: "destructive",
-          });
-          setLoading(false);
+        // Get initial session
+        const { data: { session: initialSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          if (mounted) {
+            setLoading(false);
+          }
           return;
         }
-        
-        console.log('Initial session check:', session?.user?.id || 'no session');
-        await handleAuthStateChange('INITIAL_LOAD', session);
+
+        console.log('Initial session:', initialSession?.user?.email || 'No session');
+
+        if (initialSession?.user && mounted) {
+          setSession(initialSession);
+          setUser(initialSession.user);
+          
+          // Try to fetch staff profile with timeout
+          try {
+            const { data: staffData, error: staffError } = await supabase
+              .from('staff')
+              .select('*')
+              .eq('email', initialSession.user.email)
+              .eq('is_active', true)
+              .single();
+
+            if (staffError && staffError.code !== 'PGRST116') {
+              console.error('Staff fetch error:', staffError);
+            } else if (staffData && mounted) {
+              console.log('Staff profile loaded:', staffData.name);
+              setStaff(staffData);
+            }
+          } catch (staffFetchError) {
+            console.error('Staff fetch exception:', staffFetchError);
+          }
+        }
+
+        if (mounted) {
+          clearTimeout(loadingTimeout);
+          setLoading(false);
+        }
       } catch (error) {
-        console.error('Error initializing auth:', error);
-        setLoading(false);
+        console.error('Auth initialization error:', error);
+        if (mounted) {
+          clearTimeout(loadingTimeout);
+          setLoading(false);
+        }
       }
     };
 
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change:', event, session?.user?.email || 'no user');
+      
+      if (mounted) {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          // Fetch staff profile when user signs in
+          supabase
+            .from('staff')
+            .select('*')
+            .eq('email', session.user.email)
+            .eq('is_active', true)
+            .single()
+            .then(({ data: staffData, error }) => {
+              if (error && error.code !== 'PGRST116') {
+                console.error('Staff profile error:', error);
+              } else if (staffData && mounted) {
+                setStaff(staffData);
+              }
+            });
+        } else {
+          setStaff(null);
+        }
+        
+        if (!loading) {
+          setLoading(false);
+        }
+      }
+    });
+
+    // Initialize auth
     initializeAuth();
 
     return () => {
-      console.log('Cleaning up auth subscription');
+      mounted = false;
+      clearTimeout(loadingTimeout);
       subscription.unsubscribe();
     };
-  }, [toast]);
-
-  const signIn = async (email: string, password: string) => {
-    console.log('Attempting sign in for:', email);
-    
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    if (error) {
-      console.error('Sign in error:', error);
-      toast({
-        title: "Login Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      console.log('Sign in successful');
-    }
-    
-    return { error };
-  };
-
-  const resetPassword = async (email: string) => {
-    // Use current domain for redirect
-    const redirectUrl = `${window.location.origin}/setup-password`;
-    console.log('Password reset redirect URL:', redirectUrl);
-    
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl
-    });
-    
-    if (error) {
-      console.error('Password reset error:', error);
-      toast({
-        title: "Password Reset Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Success",
-        description: "Please check your email for password reset instructions.",
-      });
-    }
-    
-    return { error };
-  };
-
-  const updatePassword = async (password: string) => {
-    const { error } = await supabase.auth.updateUser({
-      password
-    });
-    
-    if (error) {
-      toast({
-        title: "Password Update Failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Success",
-        description: "Your password has been updated successfully.",
-      });
-    }
-    
-    return { error };
-  };
+  }, []);
 
   const signOut = async () => {
-    console.log('Signing out...');
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Sign out error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to sign out",
-        variant: "destructive",
-      });
-    } else {
-      setUser(null);
-      setSession(null);
-      setStaff(null);
-      setClientProfile(null);
-      toast({
-        title: "Success",
-        description: "Signed out successfully",
-      });
+    try {
+      console.log('Signing out...');
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Sign out error:', error);
+      } else {
+        setUser(null);
+        setSession(null);
+        setStaff(null);
+        console.log('Signed out successfully');
+      }
+    } catch (error) {
+      console.error('Sign out exception:', error);
     }
   };
+
+  // Debug logging
+  useEffect(() => {
+    console.log('Auth state:', { 
+      user: user?.email, 
+      staff: staff?.name, 
+      loading,
+      hasSession: !!session 
+    });
+  }, [user, staff, loading, session]);
 
   return (
     <AuthContext.Provider value={{
       user,
       session,
       staff,
-      clientProfile,
       loading,
-      signIn,
-      signOut,
-      resetPassword,
-      updatePassword
+      signOut
     }}>
       {children}
     </AuthContext.Provider>

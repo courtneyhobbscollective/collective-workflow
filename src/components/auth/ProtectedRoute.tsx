@@ -1,74 +1,93 @@
-import { Navigate } from "react-router-dom";
+
 import { useAuth } from "@/contexts/AuthContext";
-import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button"; // Import Button for sign out
-import { supabase } from "@/integrations/supabase/client"; // Import supabase for sign out
+import { Navigate, useLocation } from "react-router-dom";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'Admin' | 'Staff' | 'Client';
+  requiredRole?: string;
 }
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { user, staff, clientProfile, loading, signOut } = useAuth();
+  const { user, staff, loading } = useAuth();
+  const location = useLocation();
+
+  console.log('ProtectedRoute check:', { 
+    loading, 
+    hasUser: !!user, 
+    hasStaff: !!staff, 
+    staffRole: staff?.role,
+    requiredRole,
+    currentPath: location.pathname 
+  });
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin" />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-48 mx-auto" />
+            <Skeleton className="h-4 w-32 mx-auto" />
+          </div>
+          <p className="text-sm text-muted-foreground">Loading your account...</p>
+        </div>
       </div>
     );
   }
 
-  // If no user is logged in, redirect to appropriate login page
   if (!user) {
-    return <Navigate to={requiredRole === "Client" ? "/client-auth" : "/auth"} replace />;
+    console.log('No user, redirecting to auth');
+    // Check if we're trying to access client dashboard
+    if (location.pathname.startsWith('/client-dashboard')) {
+      return <Navigate to="/client-auth" replace />;
+    }
+    return <Navigate to="/auth" replace />;
   }
 
-  // User is logged in, now check roles and required access
+  // For client routes, we don't need staff profile
   if (requiredRole === "Client") {
-    // If this route requires a client role, check if clientProfile exists
-    if (clientProfile) {
-      return <>{children}</>;
-    } else {
-      // User is logged in but not a client, redirect to staff login or show access denied
-      // If they are logged in but not a client, and trying to access a client route,
-      // it's better to show an access denied message or redirect to staff login.
-      // For now, let's redirect to staff login as a default.
-      return <Navigate to="/auth" replace />; 
-    }
-  } else {
-    // This route requires Admin/Staff role, or no specific role (like the root '/')
-    if (staff) {
-      // If a specific staff role is required, check it
-      if (requiredRole && staff.role !== requiredRole && requiredRole !== 'Staff') { // 'Staff' role covers both Admin and regular Staff for general access
-        return (
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="text-center">
-              <h1 className="text-2xl font-bold text-red-600">Access Denied</h1>
-              <p className="text-muted-foreground">You don't have permission to access this page.</p>
-            </div>
-          </div>
-        );
-      }
-      // Staff user is authorized for this route
-      return <>{children}</>;
-    } else if (clientProfile) {
-      // User is a client, but trying to access a non-client route (e.g., '/')
-      // Redirect them to their client dashboard
-      return <Navigate to="/client-dashboard" replace />;
-    } else {
-      // User is logged in but has neither a staff nor a client profile (unassigned or new user)
-      // This is the most likely cause of the loop. Instead of redirecting, show an error.
-      return (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-red-600">Profile Not Found</h1>
-            <p className="text-muted-foreground">Your user account is not associated with a staff or client profile. Please contact support.</p>
-            <Button onClick={signOut} className="mt-4">Sign Out</Button>
-          </div>
-        </div>
-      );
-    }
+    return <>{children}</>;
   }
+
+  // For staff routes, we need both user and staff profile
+  if (!staff) {
+    console.log('User exists but no staff profile found');
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <div className="text-center space-y-4">
+          <div className="text-red-500">
+            <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900">Access Denied</h2>
+          <p className="text-gray-600 max-w-md">
+            Your account doesn't have the required permissions to access this area. 
+            Please contact your administrator.
+          </p>
+          <button 
+            onClick={() => window.location.href = "/auth"}
+            className="mt-4 px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90"
+          >
+            Back to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (requiredRole && staff.role !== requiredRole) {
+    console.log('Role mismatch:', { required: requiredRole, actual: staff.role });
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <div className="text-center space-y-4">
+          <h2 className="text-xl font-semibold text-gray-900">Insufficient Permissions</h2>
+          <p className="text-gray-600">You don't have the required role to access this page.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
 }
