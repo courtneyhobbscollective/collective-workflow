@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { canMoveToStageOne } from "../ProjectValidation";
 import { CapacityChecker } from "../CapacityChecker";
@@ -87,8 +87,9 @@ export function ProjectCardMain({
   onUpdateStatus,
   onBookingCreated = () => {},
   onMoveProjectBack,
-  reload
-}: ProjectCardMainProps) {
+  reload,
+  currentUser
+}: ProjectCardMainProps & { currentUser?: { id: string; name: string; profile_picture_url?: string } }) {
   const [hasCapacity, setHasCapacity] = useState(true);
   const [alternativeStaff, setAlternativeStaff] = useState<Staff[]>([]);
   const [picterModalOpen, setPicterModalOpen] = useState(false);
@@ -98,6 +99,10 @@ export function ProjectCardMain({
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [messages, setMessages] = useState<{ id: string; user_id: string; message: string; created_at: string }[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const canProgress = canMoveToStageOne(project);
 
@@ -205,6 +210,49 @@ export function ProjectCardMain({
 
   // Helper: isProductionStage
   const isProductionStage = ["stage02", "stage03", "stage04", "stage05", "stage06", "production"].includes(project.current_stage);
+
+  // Fetch messages for this project
+  useEffect(() => {
+    async function fetchMessages() {
+      setLoadingMessages(true);
+      const { data, error } = await supabase
+        .from('project_notes')
+        .select('*')
+        .eq('project_id', project.id)
+        .order('created_at', { ascending: true });
+      if (!error && data) setMessages(data);
+      setLoadingMessages(false);
+    }
+    fetchMessages();
+  }, [project.id]);
+
+  async function handleSendMessage() {
+    if (!newMessage.trim() || !currentUser) return;
+    setSending(true);
+    const optimisticMsg = {
+      id: Math.random().toString(36),
+      user_id: currentUser.id,
+      message: newMessage,
+      created_at: new Date().toISOString()
+    };
+    setMessages(msgs => [...msgs, optimisticMsg]);
+    setNewMessage("");
+    const { error } = await supabase.from('project_notes').insert({
+      project_id: project.id,
+      user_id: currentUser.id,
+      message: optimisticMsg.message
+    });
+    if (!error) {
+      // Refetch to get canonical order/ids
+      const { data } = await supabase
+        .from('project_notes')
+        .select('*')
+        .eq('project_id', project.id)
+        .order('created_at', { ascending: true });
+      if (data) setMessages(data);
+    }
+    setSending(false);
+  }
 
   if (isProductionStage) {
     return (
@@ -339,6 +387,49 @@ export function ProjectCardMain({
           >
             + Add Task
           </Button>
+        </div>
+        {/* Staff Message Chain */}
+        <div className="my-4">
+          <label className="text-xs font-medium mb-1 block">Staff Message Chain:</label>
+          <div className="border rounded bg-muted p-2 max-h-40 overflow-y-auto space-y-2 mb-2">
+            {loadingMessages ? (
+              <div className="text-xs text-muted-foreground">Loading messages...</div>
+            ) : messages.length === 0 ? (
+              <div className="text-xs text-muted-foreground">No messages yet.</div>
+            ) : (
+              messages.map(msg => {
+                const user = staff.find(s => s.id === msg.user_id) || currentUser;
+                return (
+                  <div key={msg.id} className="flex items-start space-x-2">
+                    <img src={user?.profile_picture_url || ''} alt={user?.name} className="w-6 h-6 rounded-full border" />
+                    <div>
+                      <div className="text-xs font-semibold">{user?.name || 'User'}</div>
+                      <div className="text-xs bg-white rounded px-2 py-1 shadow-sm">{msg.message}</div>
+                      <div className="text-[10px] text-muted-foreground">{new Date(msg.created_at).toLocaleString()}</div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          <div className="flex items-center space-x-2">
+            <Input
+              className="text-xs flex-1"
+              value={newMessage}
+              onChange={e => setNewMessage(e.target.value)}
+              placeholder="Leave a message for your team..."
+              disabled={sending}
+              onKeyDown={e => { if (e.key === 'Enter') handleSendMessage(); }}
+            />
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleSendMessage}
+              disabled={sending || !newMessage.trim()}
+            >
+              Send
+            </Button>
+          </div>
         </div>
         {isProductionStage && (
           <div>

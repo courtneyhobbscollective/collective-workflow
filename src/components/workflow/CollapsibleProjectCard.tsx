@@ -4,6 +4,10 @@ import { IncomingBriefCard } from "./IncomingBriefCard";
 import type { Staff } from "@/types/staff";
 import { ChevronDown, Calendar, Clock, User } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 interface ProjectStage {
   id: string;
@@ -72,8 +76,9 @@ export function CollapsibleProjectCard({
   onUpdateStatus,
   onBookingCreated = () => {},
   onMoveProjectBack,
-  reload
-}: CollapsibleProjectCardProps) {
+  reload,
+  isManagement = true // Assume management for now
+}: CollapsibleProjectCardProps & { isManagement?: boolean }) {
   // Use specialized incoming brief card for incoming stage
   if (project.current_stage === 'incoming') {
     return (
@@ -92,6 +97,49 @@ export function CollapsibleProjectCard({
     );
   }
 
+  const [showStaffDialog, setShowStaffDialog] = useState(false);
+  const [selectedStaffId, setSelectedStaffId] = useState(project.assigned_staff_id || "");
+  const [reassignLoading, setReassignLoading] = useState(false);
+  const [capacityInfo, setCapacityInfo] = useState<any>(null);
+
+  // Fetch available hours for the assigned staff (simplified CapacityChecker logic)
+  async function fetchCapacityInfo() {
+    if (!project.assigned_staff_id) return;
+    setCapacityInfo(null);
+    const today = new Date();
+    const weekFromNow = new Date();
+    weekFromNow.setDate(today.getDate() + 7);
+    const { data: bookings } = await supabase
+      .from('project_bookings')
+      .select('*')
+      .eq('staff_id', project.assigned_staff_id)
+      .gte('booking_date', today.toISOString().slice(0,10))
+      .lte('booking_date', weekFromNow.toISOString().slice(0,10));
+    const standardDailyHours = 7;
+    let totalWeeklyAvailable = 0;
+    for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+      const currentDate = new Date(today);
+      currentDate.setDate(today.getDate() + dayOffset);
+      const dayOfWeek = currentDate.getDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+      const dateStr = currentDate.toISOString().slice(0,10);
+      const dayBookings = bookings?.filter(b => b.booking_date === dateStr) || [];
+      const bookedHours = dayBookings.reduce((total, b) => total + b.hours_booked, 0);
+      const totalAvailable = Math.max(0, standardDailyHours - bookedHours);
+      totalWeeklyAvailable += totalAvailable;
+    }
+    setCapacityInfo({ weeklyAvailable: totalWeeklyAvailable });
+  }
+
+  async function handleReassign() {
+    if (!selectedStaffId || selectedStaffId === project.assigned_staff_id) return;
+    setReassignLoading(true);
+    await supabase.from('projects').update({ assigned_staff_id: selectedStaffId }).eq('id', project.id);
+    setReassignLoading(false);
+    setShowStaffDialog(false);
+    if (reload) reload();
+  }
+
   // Use regular card for other stages
   return (
     <Accordion type="single" collapsible className="w-full">
@@ -103,9 +151,7 @@ export function CollapsibleProjectCard({
               {/* First row: client org badge + status badge */}
               <div className="flex items-center w-full mb-1">
                 <div className="flex items-center space-x-2 flex-1">
-                  {project.client?.company || project.client?.name ? (
-                    <span className="bg-blue-100 text-blue-800 border border-blue-300 font-normal text-xs px-2 py-0.5 rounded">{project.client?.company || project.client?.name}</span>
-                  ) : null}
+                  <span className="bg-blue-100 text-blue-800 border border-blue-300 font-normal text-xs px-2 py-0.5 rounded-full">{project.client?.company || project.client?.name}</span>
                   <Popover>
                     <PopoverTrigger asChild>
                       <span className={`cursor-pointer font-normal text-xs px-3 py-1 rounded-full border ${
@@ -140,13 +186,62 @@ export function CollapsibleProjectCard({
             {/* Right: avatar and chevron stacked */}
             <div className="flex flex-col items-end justify-between ml-4 h-full py-1">
               {/* Avatar at the top, same size as chevron bg */}
-              {project.assigned_staff ? (
-                <img src={project.assigned_staff.profile_picture_url || ''} alt={project.assigned_staff.name} className="w-8 h-8 rounded-full border mb-2" />
-              ) : (
-                <div className="flex items-center justify-center w-8 h-8 rounded-full border mb-2 bg-gray-100 text-orange-600">
-                  <User className="w-4 h-4" />
-                </div>
-              )}
+              <Dialog open={showStaffDialog} onOpenChange={setShowStaffDialog}>
+                <DialogTrigger asChild>
+                  {project.assigned_staff ? (
+                    <img src={project.assigned_staff.profile_picture_url || ''} alt={project.assigned_staff.name} className="w-8 h-8 rounded-full border mb-2 cursor-pointer" onClick={fetchCapacityInfo} />
+                  ) : (
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full border mb-2 bg-gray-100 text-orange-600 cursor-pointer" onClick={fetchCapacityInfo}>
+                      <User className="w-4 h-4" />
+                    </div>
+                  )}
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Staff Assignment</DialogTitle>
+                    <DialogDescription>View current staff and reassign if needed.</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-3">
+                      {project.assigned_staff && (
+                        <img src={project.assigned_staff.profile_picture_url || ''} alt={project.assigned_staff.name} className="w-10 h-10 rounded-full border" />
+                      )}
+                      <div>
+                        <div className="font-medium">{project.assigned_staff?.name}</div>
+                        <div className="text-xs text-muted-foreground">{project.assigned_staff?.email}</div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="font-medium text-xs mb-1">Available Hours (This Week):</div>
+                      <div className="text-sm">{capacityInfo ? `${capacityInfo.weeklyAvailable}h` : '...'}</div>
+                    </div>
+                    {isManagement && (
+                      <div className="space-y-2">
+                        <div className="font-medium text-xs mb-1">Reassign to:</div>
+                        <select
+                          className="w-full border rounded p-2"
+                          value={selectedStaffId}
+                          onChange={e => setSelectedStaffId(e.target.value)}
+                        >
+                          {staff.map(s => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </select>
+                        <DialogFooter>
+                          <Button
+                            variant="default"
+                            size="default"
+                            onClick={handleReassign}
+                            disabled={reassignLoading || selectedStaffId === project.assigned_staff_id}
+                          >
+                            {reassignLoading ? 'Reassigning...' : 'Confirm Reassignment'}
+                          </Button>
+                        </DialogFooter>
+                      </div>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
               {/* Chevron at the bottom */}
               <span className="flex items-center justify-center w-8 h-8 rounded-full bg-muted group-hover:bg-accent transition-colors mt-auto">
                 <ChevronDown className="h-4 w-4 transition-transform duration-200" />
