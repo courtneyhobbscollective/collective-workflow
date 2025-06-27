@@ -119,6 +119,7 @@ export function CalendarView() {
       // Transform staff data to match our Staff interface
       const transformedStaff = (staffData || []).map((member: any) => ({
         ...member,
+        department: member.department || 'General',
         invitation_status: member.invitation_status as 'pending' | 'invited' | 'accepted'
       })) as Staff[];
 

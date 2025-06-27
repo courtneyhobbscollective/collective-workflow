@@ -90,9 +90,10 @@ export function useWorkflowData() {
         stage_status: project.stage_status || 'in_progress'
       }));
 
-      const transformedStaff = (staffResponse.data || []).map((staff: any) => ({
-        ...staff,
-        invitation_status: staff.invitation_status as 'pending' | 'invited' | 'accepted'
+      const transformedStaff = (staffResponse.data || []).map((staffMember: any) => ({
+        ...staffMember,
+        department: staffMember.department || 'General',
+        invitation_status: staffMember.invitation_status as 'pending' | 'invited' | 'accepted'
       }));
 
       setProjects(transformedProjects);

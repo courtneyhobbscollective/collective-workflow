@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -35,6 +34,7 @@ export function StaffManagement() {
       // Transform data to match our Staff interface
       const transformedStaff = (data || []).map((member: any) => ({
         ...member,
+        department: member.department || 'General',
         invitation_status: member.invitation_status as 'pending' | 'invited' | 'accepted'
       })) as Staff[];
       
