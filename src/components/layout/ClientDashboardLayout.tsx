@@ -15,7 +15,7 @@ export function ClientDashboardLayout({ children }: ClientDashboardLayoutProps) 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100"> {/* Soft gradient background */}
       <header className="border-b border-gray-200 bg-white shadow-lg sticky top-0 z-50"> {/* Enhanced shadow for depth */}
-        <div className="container mx-auto px-6 py-5 flex items-center justify-between"> {/* Increased padding */}
+        <div className="px-6 py-5 flex items-center justify-between w-full"> {/* Increased padding, full width */}
           <div className="flex items-center space-x-4">
             <Logo size="sm" />
             <h1 className="text-2xl font-bold text-gray-900">Client Portal</h1> {/* Larger, bolder title */}

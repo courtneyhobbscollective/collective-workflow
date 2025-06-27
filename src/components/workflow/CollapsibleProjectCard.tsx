@@ -2,7 +2,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ProjectCardMain } from "./project-card/ProjectCardMain";
 import { IncomingBriefCard } from "./IncomingBriefCard";
 import type { Staff } from "@/types/staff";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Calendar, Clock, User } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface ProjectStage {
   id: string;
@@ -94,51 +95,62 @@ export function CollapsibleProjectCard({
   // Use regular card for other stages
   return (
     <Accordion type="single" collapsible className="w-full">
-      <AccordionItem value={project.id} className="border rounded-lg bg-white group overflow-hidden">
-        <AccordionTrigger className="hover:no-underline">
-          <div className="relative">
-            {/* Overlay for full-width hover effect, covers only the header */}
-            <div className="absolute inset-0 rounded-t-lg pointer-events-none z-10 group-hover:bg-muted/50 group-data-[state=open]:bg-transparent transition-colors" />
-            <div className="flex items-center justify-between w-full relative z-20" style={{ minHeight: '48px', padding: 0, margin: 0 }}>
-              {/* Left: Main info */}
-              <div className="flex flex-col items-start text-left flex-1 min-w-0">
-                {/* Top row: due date, status */}
-                <div className="flex items-center space-x-2 mb-1">
-                  <span className="inline-block px-2 py-0.5 rounded bg-red-100 text-red-800 text-xs font-semibold">
-                    Due: {new Date(project.due_date).toLocaleDateString()}
-                  </span>
-                  {/* Status badge */}
-                  {project.current_stage !== 'incoming' && (
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded ${project.stage_status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
-                      {project.stage_status ? project.stage_status.replace('_', ' ').toUpperCase() : 'IN PROGRESS'}
-                    </span>
-                  )}
-                </div>
-                {/* Client name */}
-                <span className="text-xs font-medium text-muted-foreground">{project.client?.company || project.client?.name}</span>
-                {/* Title */}
-                <span className="font-medium text-sm">{project.title}</span>
-                {/* Retainer/project label and estimated hours */}
-                <div className="flex items-center space-x-2 mt-1">
-                  {project.is_retainer ? (
-                    <span className="text-xs font-medium text-green-700">Retainer</span>
-                  ) : (
-                    <span className="text-xs font-medium text-blue-700">Project</span>
-                  )}
-                  {project.estimated_hours && (
-                    <span className="text-xs text-muted-foreground">Est. {project.estimated_hours}h</span>
-                  )}
+      <AccordionItem value={project.id} className="border rounded-lg bg-white shadow-sm overflow-hidden">
+        <AccordionTrigger hideChevron className="flex items-center w-full px-4 py-4 hover:bg-muted/50 transition-colors group no-underline hover:no-underline focus:no-underline">
+          <div className="flex flex-1 w-full">
+            {/* Left: main info */}
+            <div className="flex flex-col flex-1">
+              {/* First row: client org badge + status badge */}
+              <div className="flex items-center w-full mb-1">
+                <div className="flex items-center space-x-2 flex-1">
+                  {project.client?.company || project.client?.name ? (
+                    <span className="bg-blue-100 text-blue-800 border border-blue-300 font-normal text-xs px-2 py-0.5 rounded">{project.client?.company || project.client?.name}</span>
+                  ) : null}
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <span className={`cursor-pointer font-normal text-xs px-3 py-1 rounded-full border ${
+                        (project.stage_status || '').toLowerCase() === 'in progress' || (project.stage_status || '').toLowerCase() === 'in_progress'
+                          ? 'bg-orange-100 text-orange-800 border-orange-300'
+                          : 'bg-blue-100 text-blue-800 border-blue-300'
+                      }`}>
+                        {project.stage_status ? project.stage_status.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'In Progress'}
+                      </span>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-0">
+                      {/* You may want to use StatusSelector here if available, as in IncomingBriefCard */}
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
-              {/* Right: Chevron and staff avatar flush right */}
-              <div className="flex items-center space-x-0 flex-shrink-0">
-                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 group-hover:bg-gray-200 transition-colors">
-                  <ChevronDown className="h-3 w-3 text-gray-600 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                </div>
-                {project.assigned_staff && (
-                  <img src={project.assigned_staff.profile_picture_url || ''} alt={project.assigned_staff.name} className="w-6 h-6 rounded-full border" />
+              {/* Second row: project title */}
+              <h3 className="font-semibold text-sm mb-1 text-left w-full">{project.title}</h3>
+              {/* Third row: due date, estimated hours, retainer/project badge */}
+              <div className="flex items-center space-x-2 text-xs text-muted-foreground mb-1">
+                <span className="inline-flex items-center"><Calendar className="w-3 h-3 mr-1" />{new Date(project.due_date).toLocaleDateString()}</span>
+                {project.estimated_hours && (
+                  <span className="inline-flex items-center"><Clock className="w-3 h-3 mr-1" />{project.estimated_hours}h</span>
+                )}
+                {project.is_retainer ? (
+                  <span className="bg-green-100 text-green-800 border border-green-300 font-normal text-xs px-2 py-0.5 rounded">Retainer</span>
+                ) : (
+                  <span className="bg-blue-100 text-blue-800 border border-blue-300 font-normal text-xs px-2 py-0.5 rounded">Project</span>
                 )}
               </div>
+            </div>
+            {/* Right: avatar and chevron stacked */}
+            <div className="flex flex-col items-end justify-between ml-4 h-full py-1">
+              {/* Avatar at the top, same size as chevron bg */}
+              {project.assigned_staff ? (
+                <img src={project.assigned_staff.profile_picture_url || ''} alt={project.assigned_staff.name} className="w-8 h-8 rounded-full border mb-2" />
+              ) : (
+                <div className="flex items-center justify-center w-8 h-8 rounded-full border mb-2 bg-gray-100 text-orange-600">
+                  <User className="w-4 h-4" />
+                </div>
+              )}
+              {/* Chevron at the bottom */}
+              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-muted group-hover:bg-accent transition-colors mt-auto">
+                <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+              </span>
             </div>
           </div>
         </AccordionTrigger>

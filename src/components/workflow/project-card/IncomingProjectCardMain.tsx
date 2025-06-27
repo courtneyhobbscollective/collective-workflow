@@ -130,7 +130,7 @@ export function IncomingProjectCardMain({
       {/* Requirements Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
-          <CardContent className="p-3">
+          <CardContent className="p-3 flex flex-col space-y-2">
             <ProjectContractSection
               contractSigned={project.contract_signed}
               currentStage={project.current_stage}
@@ -140,7 +140,7 @@ export function IncomingProjectCardMain({
         </Card>
 
         <Card>
-          <CardContent className="p-3">
+          <CardContent className="p-3 flex flex-col space-y-2">
             <ProjectPOSection
               poRequired={project.po_required}
               poNumber={project.po_number}

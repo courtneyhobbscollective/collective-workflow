@@ -2,7 +2,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Clock, User, FileText, Calendar } from "lucide-react";
+import { Clock, User, FileText, Calendar, ChevronDown } from "lucide-react";
 import { IncomingProjectCardMain } from "./project-card/IncomingProjectCardMain";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { StatusSelector, formatStatusLabel } from "./StatusSelector";
@@ -98,106 +98,79 @@ export function IncomingBriefCard({
     <Accordion type="single" collapsible className="w-full">
       <AccordionItem value={project.id} className="border rounded-lg bg-white shadow-sm">
         {/* This div now acts as the header, containing both the AccordionTrigger and the Popover */}
-        <div className="flex items-center justify-between w-full px-4 py-4 hover:bg-muted/50 transition-colors">
-          {/* AccordionTrigger now only contains the content that expands/collapses the accordion */}
-          <AccordionTrigger className="flex-1 text-left hover:no-underline p-0">
-            <div className="flex flex-col items-start text-left space-y-2">
-              {/* Client name above title, no color badge */}
-              <span className="mb-1 text-xs font-medium text-muted-foreground">
-                {project.client?.company || project.client?.name}
-              </span>
-              <div className="flex items-center space-x-2">
-                <h3 className="font-semibold text-base">{project.title}</h3>
-              </div>
-              {/* Retainer/Project as plain text, not a badge */}
-              <div className="flex space-x-1">
-                {project.is_retainer ? (
-                  <span className="text-xs font-medium text-green-700">Retainer</span>
-                ) : (
-                  <span className="text-xs font-medium text-blue-700">Project</span>
-                )}
-              </div>
-              <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                <div className="flex items-center space-x-1">
-                  <FileText className="w-3 h-3" />
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Calendar className="w-3 h-3" />
-                  <span className={isOverdue ? "text-red-600 font-medium" : ""}>
-                    {dueDate.toLocaleDateString()}
-                  </span>
-                </div>
-                {project.estimated_hours && (
-                  <div className="flex items-center space-x-1">
-                    <Clock className="w-3 h-3" />
-                    <span>{project.estimated_hours}h</span>
-                  </div>
-                )}
-              </div>
+        <AccordionTrigger hideChevron className="flex items-center w-full px-4 py-4 hover:bg-muted/50 transition-colors group no-underline hover:no-underline focus:no-underline">
+          <div className="flex flex-col items-start flex-1">
+            {project.client?.company || project.client?.name ? (
+              <Badge className="mb-1 bg-blue-100 text-blue-800 border border-blue-300 font-normal">{project.client?.company || project.client?.name}</Badge>
+            ) : null}
+            <h3 className="font-semibold text-base mb-1">{project.title}</h3>
+            <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-1">
+              <FileText className="w-3 h-3" />
+              <Calendar className="w-3 h-3" />
+              <span className={isOverdue ? "text-red-600 font-medium" : ""}>{dueDate.toLocaleDateString()}</span>
+              {project.estimated_hours && (
+                <>
+                  <Clock className="w-3 h-3" />
+                  <span>{project.estimated_hours}h</span>
+                </>
+              )}
+              {project.is_retainer ? (
+                <Badge className="bg-green-100 text-green-800 border border-green-300 font-normal">Retainer</Badge>
+              ) : (
+                <Badge className="bg-blue-100 text-blue-800 border border-blue-300 font-normal">Project</Badge>
+              )}
             </div>
-          </AccordionTrigger>
-
-          {/* This div contains the assigned staff and the status badge, now outside the AccordionTrigger */}
-          <div className="flex items-center space-x-2 ml-4">
-            {assignedStaff ? (
-              <div className="flex items-center space-x-2 bg-blue-50 px-2 py-1 rounded">
-                <Avatar className="w-6 h-6">
-                  <AvatarImage src={assignedStaff.profile_picture_url || undefined} />
-                  <AvatarFallback className="text-xs">
-                    {assignedStaff.name.split(' ').map(n => n[0]).join('')}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-xs font-medium">{assignedStaff.name}</span>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-1 text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                <User className="w-4 h-4" />
-                <span className="text-xs font-medium">Unassigned</span>
-              </div>
-            )}
-            {/* Project Status Section - Moved here */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Badge 
-                  className={`cursor-pointer ${getStatusColor(project.stage_status || 'in_progress')}`}
-                >
-                  {formatStatusLabel(project.stage_status || 'in_progress')}
-                </Badge>
-              </PopoverTrigger>
-              <PopoverContent className="w-48 p-0">
-                <StatusSelector
-                  currentStage={project.current_stage}
-                  currentStatus={project.stage_status || 'in_progress'}
-                  internalReviewCompleted={project.internal_review_completed || false}
-                  picterLink={project.picter_link}
-                  onStatusChange={handleStatusChange}
-                  onEmailClient={handleEmailClient}
-                  project={project}
-                />
-              </PopoverContent>
-            </Popover>
           </div>
-        </div>
+          {assignedStaff ? (
+            <Avatar className="w-6 h-6 ml-2">
+              <AvatarImage src={assignedStaff.profile_picture_url || undefined} />
+              <AvatarFallback className="text-xs">
+                {assignedStaff.name.split(' ').map(n => n[0]).join('')}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <div className="flex items-center text-orange-600 ml-2">
+              <User className="w-4 h-4" />
+            </div>
+          )}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Badge className={`cursor-pointer ml-2 ${getStatusColor(project.stage_status || 'in_progress')}`}>{formatStatusLabel(project.stage_status || 'in_progress')}</Badge>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-0">
+              <StatusSelector
+                currentStage={project.current_stage}
+                currentStatus={project.stage_status || 'in_progress'}
+                internalReviewCompleted={project.internal_review_completed || false}
+                picterLink={project.picter_link}
+                onStatusChange={handleStatusChange}
+                onEmailClient={handleEmailClient}
+                project={project}
+              />
+            </PopoverContent>
+          </Popover>
+          {/* Chevron in a circle at the far right */}
+          <span className="ml-auto flex items-center justify-center w-8 h-8 rounded-full bg-muted group-hover:bg-accent transition-colors">
+            <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+          </span>
+        </AccordionTrigger>
         
         <AccordionContent className="px-4 pb-4">
-          <div className="space-y-4">
-            {/* Project Overview Card */}
-            <Card className="bg-gray-50">
-              <CardContent className="p-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-medium text-sm mb-2">Project Details</h4>
-                    <div className="space-y-1 text-xs">
-                      <div><span className="font-medium">Work Type:</span> {project.work_type}</div>
-                      <div><span className="font-medium">Deliverables:</span> {project.deliverables}</div>
-                      {project.po_number && (
-                        <div><span className="font-medium">PO Number:</span> {project.po_number}</div>
-                      )}
-                    </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Left: Project Details and Description */}
+            <div className="space-y-4 h-full">
+              <Card className="bg-gray-50 h-full">
+                <CardContent className="p-4">
+                  <h4 className="font-medium text-sm mb-2">Project Details</h4>
+                  <div className="space-y-1 text-xs">
+                    <div><span className="font-medium">Work Type:</span> {project.work_type}</div>
+                    <div><span className="font-medium">Deliverables:</span> {project.deliverables}</div>
+                    {project.po_number && (
+                      <div><span className="font-medium">PO Number:</span> {project.po_number}</div>
+                    )}
                   </div>
-                  
                   {project.description && (
-                    <div>
+                    <div className="mt-4">
                       <h4 className="font-medium text-sm mb-2">Description</h4>
                       <ul className="list-disc list-inside text-xs text-muted-foreground mt-1">
                         {(project.description || '').split('\n').filter(line => line.trim() !== '').map((line, idx) => (
@@ -206,23 +179,24 @@ export function IncomingBriefCard({
                       </ul>
                     </div>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Main Project Card Content - Fixed the prop passing */}
-            <IncomingProjectCardMain
-              project={project}
-              staff={staff}
-              stages={stages}
-              onAssignStaff={onAssignStaff}
-              onUpdateContract={onUpdateContract}
-              onUpdatePoNumber={onUpdatePoNumber}
-              onMoveProject={onMoveProject}
-              onUpdateStatus={onUpdateStatus}
-              onBookingCreated={onBookingCreated}
-              onMoveProjectBack={onMoveProjectBack}
-            />
+                </CardContent>
+              </Card>
+            </div>
+            {/* Right: Action Required */}
+            <div className="h-full">
+              <IncomingProjectCardMain
+                project={project}
+                staff={staff}
+                stages={stages}
+                onAssignStaff={onAssignStaff}
+                onUpdateContract={onUpdateContract}
+                onUpdatePoNumber={onUpdatePoNumber}
+                onMoveProject={onMoveProject}
+                onUpdateStatus={onUpdateStatus}
+                onBookingCreated={onBookingCreated}
+                onMoveProjectBack={onMoveProjectBack}
+              />
+            </div>
           </div>
         </AccordionContent>
       </AccordionItem>

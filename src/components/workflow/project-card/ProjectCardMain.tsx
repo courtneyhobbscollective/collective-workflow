@@ -206,6 +206,75 @@ export function ProjectCardMain({
   // Helper: isProductionStage
   const isProductionStage = ["stage02", "stage03", "stage04", "stage05", "stage06", "production"].includes(project.current_stage);
 
+  if (isProductionStage) {
+    return (
+      <div className="space-y-4">
+        {/* Priority Actions Section */}
+        <Card className="bg-blue-50 border-blue-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-blue-900">Action Required</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {/* Staff Assignment */}
+            <ProjectStaffSection
+              assignedStaffId={project.assigned_staff_id}
+              staff={staff}
+              onAssignStaff={(staffId) => onAssignStaff(project.id, staffId)}
+            />
+            {/* Capacity Check for assigned staff */}
+            {project.assigned_staff_id && project.estimated_hours && (
+              <CapacityChecker
+                staffId={project.assigned_staff_id}
+                projectHours={project.estimated_hours}
+                onCapacityChange={handleCapacityChange}
+                allStaff={staff}
+              />
+            )}
+            {/* Calendar Booking */}
+            {project.assigned_staff_id && hasCapacity && (
+              <BookingButton
+                project={{
+                  id: project.id,
+                  title: project.title,
+                  estimated_hours: project.estimated_hours,
+                  assigned_staff_id: project.assigned_staff_id,
+                  client: project.client
+                }}
+                staff={staff}
+                onBookingCreated={onBookingCreated}
+              />
+            )}
+          </CardContent>
+        </Card>
+        {/* Requirements Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardContent className="p-3 flex flex-col space-y-2">
+              <ProjectPOSection
+                poRequired={project.po_required}
+                poNumber={project.po_number}
+                currentStage={project.current_stage}
+                projectId={project.id}
+                onUpdatePoNumber={onUpdatePoNumber}
+              />
+            </CardContent>
+          </Card>
+        </div>
+        {/* Validation and Actions */}
+        <div className="space-y-3">
+          <ProjectValidation project={project} />
+          <ProjectCardActions
+            currentStage={project.current_stage}
+            stages={stages}
+            canProgress={canProgress}
+            onMoveProject={(newStageId) => onMoveProject(project.id, newStageId)}
+            onMoveProjectBack={(newStageId) => onMoveProjectBack(project.id, newStageId)}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className={isProductionStage ? "space-y-2 p-0" : "space-y-2 p-4"}>
