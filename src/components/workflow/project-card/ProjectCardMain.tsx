@@ -8,7 +8,6 @@ import { PicterLinkModal } from "../PicterLinkModal";
 import { ProjectClosureModal } from "../ProjectClosureModal";
 import { ProjectValidation } from "../ProjectValidation";
 import { ProjectCardHeader } from "../ProjectCardHeader";
-import { ProjectContractSection } from "../ProjectContractSection";
 import { ProjectPOSection } from "../ProjectPOSection";
 import { ProjectStaffSection } from "../ProjectStaffSection";
 import { ProjectCardActions } from "../ProjectCardActions";
@@ -17,6 +16,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link, Edit2 } from "lucide-react"; // Import Link and Edit2 icons
 import type { Staff } from "@/types/staff";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProjectStage {
   id: string;
@@ -56,6 +58,8 @@ interface Project {
   google_review_link?: string;
   client: Client;
   assigned_staff: Staff | null;
+  notes: string;
+  checklist: { label: string; completed: boolean }[];
 }
 
 interface ProjectCardMainProps {
@@ -69,6 +73,7 @@ interface ProjectCardMainProps {
   onUpdateStatus: (projectId: string, status: string, picterLink?: string) => void;
   onBookingCreated?: () => void;
   onMoveProjectBack: (projectId: string, newStageId: string) => void;
+  reload: () => void;
 }
 
 export function ProjectCardMain({
@@ -81,12 +86,18 @@ export function ProjectCardMain({
   onMoveProject,
   onUpdateStatus,
   onBookingCreated = () => {},
-  onMoveProjectBack
+  onMoveProjectBack,
+  reload
 }: ProjectCardMainProps) {
   const [hasCapacity, setHasCapacity] = useState(true);
   const [alternativeStaff, setAlternativeStaff] = useState<Staff[]>([]);
   const [picterModalOpen, setPicterModalOpen] = useState(false);
   const [closureModalOpen, setClosureModalOpen] = useState(false);
+  const [checklist, setChecklist] = useState<{ label: string; completed: boolean }[]>(project.checklist);
+  const [notes, setNotes] = useState(project.notes);
+  const [showStaffModal, setShowStaffModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
 
   const canProgress = canMoveToStageOne(project);
 
@@ -133,136 +144,196 @@ export function ProjectCardMain({
     }
   };
 
+  const handleChecklistChange = async (idx: number, checked: boolean) => {
+    const updated = checklist.map((item, i) => i === idx ? { ...item, completed: checked } : item);
+    setChecklist(updated);
+    await saveProjectDetails(project.description, updated);
+  };
+
+  const handleChecklistLabelChange = async (idx: number, label: string) => {
+    const updated = checklist.map((item, i) => i === idx ? { ...item, label } : item);
+    setChecklist(updated);
+    await saveProjectDetails(project.description, updated);
+  };
+
+  const handleAddChecklistItem = async () => {
+    const updated = [...checklist, { label: '', completed: false }];
+    setChecklist(updated);
+    await saveProjectDetails(project.description, updated);
+  };
+
+  const handleRemoveChecklistItem = async (idx: number) => {
+    const updated = checklist.filter((_, i) => i !== idx);
+    setChecklist(updated);
+    await saveProjectDetails(project.description, updated);
+  };
+
+  const handleSaveNotes = async () => {
+    setIsSavingNotes(true);
+    const { error } = await supabase.from('projects').update({ notes }).eq('id', project.id);
+    setIsSavingNotes(false);
+    if (!error && typeof reload === 'function') reload();
+  };
+
+  // Show convert button if not incoming, checklist is empty, and description is not empty
+  const canConvertDescriptionToTasks = project.current_stage !== 'incoming' && checklist.length === 0 && (project.description || '').trim() !== '';
+
+  const handleConvertDescriptionToTasks = async () => {
+    if (!(project.description || '').trim()) return;
+    setIsSaving(true);
+    const lines = project.description.split('\n').map(line => line.trim()).filter(line => line !== '');
+    const newChecklist = lines.map(line => ({ label: line, completed: false }));
+    setChecklist(newChecklist);
+    await saveProjectDetails(project.description, newChecklist);
+    setIsSaving(false);
+  };
+
+  // Save checklist to Supabase
+  const saveProjectDetails = async (desc: string, cl: { label: string; completed: boolean }[]) => {
+    setIsSaving(true);
+    const { error } = await supabase
+      .from('projects')
+      .update({ description: desc, checklist: cl })
+      .eq('id', project.id);
+    setIsSaving(false);
+    if (error) {
+      // Optionally show error toast
+    } else {
+      if (typeof reload === 'function') reload();
+    }
+  };
+
+  // Helper: isProductionStage
+  const isProductionStage = ["stage02", "stage03", "stage04", "stage05", "stage06", "production"].includes(project.current_stage);
+
   return (
     <>
-      <Card className="bg-white">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">{project.title}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <ProjectCardHeader
-              title={project.title}
-              client={project.client}
-              workType={project.work_type}
-              dueDate={project.due_date}
-              isRetainer={project.is_retainer}
-            />
-
-            <ProjectContractSection
-              contractSigned={project.contract_signed}
-              currentStage={project.current_stage}
-              onUpdateContract={(signed) => onUpdateContract(project.id, signed)}
-            />
-
-            <ProjectPOSection
-              poRequired={project.po_required}
-              poNumber={project.po_number}
-              currentStage={project.current_stage}
-              projectId={project.id}
-              onUpdatePoNumber={onUpdatePoNumber}
-            />
-
-            <ProjectStaffSection
-              assignedStaffId={project.assigned_staff_id}
-              staff={staff}
-              onAssignStaff={(staffId) => onAssignStaff(project.id, staffId)}
-            />
-
-            {/* Capacity Checker for assigned staff */}
-            {project.assigned_staff_id && project.estimated_hours && project.current_stage === 'incoming' && (
-              <CapacityChecker
-                staffId={project.assigned_staff_id}
-                projectHours={project.estimated_hours}
-                onCapacityChange={handleCapacityChange}
-                allStaff={staff}
-              />
-            )}
-
-            {project.estimated_hours && (
-              <p className="text-xs">Est. Hours: {project.estimated_hours}</p>
-            )}
-
-            {/* Picter Link Display with Edit Icon */}
-            {project.picter_link && (
-              <div className="flex items-center space-x-1 text-xs text-blue-600">
-                <Link className="w-3 h-3" />
-                <a href={project.picter_link} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                  View Picter Link
-                </a>
+      <div className={isProductionStage ? "space-y-2 p-0" : "space-y-2 p-4"}>
+        <div>
+          <label className="text-xs font-medium">Checklist:</label>
+          <ul className="space-y-1 mt-1">
+            {checklist.map((item, idx) => (
+              <li key={idx} className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={item.completed}
+                  onChange={e => handleChecklistChange(idx, e.target.checked)}
+                  className="accent-blue-600"
+                />
+                <Input
+                  className={`text-xs flex-1 ${item.completed ? 'line-through text-muted-foreground' : ''}`}
+                  value={item.label}
+                  onChange={e => handleChecklistLabelChange(idx, e.target.value)}
+                  placeholder={`Task ${idx + 1}`}
+                  disabled={isSaving}
+                />
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-5 w-5 p-0 ml-1"
-                  onClick={() => setPicterModalOpen(true)}
+                  className="h-5 w-5 p-0"
+                  onClick={() => handleRemoveChecklistItem(idx)}
+                  disabled={isSaving}
+                  title="Remove"
                 >
-                  <Edit2 className="w-3 h-3" />
+                  ×
                 </Button>
-              </div>
-            )}
-
-            {/* Stage Status Selector */}
-            {project.current_stage !== 'incoming' && (
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Status:</label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Badge
-                      className={`cursor-pointer ${getStatusColor(project.stage_status || 'in_progress')}`}
-                    >
-                      {formatStatusLabel(project.stage_status || 'in_progress')}
-                    </Badge>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-48 p-0 z-50">
-                    <StatusSelector
-                      currentStage={project.current_stage}
-                      currentStatus={project.stage_status || 'in_progress'}
-                      internalReviewCompleted={project.internal_review_completed || false}
-                      picterLink={project.picter_link}
-                      onStatusChange={handleStatusChange}
-                      onEmailClient={handleEmailClient}
-                      project={project}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            )}
-
-            <ProjectValidation project={project} />
-
-            {/* Calendar Booking Button for incoming projects with assigned staff */}
-            {project.current_stage === 'incoming' && project.assigned_staff_id && hasCapacity && (
-              <BookingButton
-                project={{
-                  id: project.id,
-                  title: project.title,
-                  estimated_hours: project.estimated_hours,
-                  assigned_staff_id: project.assigned_staff_id,
-                  client: project.client
-                }}
-                staff={staff}
-                onBookingCreated={onBookingCreated}
-              />
-            )}
-
-            <ProjectCardActions
-              currentStage={project.current_stage}
-              stages={stages}
-              canProgress={canProgress}
-              onMoveProject={(newStageId) => onMoveProject(project.id, newStageId)}
-              onMoveProjectBack={(newStageId) => onMoveProjectBack(project.id, newStageId)}
+              </li>
+            ))}
+          </ul>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2 text-xs"
+            onClick={handleAddChecklistItem}
+            disabled={isSaving}
+          >
+            + Add Task
+          </Button>
+        </div>
+        {isProductionStage && (
+          <div>
+            <label className="text-xs font-medium">Staff Notes:</label>
+            <Textarea
+              className="w-full text-xs mt-1"
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              rows={2}
+              placeholder="Leave a note for your team..."
             />
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 text-xs"
+              onClick={handleSaveNotes}
+              disabled={isSavingNotes}
+            >
+              Save Note
+            </Button>
           </div>
-        </CardContent>
-      </Card>
-
+        )}
+        {project.assigned_staff_id && project.estimated_hours && project.current_stage === 'incoming' && (
+          <CapacityChecker
+            staffId={project.assigned_staff_id}
+            projectHours={project.estimated_hours}
+            onCapacityChange={handleCapacityChange}
+            allStaff={staff}
+          />
+        )}
+        {project.picter_link && (
+          <div className="flex items-center space-x-1 text-xs text-blue-600">
+            <Link className="w-3 h-3" />
+            <a href={project.picter_link} target="_blank" rel="noopener noreferrer" className="hover:underline">
+              View Picter Link
+            </a>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 w-5 p-0 ml-1"
+              onClick={() => setPicterModalOpen(true)}
+            >
+              <Edit2 className="w-3 h-3" />
+            </Button>
+          </div>
+        )}
+        <ProjectValidation project={project} />
+        {project.current_stage === 'incoming' && project.assigned_staff_id && hasCapacity && (
+          <BookingButton
+            project={{
+              id: project.id,
+              title: project.title,
+              estimated_hours: project.estimated_hours,
+              assigned_staff_id: project.assigned_staff_id,
+              client: project.client
+            }}
+            staff={staff}
+            onBookingCreated={onBookingCreated}
+          />
+        )}
+        <ProjectCardActions
+          currentStage={project.current_stage}
+          stages={stages}
+          canProgress={canProgress}
+          onMoveProject={(newStageId) => onMoveProject(project.id, newStageId)}
+          onMoveProjectBack={(newStageId) => onMoveProjectBack(project.id, newStageId)}
+        />
+        {canConvertDescriptionToTasks && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mb-2 text-xs"
+            onClick={handleConvertDescriptionToTasks}
+            disabled={isSaving}
+          >
+            Convert Description to Tasks
+          </Button>
+        )}
+      </div>
       <PicterLinkModal
         isOpen={picterModalOpen}
         onClose={() => setPicterModalOpen(false)}
         onSubmit={handlePicterSubmit}
         currentLink={project.picter_link}
       />
-
       <ProjectClosureModal
         isOpen={closureModalOpen}
         onClose={() => setClosureModalOpen(false)}

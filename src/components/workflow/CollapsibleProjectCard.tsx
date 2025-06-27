@@ -1,8 +1,8 @@
-
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ProjectCardMain } from "./project-card/ProjectCardMain";
 import { IncomingBriefCard } from "./IncomingBriefCard";
 import type { Staff } from "@/types/staff";
+import { ChevronDown } from "lucide-react";
 
 interface ProjectStage {
   id: string;
@@ -90,11 +90,52 @@ export function CollapsibleProjectCard({
   // Use regular card for other stages
   return (
     <Accordion type="single" collapsible className="w-full">
-      <AccordionItem value={project.id} className="border rounded-lg bg-white">
-        <AccordionTrigger className="px-4 py-3 hover:no-underline">
-          <div className="flex flex-col items-start text-left">
-            <span className="font-medium text-sm">{project.title}</span>
-            <span className="text-xs text-muted-foreground">{project.client?.company || project.client?.name}</span>
+      <AccordionItem value={project.id} className="border rounded-lg bg-white group overflow-hidden">
+        <AccordionTrigger className="hover:no-underline">
+          <div className="relative">
+            {/* Overlay for full-width hover effect, covers only the header */}
+            <div className="absolute inset-0 rounded-t-lg pointer-events-none z-10 group-hover:bg-muted/50 group-data-[state=open]:bg-transparent transition-colors" />
+            <div className="flex items-center justify-between w-full relative z-20" style={{ minHeight: '48px', padding: 0, margin: 0 }}>
+              {/* Left: Main info */}
+              <div className="flex flex-col items-start text-left flex-1 min-w-0">
+                {/* Top row: due date, status */}
+                <div className="flex items-center space-x-2 mb-1">
+                  <span className="inline-block px-2 py-0.5 rounded bg-red-100 text-red-800 text-xs font-semibold">
+                    Due: {new Date(project.due_date).toLocaleDateString()}
+                  </span>
+                  {/* Status badge */}
+                  {project.current_stage !== 'incoming' && (
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded ${project.stage_status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
+                      {project.stage_status ? project.stage_status.replace('_', ' ').toUpperCase() : 'IN PROGRESS'}
+                    </span>
+                  )}
+                </div>
+                {/* Client name */}
+                <span className="text-xs font-medium text-muted-foreground">{project.client?.company || project.client?.name}</span>
+                {/* Title */}
+                <span className="font-medium text-sm">{project.title}</span>
+                {/* Retainer/project label and estimated hours */}
+                <div className="flex items-center space-x-2 mt-1">
+                  {project.is_retainer ? (
+                    <span className="text-xs font-medium text-green-700">Retainer</span>
+                  ) : (
+                    <span className="text-xs font-medium text-blue-700">Project</span>
+                  )}
+                  {project.estimated_hours && (
+                    <span className="text-xs text-muted-foreground">Est. {project.estimated_hours}h</span>
+                  )}
+                </div>
+              </div>
+              {/* Right: Chevron and staff avatar flush right */}
+              <div className="flex items-center space-x-0 flex-shrink-0">
+                <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 group-hover:bg-gray-200 transition-colors">
+                  <ChevronDown className="h-3 w-3 text-gray-600 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                </div>
+                {project.assigned_staff && (
+                  <img src={project.assigned_staff.profile_picture_url || ''} alt={project.assigned_staff.name} className="w-6 h-6 rounded-full border" />
+                )}
+              </div>
+            </div>
           </div>
         </AccordionTrigger>
         <AccordionContent className="px-4 pb-4">

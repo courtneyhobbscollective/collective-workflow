@@ -102,30 +102,24 @@ export function IncomingBriefCard({
           {/* AccordionTrigger now only contains the content that expands/collapses the accordion */}
           <AccordionTrigger className="flex-1 text-left hover:no-underline p-0">
             <div className="flex flex-col items-start text-left space-y-2">
+              {/* Client name above title, no color badge */}
+              <span className="mb-1 text-xs font-medium text-muted-foreground">
+                {project.client?.company || project.client?.name}
+              </span>
               <div className="flex items-center space-x-2">
                 <h3 className="font-semibold text-base">{project.title}</h3>
-                <div className="flex space-x-1">
-                  {project.is_retainer ? (
-                    <Badge variant="secondary" className="bg-green-100 text-green-800 text-xs">
-                      Retainer
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs">
-                      Project
-                    </Badge>
-                  )}
-                  {!project.contract_signed && (
-                    <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs">
-                      Contract Pending
-                    </Badge>
-                  )}
-                </div>
               </div>
-              
+              {/* Retainer/Project as plain text, not a badge */}
+              <div className="flex space-x-1">
+                {project.is_retainer ? (
+                  <span className="text-xs font-medium text-green-700">Retainer</span>
+                ) : (
+                  <span className="text-xs font-medium text-blue-700">Project</span>
+                )}
+              </div>
               <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                 <div className="flex items-center space-x-1">
                   <FileText className="w-3 h-3" />
-                  <span>{project.client?.company || project.client?.name}</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Calendar className="w-3 h-3" />
