@@ -24,13 +24,13 @@ export function AddStaffForm({ onSubmit, onCancel }: AddStaffFormProps) {
     email: "",
     role: "Staff" as 'Admin' | 'Staff',
     profile_picture_url: "",
-    available_hours_per_week: 22,
+    available_hours_per_week: 0,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await onSubmit(formData);
-    setFormData({ name: "", email: "", role: "Staff", profile_picture_url: "", available_hours_per_week: 22 });
+    setFormData({ name: "", email: "", role: "Staff", profile_picture_url: "", available_hours_per_week: 0 });
   };
 
   const handleImageUploaded = (url: string) => {
@@ -92,15 +92,15 @@ export function AddStaffForm({ onSubmit, onCancel }: AddStaffFormProps) {
               <Input
                 id="available_hours"
                 type="number"
-                min="1"
+                min="0"
                 max="168"
                 value={formData.available_hours_per_week}
-                onChange={(e) => setFormData({ ...formData, available_hours_per_week: parseInt(e.target.value) || 22 })}
-                placeholder="22"
+                onChange={(e) => setFormData({ ...formData, available_hours_per_week: parseInt(e.target.value) || 0 })}
+                placeholder="0"
                 required
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Number of hours this staff member is available for project work per week
+                Number of hours this staff member is available for project work per week (0 = not included in utilisation)
               </p>
             </div>
           </div>

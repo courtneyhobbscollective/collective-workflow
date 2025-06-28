@@ -22,7 +22,7 @@ export function EditStaffModal({ staff, open, onOpenChange, onUpdate }: EditStaf
     email: staff.email,
     role: staff.role,
     profile_picture_url: staff.profile_picture_url || "",
-    available_hours_per_week: staff.available_hours_per_week || 22,
+    available_hours_per_week: staff.available_hours_per_week || 0,
   });
   const { toast } = useToast();
 
@@ -114,15 +114,15 @@ export function EditStaffModal({ staff, open, onOpenChange, onUpdate }: EditStaf
               <Input
                 id="edit-available_hours"
                 type="number"
-                min="1"
+                min="0"
                 max="168"
                 value={formData.available_hours_per_week}
-                onChange={(e) => setFormData({ ...formData, available_hours_per_week: parseInt(e.target.value) || 22 })}
-                placeholder="22"
+                onChange={(e) => setFormData({ ...formData, available_hours_per_week: parseInt(e.target.value) || 0 })}
+                placeholder="0"
                 required
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Number of hours this staff member is available for project work per week
+                Number of hours this staff member is available for project work per week (0 = not included in utilisation)
               </p>
             </div>
           </div>

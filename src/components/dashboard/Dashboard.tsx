@@ -268,7 +268,7 @@ export function Dashboard() {
         console.log(`${staff.name} total booked hours:`, bookedHours);
 
         // Use the available_hours_per_week from the staff data
-        const availableHours = staff.available_hours_per_week || 22; // Default to 22 if not set
+        const availableHours = staff.available_hours_per_week || 0; // Default to 0 if not set
 
         const utilisationPercentage = availableHours > 0 ? (bookedHours / availableHours) * 100 : 0;
 
