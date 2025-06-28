@@ -19,6 +19,18 @@ import { useState } from "react";
 
 const queryClient = new QueryClient();
 
+// Simple test component to debug white screen
+function TestPage() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold mb-4">App is working!</h1>
+        <p className="text-muted-foreground">If you can see this, the basic app is loading correctly.</p>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
   return (
@@ -31,6 +43,7 @@ function App() {
             <BrowserRouter>
               <div className="min-h-screen bg-background flex flex-col">
                 <Routes>
+                  <Route path="/test" element={<TestPage />} />
                   <Route path="/auth" element={<AuthPage />} />
                   <Route path="/client-auth" element={<ClientAuthPage />} />
                   <Route path="/setup-password" element={<PasswordSetupPage />} />
