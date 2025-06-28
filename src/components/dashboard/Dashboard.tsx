@@ -265,15 +265,27 @@ export function Dashboard() {
           return total + (booking.hours_booked || 0);
         }, 0);
 
-        console.log(`${staff.name} total booked hours:`, bookedHours);
+        // Also calculate hours from assigned projects (briefs)
+        const assignedProjectHours = staffProjects.reduce((total, project) => {
+          return total + (project.estimated_hours || 0);
+        }, 0);
+
+        // Total booked hours = calendar bookings + assigned project hours
+        const totalBookedHours = bookedHours + assignedProjectHours;
+
+        console.log(`${staff.name} total booked hours:`, {
+          calendarBookings: bookedHours,
+          assignedProjects: assignedProjectHours,
+          total: totalBookedHours
+        });
 
         // Use the available_hours_per_week from the staff data
         const availableHours = staff.available_hours_per_week || 0; // Default to 0 if not set
 
-        const utilisationPercentage = availableHours > 0 ? (bookedHours / availableHours) * 100 : 0;
+        const utilisationPercentage = availableHours > 0 ? (totalBookedHours / availableHours) * 100 : 0;
 
         console.log(`${staff.name} utilisation:`, {
-          bookedHours,
+          totalBookedHours,
           availableHours,
           utilisationPercentage: Math.round(utilisationPercentage * 10) / 10
         });
@@ -290,7 +302,7 @@ export function Dashboard() {
             overdueProjects: staffProjects.filter(p => 
               p.due_date && new Date(p.due_date) < new Date()
             ).length,
-            bookedHours: Math.round(bookedHours * 10) / 10,
+            bookedHours: Math.round(totalBookedHours * 10) / 10,
             utilisationPercentage: Math.round(utilisationPercentage * 10) / 10,
           }
         };
@@ -572,7 +584,7 @@ export function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Hours Booked This Week:</span>
+              <span className="text-sm text-muted-foreground">Hours Committed This Week:</span>
               <span className="font-medium">{teamEfficiency.totalBookedHours}h / {teamEfficiency.totalAvailableHours}h</span>
             </div>
             <div className="space-y-2">
@@ -581,6 +593,34 @@ export function Dashboard() {
                 <span>{teamEfficiency.utilisationPercentage}%</span>
               </div>
               <Progress value={teamEfficiency.utilisationPercentage} className="h-2" />
+            </div>
+            
+            {/* Individual Staff Utilisation Bars */}
+            <div className="space-y-2 pt-2 border-t">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Individual Staff Utilisation:</p>
+              {teamData
+                .filter(member => member.staff.available_hours_per_week && member.staff.available_hours_per_week > 0)
+                .map((member) => (
+                  <div key={member.staff.id} className="space-y-1">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="truncate">{member.staff.name}</span>
+                      <span className="font-medium">{member.stats.utilisationPercentage}%</span>
+                    </div>
+                    <Progress 
+                      value={member.stats.utilisationPercentage} 
+                      className="h-1.5" 
+                      style={{
+                        '--progress-background': member.stats.utilisationPercentage > 85 ? 'hsl(var(--primary))' : 
+                                                 member.stats.utilisationPercentage > 60 ? 'hsl(var(--warning))' : 
+                                                 'hsl(var(--muted))'
+                      } as React.CSSProperties}
+                    />
+                  </div>
+                ))}
+            </div>
+            
+            <div className="text-xs text-muted-foreground">
+              Includes calendar bookings + assigned project hours
             </div>
             <div className="text-xs text-muted-foreground">
               Target: 85% utilisation for optimal efficiency
@@ -597,20 +637,28 @@ export function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-3">
-              {teamData.slice(0, 4).map((member) => (
-                <div key={member.staff.id} className="flex items-center justify-between p-2 border rounded">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                      <User className="w-3 h-3 text-blue-600" />
+              {teamData.slice(0, 4).map((member) => {
+                const calendarHours = member.bookings.reduce((total, booking) => total + (booking.hours_booked || 0), 0);
+                const projectHours = member.projects.reduce((total, project) => total + (project.estimated_hours || 0), 0);
+                const totalHours = calendarHours + projectHours;
+                
+                return (
+                  <div key={member.staff.id} className="flex items-center justify-between p-2 border rounded">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                        <User className="w-3 h-3 text-blue-600" />
+                      </div>
+                      <span className="text-sm font-medium">{member.staff.name}</span>
                     </div>
-                    <span className="text-sm font-medium">{member.staff.name}</span>
+                    <div className="text-right">
+                      <p className="text-xs font-medium">{member.stats.activeProjects} projects</p>
+                      <p className="text-xs text-muted-foreground">
+                        {totalHours}h total ({calendarHours}h booked, {projectHours}h assigned)
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs font-medium">{member.stats.activeProjects} projects</p>
-                    <p className="text-xs text-muted-foreground">{member.stats.bookedHours}h booked</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>
