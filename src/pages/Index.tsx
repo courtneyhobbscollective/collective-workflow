@@ -7,13 +7,16 @@ import { ClientManagement } from "@/components/clients/ClientManagement";
 import { BriefManagement } from "@/components/briefs/BriefManagement";
 import { StaffManagement } from "@/components/staff/StaffManagement";
 import { CRMDashboard } from "@/components/crm/CRMDashboard";
-import { TopNavigation } from "@/components/layout/TopNavigation";
 import { Footer } from "@/components/layout/Footer";
 import { StaffDashboard } from "@/components/staff/StaffDashboard";
 import { useAuth } from "@/contexts/AuthContext";
 
-const Index = () => {
-  const [activeTab, setActiveTab] = useState("dashboard");
+interface IndexProps {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+}
+
+const Index = ({ activeTab, onTabChange }: IndexProps) => {
   const { staff, clientProfile } = useAuth(); // Get clientProfile as well
 
   const renderContent = () => {
@@ -51,11 +54,12 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <TopNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      <div className="container mx-auto px-4 py-6 flex-1 bg-gradient-to-br from-blue-50/30 to-indigo-100/30">
+      <div 
+        className="mx-auto px-4 py-6 flex-1 w-full"
+        style={{ maxWidth: '960px' }}
+      >
         {renderContent()}
       </div>
-      <Footer />
     </div>
   );
 };

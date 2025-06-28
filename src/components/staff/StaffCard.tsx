@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -75,6 +74,12 @@ export function StaffCard({ staff, onEdit, onResendInvitation, onDelete }: Staff
             </span>
             {getStatusBadge(staff.invitation_status)}
           </div>
+          {staff.available_hours_per_week && (
+            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+              <Clock className="w-4 h-4" />
+              <span>{staff.available_hours_per_week}h/week available</span>
+            </div>
+          )}
           {staff.invitation_status === 'invited' && (
             <Button
               size="sm"

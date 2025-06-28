@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +13,7 @@ interface AddStaffFormProps {
     email: string;
     role: 'Admin' | 'Staff';
     profile_picture_url: string;
+    available_hours_per_week: number;
   }) => Promise<void>;
   onCancel: () => void;
 }
@@ -24,12 +24,13 @@ export function AddStaffForm({ onSubmit, onCancel }: AddStaffFormProps) {
     email: "",
     role: "Staff" as 'Admin' | 'Staff',
     profile_picture_url: "",
+    available_hours_per_week: 22,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await onSubmit(formData);
-    setFormData({ name: "", email: "", role: "Staff", profile_picture_url: "" });
+    setFormData({ name: "", email: "", role: "Staff", profile_picture_url: "", available_hours_per_week: 22 });
   };
 
   const handleImageUploaded = (url: string) => {
@@ -85,6 +86,22 @@ export function AddStaffForm({ onSubmit, onCancel }: AddStaffFormProps) {
                   <SelectItem value="Staff">Staff</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label htmlFor="available_hours">Available Hours Per Week *</Label>
+              <Input
+                id="available_hours"
+                type="number"
+                min="1"
+                max="168"
+                value={formData.available_hours_per_week}
+                onChange={(e) => setFormData({ ...formData, available_hours_per_week: parseInt(e.target.value) || 22 })}
+                placeholder="22"
+                required
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Number of hours this staff member is available for project work per week
+              </p>
             </div>
           </div>
           <div className="flex space-x-2">

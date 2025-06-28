@@ -13,10 +13,14 @@ import { ClientDashboardPage } from "@/pages/ClientDashboardPage"; // Import the
 import { ClientDashboardLayout } from "@/components/layout/ClientDashboardLayout"; // Import the new layout
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import { TopNavigation } from "@/components/layout/TopNavigation";
+import { Footer } from "@/components/layout/Footer";
+import { useState } from "react";
 
 const queryClient = new QueryClient();
 
 function App() {
+  const [activeTab, setActiveTab] = useState("dashboard");
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -26,29 +30,28 @@ function App() {
             <Sonner />
             <BrowserRouter>
               <div className="min-h-screen bg-background flex flex-col">
-                {/* Header/Nav should be rendered here, edge-to-edge */}
-                {/* Main content boxed */}
-                <main className="container mx-auto max-w-4xl w-full flex-1">
-                  <Routes>
-                    <Route path="/auth" element={<AuthPage />} />
-                    <Route path="/client-auth" element={<ClientAuthPage />} />
-                    <Route path="/setup-password" element={<PasswordSetupPage />} />
-                    <Route path="/client-dashboard" element={
-                      <ProtectedRoute requiredRole="Client">
-                        <ClientDashboardLayout>
-                          <ClientDashboardPage />
-                        </ClientDashboardLayout>
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/" element={
-                      <ProtectedRoute>
-                        <Index />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </main>
-                {/* Footer should be rendered here, edge-to-edge */}
+                <Routes>
+                  <Route path="/auth" element={<AuthPage />} />
+                  <Route path="/client-auth" element={<ClientAuthPage />} />
+                  <Route path="/setup-password" element={<PasswordSetupPage />} />
+                  <Route path="/client-dashboard" element={
+                    <ProtectedRoute requiredRole="Client">
+                      <ClientDashboardLayout>
+                        <ClientDashboardPage />
+                      </ClientDashboardLayout>
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/" element={
+                    <ProtectedRoute>
+                      <TopNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+                      <main className="flex-1 bg-gradient-to-br from-blue-50/30 to-indigo-100/30">
+                        <Index activeTab={activeTab} onTabChange={setActiveTab} />
+                      </main>
+                      <Footer />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
               </div>
             </BrowserRouter>
           </TooltipProvider>

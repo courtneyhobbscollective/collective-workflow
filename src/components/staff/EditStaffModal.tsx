@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -23,6 +22,7 @@ export function EditStaffModal({ staff, open, onOpenChange, onUpdate }: EditStaf
     email: staff.email,
     role: staff.role,
     profile_picture_url: staff.profile_picture_url || "",
+    available_hours_per_week: staff.available_hours_per_week || 22,
   });
   const { toast } = useToast();
 
@@ -39,6 +39,7 @@ export function EditStaffModal({ staff, open, onOpenChange, onUpdate }: EditStaf
 
     setLoading(true);
     try {
+      console.log('Submitting staff update:', formData);
       await onUpdate(staff.id, formData);
       onOpenChange(false);
       toast({
@@ -49,7 +50,7 @@ export function EditStaffModal({ staff, open, onOpenChange, onUpdate }: EditStaf
       console.error('Error updating staff:', error);
       toast({
         title: "Error",
-        description: "Failed to update staff member",
+        description: `Failed to update staff member: ${error instanceof Error ? error.message : 'Unknown error'}`,
         variant: "destructive",
       });
     } finally {
@@ -107,6 +108,22 @@ export function EditStaffModal({ staff, open, onOpenChange, onUpdate }: EditStaf
                   <SelectItem value="Staff">Staff</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label htmlFor="edit-available_hours">Available Hours Per Week *</Label>
+              <Input
+                id="edit-available_hours"
+                type="number"
+                min="1"
+                max="168"
+                value={formData.available_hours_per_week}
+                onChange={(e) => setFormData({ ...formData, available_hours_per_week: parseInt(e.target.value) || 22 })}
+                placeholder="22"
+                required
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Number of hours this staff member is available for project work per week
+              </p>
             </div>
           </div>
           

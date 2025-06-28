@@ -1,4 +1,3 @@
-
 export interface Staff {
   id: string;
   name: string;
@@ -8,5 +7,6 @@ export interface Staff {
   profile_picture_url?: string | null;
   invitation_status?: 'pending' | 'invited' | 'accepted' | null;
   is_active?: boolean | null;
+  available_hours_per_week?: number | null;
   created_at?: string;
 }

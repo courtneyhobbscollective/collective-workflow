@@ -56,6 +56,7 @@ export function StaffManagement() {
     email: string;
     role: 'Admin' | 'Staff';
     profile_picture_url: string;
+    available_hours_per_week: number;
   }) => {
     if (!formData.name || !formData.email || !formData.role) {
       toast({
@@ -243,12 +244,19 @@ export function StaffManagement() {
 
   const handleUpdate = async (id: string, updates: Partial<Staff>) => {
     try {
+      console.log('Updating staff member:', id, 'with updates:', updates);
+      
       const { error } = await supabase
         .from('staff')
         .update(updates)
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database update error:', error);
+        throw error;
+      }
+      
+      console.log('Staff update successful');
       await loadStaff();
     } catch (error) {
       console.error('Error updating staff:', error);
