@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DeleteBriefModal } from "./DeleteBriefModal";
 import { BriefTemplateModal } from "./BriefTemplateModal";
 import { BriefTemplateList } from "./BriefTemplateList";
+import { BriefCard } from "./BriefCard";
 
 interface Client {
   id: string;
@@ -515,66 +516,13 @@ export function BriefManagement() {
             </Card>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="space-y-4">
             {projects.map((project) => (
-              <Card key={project.id}>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Briefcase className="w-5 h-5" />
-                      <span>{project.title}</span>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setDeletingProject(project)}
-                      className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">{project.client?.company || project.client?.name}</p>
-                    <p className="text-sm text-muted-foreground">{project.work_type}</p>
-                    {project.description && (
-                      <p className="text-sm text-muted-foreground">{project.description}</p>
-                    )}
-                    <div className="flex justify-between items-center text-xs">
-                      <span>Deliverables: {project.deliverables}</span>
-                      <span>Due: {new Date(project.due_date).toLocaleDateString()}</span>
-                    </div>
-                    {project.estimated_hours && (
-                      <div className="text-xs">
-                        <span>Est. Hours: {project.estimated_hours}</span>
-                      </div>
-                    )}
-                    {project.project_value && (
-                      <div className="text-xs font-medium">
-                        <span>Value: £{project.project_value.toLocaleString()}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center">
-                      <span className={`text-xs px-2 py-1 rounded ${getStatusColor(project.current_stage)}`}>
-                        {getStageDisplayName(project.current_stage)}
-                      </span>
-                      <div className="flex space-x-1">
-                        {project.is_retainer && (
-                          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                            Retainer
-                          </span>
-                        )}
-                        {project.treat_as_oneoff && (
-                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                            One-off
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <BriefCard
+                key={project.id}
+                project={project}
+                onDelete={() => setDeletingProject(project)}
+              />
             ))}
           </div>
         </TabsContent>
