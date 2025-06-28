@@ -96,6 +96,8 @@ export function BriefCard({ project, onDelete }: BriefCardProps) {
                   <span>{project.estimated_hours}h</span>
                 </>
               )}
+            </div>
+            <div className="flex items-center space-x-2">
               {project.is_retainer ? (
                 <Badge className="bg-green-100 text-green-800 border border-green-300 font-normal">
                   Retainer
@@ -110,26 +112,22 @@ export function BriefCard({ project, onDelete }: BriefCardProps) {
                   One-off
                 </Badge>
               )}
+              <Badge className={`${getStatusColor(project.current_stage)}`}>
+                {getStageDisplayName(project.current_stage)}
+              </Badge>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(project);
+                }}
+                className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
             </div>
           </div>
-          
-          {/* Status Badge */}
-          <Badge className={`ml-2 ${getStatusColor(project.current_stage)}`}>
-            {getStageDisplayName(project.current_stage)}
-          </Badge>
-          
-          {/* Delete Button */}
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(project);
-            }}
-            className="ml-2 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
           
           {/* Chevron in a circle at the far right */}
           <span className="ml-auto flex items-center justify-center w-8 h-8 rounded-full bg-muted group-hover:bg-accent transition-colors">
