@@ -244,6 +244,11 @@ export type Database = {
           retainer_end_date: string | null
           retainer_hours_per_month: number | null
           retainer_start_date: string | null
+          brand_guidelines_url: string | null
+          tone_of_voice_url: string | null
+          fonts: Json | null
+          color_palette: Json | null
+          social_logins: Json | null
         }
         Insert: {
           address?: string | null
@@ -259,6 +264,11 @@ export type Database = {
           retainer_end_date?: string | null
           retainer_hours_per_month?: number | null
           retainer_start_date?: string | null
+          brand_guidelines_url?: string | null
+          tone_of_voice_url?: string | null
+          fonts?: Json | null
+          color_palette?: Json | null
+          social_logins?: Json | null
         }
         Update: {
           address?: string | null
@@ -274,6 +284,11 @@ export type Database = {
           retainer_end_date?: string | null
           retainer_hours_per_month?: number | null
           retainer_start_date?: string | null
+          brand_guidelines_url?: string | null
+          tone_of_voice_url?: string | null
+          fonts?: Json | null
+          color_palette?: Json | null
+          social_logins?: Json | null
         }
         Relationships: []
       }

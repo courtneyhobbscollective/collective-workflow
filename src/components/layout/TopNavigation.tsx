@@ -23,6 +23,10 @@ import {
   TrendingUp,
   Menu,
   X,
+  Home,
+  Kanban,
+  Building,
+  MessageCircle,
 } from "lucide-react";
 import { UserMenu } from "./UserMenu";
 import { Logo } from "@/components/ui/Logo";
@@ -39,14 +43,15 @@ export function TopNavigation({ activeTab, onTabChange }: TopNavigationProps) {
   const { staff } = useAuth();
 
   const navigationItems = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "workflow", label: "Workflow", icon: Workflow },
+    { id: "dashboard", label: "Dashboard", icon: Home },
+    { id: "workflow", label: "Workflow", icon: Kanban },
     { id: "briefs", label: "Briefs", icon: FileText },
-    { id: "clients", label: "Clients", icon: Users },
+    { id: "clients", label: "Clients", icon: Building },
     { id: "calendar", label: "Calendar", icon: Calendar },
-    { id: "chat", label: "Chat", icon: MessageSquare },
-    { id: "staff", label: "Staff", icon: UserCog },
-    ...(staff?.role === 'Admin' ? [{ id: "crm", label: "CRM", icon: TrendingUp }] : []),
+    { id: "chat", label: "Chat", icon: MessageCircle },
+    { id: "crm", label: "CRM", icon: MessageSquare },
+    { id: "staff", label: "Staff", icon: Users },
+    ...(staff?.role === 'Admin' ? [{ id: "billing", label: "Billing", icon: TrendingUp }] : []),
   ];
 
   const NavButton = ({ item }: { item: typeof navigationItems[0] }) => (
@@ -83,7 +88,7 @@ export function TopNavigation({ activeTab, onTabChange }: TopNavigationProps) {
                     >
                       <item.icon className="w-4 h-4 mr-2" />
                       {item.label}
-                      {item.id === "crm" && staff?.role === 'Admin' && (
+                      {item.id === "billing" && staff?.role === 'Admin' && (
                         <Badge variant="secondary" className="ml-2 text-xs">
                           Admin
                         </Badge>

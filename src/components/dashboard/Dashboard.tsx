@@ -128,9 +128,9 @@ export function Dashboard({ onTabChange }: { onTabChange: (tab: string) => void 
   const [teamData, setTeamData] = useState<TeamMemberData[]>([]);
   const [overallStats, setOverallStats] = useState({
     totalStaff: 0,
+    totalClients: 0,
     activeProjects: 0,
     pendingBriefs: 0,
-    totalRevenue: 0,
   });
   const [teamEfficiency, setTeamEfficiency] = useState({
     totalBookedHours: 0,
@@ -361,9 +361,9 @@ export function Dashboard({ onTabChange }: { onTabChange: (tab: string) => void 
 
       setOverallStats({
         totalStaff: staffData?.length || 0,
+        totalClients: clientsData?.length || 0,
         activeProjects: projectsData?.length || 0,
         pendingBriefs: projectsData?.filter(p => p.current_stage === 'incoming').length || 0,
-        totalRevenue: clientsData?.length || 0,
       });
 
       console.log('=== DASHBOARD LOADING COMPLETE ===');
@@ -570,7 +570,7 @@ export function Dashboard({ onTabChange }: { onTabChange: (tab: string) => void 
   // Admin Dashboard
   const stats = [
     { title: "Active Staff", value: overallStats.totalStaff.toString(), icon: Users, color: "text-blue-600" },
-    { title: "Total Revenue", value: overallStats.totalRevenue.toString(), icon: DollarSign, color: "text-green-600" },
+    { title: "Total Clients", value: overallStats.totalClients.toString(), icon: UserPlus, color: "text-green-600" },
     { title: "Active Projects", value: overallStats.activeProjects.toString(), icon: Briefcase, color: "text-purple-600" },
     { title: "Pending Briefs", value: overallStats.pendingBriefs.toString(), icon: Clock, color: "text-orange-600" },
   ];

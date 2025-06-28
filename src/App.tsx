@@ -9,11 +9,10 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AuthPage } from "@/components/auth/AuthPage";
 import { PasswordSetupPage } from "@/components/auth/PasswordSetupPage";
 import { ClientAuthPage } from "@/pages/ClientAuthPage";
-import { ClientDashboardPage } from "@/pages/ClientDashboardPage"; // Import the renamed ClientDashboardPage
-import { ClientDashboardLayout } from "@/components/layout/ClientDashboardLayout"; // Import the new layout
+import { ClientDashboardPage } from "@/pages/ClientDashboardPage";
+import { ClientDashboardLayout } from "@/components/layout/ClientDashboardLayout";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import { TopNavigation } from "@/components/layout/TopNavigation";
 import { Footer } from "@/components/layout/Footer";
 import { useState } from "react";
 
@@ -43,10 +42,7 @@ function App() {
                   } />
                   <Route path="/" element={
                     <ProtectedRoute>
-                      <TopNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-                      <main className="flex-1 bg-gradient-to-br from-blue-50/30 to-indigo-100/30">
-                        <Index activeTab={activeTab} onTabChange={setActiveTab} />
-                      </main>
+                      <Index activeTab={activeTab} onTabChange={setActiveTab} />
                       <Footer />
                     </ProtectedRoute>
                   } />

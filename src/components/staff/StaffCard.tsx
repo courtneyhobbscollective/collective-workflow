@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Users, Edit, Mail, CheckCircle, Clock, Trash2 } from "lucide-react";
+import { Edit, Mail, CheckCircle, Clock, Trash2 } from "lucide-react";
 import type { Staff } from "@/types/staff";
 
 interface StaffCardProps {
@@ -27,7 +27,7 @@ export function StaffCard({ staff, onEdit, onResendInvitation, onDelete }: Staff
   };
 
   return (
-    <Card>
+    <Card className="flex flex-col h-full">
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -37,31 +37,11 @@ export function StaffCard({ staff, onEdit, onResendInvitation, onDelete }: Staff
                 {staff.name.split(' ').map(n => n[0]).join('').toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className="flex items-center space-x-2">
-              <Users className="w-5 h-5" />
-              <span>{staff.name}</span>
-            </div>
-          </div>
-          <div className="flex space-x-1">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onEdit(staff)}
-            >
-              <Edit className="w-4 h-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onDelete(staff)}
-              className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            <span className="font-medium text-lg">{staff.name}</span>
           </div>
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col flex-1 justify-between">
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">{staff.email}</p>
           <div className="flex items-center justify-between">
@@ -91,6 +71,23 @@ export function StaffCard({ staff, onEdit, onResendInvitation, onDelete }: Staff
               Resend Invitation
             </Button>
           )}
+        </div>
+        <div className="flex flex-col space-y-2 mt-4">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onEdit(staff)}
+          >
+            <Edit className="w-4 h-4 mr-2" />Edit
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onDelete(staff)}
+            className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />Delete
+          </Button>
         </div>
       </CardContent>
     </Card>

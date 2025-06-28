@@ -61,6 +61,7 @@ export function ChatInterface() {
   const [loading, setLoading] = useState(true);
   const [mentionCounts, setMentionCounts] = useState<MentionCount[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaViewportRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { currentStaff, allStaff } = useStaff();
 
@@ -166,6 +167,19 @@ export function ChatInterface() {
       };
     }
   }, [currentStaff]);
+
+  useEffect(() => {
+    // Scroll to bottom when messages change
+    messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+  }, [messages]);
+
+  useEffect(() => {
+    // Scroll the chat thread to the bottom by setting scrollTop
+    const viewport = scrollAreaViewportRef.current;
+    if (viewport) {
+      viewport.scrollTop = viewport.scrollHeight;
+    }
+  }, [messages]);
 
   const loadChannels = async () => {
     try {
@@ -533,7 +547,7 @@ export function ChatInterface() {
               </div>
 
               {/* Messages */}
-              <ScrollArea className="flex-1 p-4">
+              <ScrollArea className="flex-1 p-4" viewportRef={scrollAreaViewportRef}>
                 <MessageList 
                   messages={messages} 
                   currentUser={{
@@ -543,7 +557,6 @@ export function ChatInterface() {
                   }}
                   allStaff={allStaff}
                 />
-                <div ref={messagesEndRef} />
               </ScrollArea>
 
               {/* Message Input */}

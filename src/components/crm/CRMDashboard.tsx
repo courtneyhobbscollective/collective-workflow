@@ -1,96 +1,77 @@
-
 import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { 
+  MessageSquare, 
+  Send, 
+  Users, 
+  Building, 
+  Mail,
+  Phone,
+  Calendar,
+  AlertCircle
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ExpenseModal } from "@/components/expenses/ExpenseModal";
-import { CRMMetrics } from "./CRMMetrics";
-import { BillingTable } from "./BillingTable";
 
-interface BillingRecord {
+interface Client {
   id: string;
-  project_id: string;
-  stage_id: string;
-  billing_percentage: number;
-  amount: number | null;
-  invoice_status: string;
-  invoice_number: string | null;
-  created_at: string;
-  processed_at: string | null;
-  project: {
-    title: string;
-    project_value: number | null;
-    is_retainer: boolean;
-    treat_as_oneoff: boolean;
-    po_number: string | null;
-    client: {
-      company: string;
-      name: string;
-      email?: string;
-      phone?: string;
-      contact_person?: string;
-      address?: string;
-    };
-  };
-  stage: {
+  name: string;
+  company: string;
+  email: string;
+  phone: string;
+  contact_person: string;
+  is_active: boolean;
+  is_retainer: boolean;
+}
+
+interface Message {
+  id: string;
+  client_id: string;
+  subject: string;
+  message: string;
+  message_type: 'general' | 'urgent' | 'update' | 'reminder';
+  sent_at: string;
+  read_at: string | null;
+  client: {
+    company: string;
     name: string;
   };
 }
 
-interface Expense {
-  id: string;
-  project_id: string;
-  description: string;
-  amount: number;
-  category: string;
-  date: string;
-  created_at: string;
-}
-
 export function CRMDashboard() {
-  const [billingRecords, setBillingRecords] = useState<BillingRecord[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<'general' | 'urgent' | 'update' | 'reminder'>('general');
   const [loading, setLoading] = useState(true);
-  const [expenseModalOpen, setExpenseModalOpen] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const { toast } = useToast();
 
   useEffect(() => {
-    loadBillingRecords();
-    loadExpenses();
+    loadClients();
+    loadMessages();
   }, []);
 
-  const loadBillingRecords = async () => {
+  const loadClients = async () => {
     try {
       const { data, error } = await supabase
-        .from('crm_billing_records')
-        .select(`
-          *,
-          project:projects(
-            title,
-            project_value,
-            is_retainer,
-            treat_as_oneoff,
-            po_number,
-            client:clients(
-              company, 
-              name, 
-              email, 
-              phone, 
-              contact_person, 
-              address
-            )
-          ),
-          stage:project_stages(name)
-        `)
-        .order('created_at', { ascending: false });
+        .from('clients')
+        .select('*')
+        .eq('is_active', true)
+        .order('company');
 
       if (error) throw error;
-      setBillingRecords(data || []);
+      setClients(data || []);
     } catch (error) {
-      console.error('Error loading billing records:', error);
+      console.error('Error loading clients:', error);
       toast({
         title: "Error",
-        description: "Failed to load billing records",
+        description: "Failed to load clients",
         variant: "destructive",
       });
     } finally {
@@ -98,119 +79,86 @@ export function CRMDashboard() {
     }
   };
 
-  const loadExpenses = async () => {
+  const loadMessages = async () => {
     try {
       const { data, error } = await supabase
-        .from('expenses')
-        .select('*')
-        .order('date', { ascending: false });
+        .from('client_messages')
+        .select(`
+          *,
+          client:clients(company, name)
+        `)
+        .order('sent_at', { ascending: false });
 
       if (error) throw error;
-      setExpenses(data || []);
+      setMessages(data || []);
     } catch (error) {
-      console.error('Error loading expenses:', error);
+      console.error('Error loading messages:', error);
     }
   };
 
-  const updateBillingRecord = async (recordId: string, amount: number, invoiceNumber: string, status: string) => {
+  const sendMessage = async () => {
+    if (!selectedClient || !subject.trim() || !message.trim()) {
+      toast({
+        title: "Error",
+        description: "Please select a client and fill in all fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
-        .from('crm_billing_records')
-        .update({
-          amount,
-          invoice_number: invoiceNumber,
-          invoice_status: status,
-          processed_at: status === 'invoiced' ? new Date().toISOString() : null
-        })
-        .eq('id', recordId);
+        .from('client_messages')
+        .insert({
+          client_id: selectedClient.id,
+          subject: subject.trim(),
+          message: message.trim(),
+          message_type: messageType,
+          sent_at: new Date().toISOString()
+        });
 
       if (error) throw error;
 
-      await loadBillingRecords();
-      
+      // Reset form
+      setSubject("");
+      setMessage("");
+      setMessageType('general');
+      setSelectedClient(null);
+
+      // Reload messages
+      await loadMessages();
+
       toast({
         title: "Success",
-        description: "Billing record updated successfully",
+        description: "Message sent successfully",
       });
     } catch (error) {
-      console.error('Error updating billing record:', error);
+      console.error('Error sending message:', error);
       toast({
         title: "Error",
-        description: "Failed to update billing record",
+        description: "Failed to send message",
         variant: "destructive",
       });
     }
   };
 
-  const calculateBillingAmount = (record: BillingRecord) => {
-    if (record.project.project_value) {
-      return (record.project.project_value * record.billing_percentage) / 100;
+  const getMessageTypeColor = (type: string) => {
+    switch (type) {
+      case 'urgent': return 'bg-red-100 text-red-800 border-red-300';
+      case 'update': return 'bg-blue-100 text-blue-800 border-blue-300';
+      case 'reminder': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      default: return 'bg-gray-100 text-gray-800 border-gray-300';
     }
-    return 0;
   };
 
-  const getProjectExpenses = (projectId: string) => {
-    return expenses.filter(expense => expense.project_id === projectId);
+  const getMessageTypeIcon = (type: string) => {
+    switch (type) {
+      case 'urgent': return <AlertCircle className="w-4 h-4" />;
+      case 'update': return <MessageSquare className="w-4 h-4" />;
+      case 'reminder': return <Calendar className="w-4 h-4" />;
+      default: return <MessageSquare className="w-4 h-4" />;
+    }
   };
-
-  const getTotalExpenses = (projectId: string) => {
-    return getProjectExpenses(projectId).reduce((sum, expense) => sum + expense.amount, 0);
-  };
-
-  const openExpenseModal = (projectId: string) => {
-    setSelectedProjectId(projectId);
-    setExpenseModalOpen(true);
-  };
-
-  const getMonthlyData = () => {
-    const now = new Date();
-    const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-
-    const months = [
-      {
-        name: currentMonth.toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
-        start: currentMonth,
-        end: new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      },
-      {
-        name: lastMonth.toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
-        start: lastMonth,
-        end: new Date(now.getFullYear(), now.getMonth(), 0)
-      },
-      {
-        name: twoMonthsAgo.toLocaleDateString('en-US', { year: 'numeric', month: 'long' }),
-        start: twoMonthsAgo,
-        end: new Date(now.getFullYear(), now.getMonth() - 1, 0)
-      }
-    ];
-
-    return months.map(month => {
-      const records = billingRecords.filter(record => {
-        const recordDate = new Date(record.created_at);
-        return recordDate >= month.start && recordDate <= month.end;
-      });
-
-      const total = records.reduce((sum, record) => {
-        return sum + (record.amount || calculateBillingAmount(record));
-      }, 0);
-
-      return {
-        ...month,
-        records,
-        total
-      };
-    });
-  };
-
-  const totalProjectValue = billingRecords.reduce((sum, r) => sum + (r.project.project_value || 0), 0);
-  const totalBillingAmount = billingRecords.reduce((sum, r) => sum + (r.amount || calculateBillingAmount(r)), 0);
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const pendingCount = billingRecords.filter(r => r.invoice_status === 'pending').length;
-  const invoicedCount = billingRecords.filter(r => r.invoice_status === 'invoiced').length;
-
-  const monthlyData = getMonthlyData();
 
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
@@ -220,53 +168,178 @@ export function CRMDashboard() {
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold text-foreground">CRM Dashboard</h2>
-        <p className="text-muted-foreground">Manage billing and invoicing for projects</p>
+        <p className="text-muted-foreground">Send messages to clients and manage communications</p>
       </div>
 
-      <CRMMetrics
-        pendingCount={pendingCount}
-        totalProjectValue={totalProjectValue}
-        totalBillingAmount={totalBillingAmount}
-        totalExpenses={totalExpenses}
-        paidCount={invoicedCount}
-      />
-
-      <div className="space-y-8">
-        {monthlyData.map((month, index) => (
-          <div key={month.name} className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-2xl font-semibold text-foreground">
-                {index === 0 ? month.name : `${month.name} (History)`}
-              </h3>
-              <div className="text-lg font-medium text-primary">
-                Month Total: £{month.total.toLocaleString()}
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Send Message Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Send className="w-5 h-5 mr-2" />
+              Send Message to Client
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Client Selection */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">Select Client</label>
+              <select
+                className="w-full p-2 border border-gray-300 rounded-md"
+                value={selectedClient?.id || ""}
+                onChange={(e) => {
+                  const client = clients.find(c => c.id === e.target.value);
+                  setSelectedClient(client || null);
+                }}
+              >
+                <option value="">Choose a client...</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.company} - {client.name}
+                  </option>
+                ))}
+              </select>
             </div>
-            
-            {month.records.length > 0 ? (
-              <BillingTable
-                records={month.records}
-                expenses={expenses}
-                onUpdate={updateBillingRecord}
-                onOpenExpenseModal={openExpenseModal}
-                calculateBillingAmount={calculateBillingAmount}
-                getTotalExpenses={getTotalExpenses}
+
+            {/* Message Type */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">Message Type</label>
+              <select
+                className="w-full p-2 border border-gray-300 rounded-md"
+                value={messageType}
+                onChange={(e) => setMessageType(e.target.value as any)}
+              >
+                <option value="general">General</option>
+                <option value="urgent">Urgent</option>
+                <option value="update">Update</option>
+                <option value="reminder">Reminder</option>
+              </select>
+            </div>
+
+            {/* Subject */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">Subject</label>
+              <Input
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Enter message subject..."
               />
+            </div>
+
+            {/* Message */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">Message</label>
+              <Textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Enter your message..."
+                rows={4}
+              />
+            </div>
+
+            {/* Send Button */}
+            <Button 
+              onClick={sendMessage}
+              disabled={!selectedClient || !subject.trim() || !message.trim()}
+              className="w-full"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              Send Message
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Recent Messages */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <MessageSquare className="w-5 h-5 mr-2" />
+              Recent Messages
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {messages.length > 0 ? (
+              <div className="space-y-4">
+                {messages.slice(0, 5).map((msg) => (
+                  <div key={msg.id} className="p-3 border rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        {getMessageTypeIcon(msg.message_type)}
+                        <Badge className={getMessageTypeColor(msg.message_type)}>
+                          {msg.message_type}
+                        </Badge>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(msg.sent_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="font-medium text-sm mb-1">{msg.subject}</div>
+                    <div className="text-sm text-muted-foreground mb-2">
+                      To: {msg.client.company} - {msg.client.name}
+                    </div>
+                    <div className="text-sm">
+                      {msg.message.length > 100 
+                        ? `${msg.message.substring(0, 100)}...` 
+                        : msg.message
+                      }
+                    </div>
+                    {msg.read_at && (
+                      <div className="text-xs text-green-600 mt-2">
+                        ✓ Read on {new Date(msg.read_at).toLocaleDateString()}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
-                No billing records for this month
+                <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>No messages sent yet</p>
               </div>
             )}
-          </div>
-        ))}
+          </CardContent>
+        </Card>
       </div>
 
-      <ExpenseModal
-        isOpen={expenseModalOpen}
-        onClose={() => setExpenseModalOpen(false)}
-        projectId={selectedProjectId}
-        onExpenseAdded={loadExpenses}
-      />
+      {/* Client Overview */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Users className="w-5 h-5 mr-2" />
+            Active Clients ({clients.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {clients.map((client) => (
+              <div key={client.id} className="p-4 border rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Building className="w-4 h-4 text-muted-foreground" />
+                  <span className="font-medium">{client.company}</span>
+                  {client.is_retainer && (
+                    <Badge variant="secondary" className="text-xs">Retainer</Badge>
+                  )}
+                </div>
+                <div className="text-sm text-muted-foreground mb-2">
+                  Contact: {client.contact_person}
+                </div>
+                <div className="flex items-center space-x-4 text-xs text-muted-foreground">
+                  <div className="flex items-center space-x-1">
+                    <Mail className="w-3 h-3" />
+                    <span>{client.email}</span>
+                  </div>
+                  {client.phone && (
+                    <div className="flex items-center space-x-1">
+                      <Phone className="w-3 h-3" />
+                      <span>{client.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
-}
+} 

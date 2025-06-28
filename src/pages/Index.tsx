@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import { WorkflowBoard } from "@/components/workflow/WorkflowBoard";
 import { CalendarView } from "@/components/calendar/CalendarView";
@@ -6,10 +6,13 @@ import { ChatInterface } from "@/components/chat/ChatInterface";
 import { ClientManagement } from "@/components/clients/ClientManagement";
 import { BriefManagement } from "@/components/briefs/BriefManagement";
 import { StaffManagement } from "@/components/staff/StaffManagement";
-import { CRMDashboard } from "@/components/crm/CRMDashboard";
-import { Footer } from "@/components/layout/Footer";
+import { BillingDashboard } from "@/components/billing/BillingDashboard";
 import { StaffDashboard } from "@/components/staff/StaffDashboard";
+import { TopNavigation } from "@/components/layout/TopNavigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useStaff } from "@/contexts/StaffContext";
+import { supabase } from "@/integrations/supabase/client";
+import { CRMDashboard } from "@/components/crm/CRMDashboard";
 
 interface IndexProps {
   activeTab: string;
@@ -17,7 +20,7 @@ interface IndexProps {
 }
 
 const Index = ({ activeTab, onTabChange }: IndexProps) => {
-  const { staff, clientProfile } = useAuth(); // Get clientProfile as well
+  const { staff, clientProfile } = useAuth();
 
   const renderContent = () => {
     // If it's a client, they should be redirected by ProtectedRoute,
@@ -45,19 +48,19 @@ const Index = ({ activeTab, onTabChange }: IndexProps) => {
       case "staff":
         return <StaffManagement />;
       case "crm":
-        // Only Admin can access CRM
-        return staff?.role === "Admin" ? <CRMDashboard /> : <Dashboard onTabChange={onTabChange} />;
+        return <CRMDashboard />;
+      case "billing":
+        // Only Admin can access Billing
+        return staff?.role === "Admin" ? <BillingDashboard /> : <Dashboard onTabChange={onTabChange} />;
       default:
         return <Dashboard onTabChange={onTabChange} />;
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <div 
-        className="mx-auto px-4 py-6 flex-1 w-full"
-        style={{ maxWidth: '960px' }}
-      >
+    <div className="min-h-screen bg-background">
+      <TopNavigation activeTab={activeTab} onTabChange={onTabChange} />
+      <div className="max-w-7xl mx-auto px-4 py-6">
         {renderContent()}
       </div>
     </div>

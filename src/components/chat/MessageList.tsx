@@ -29,9 +29,10 @@ interface MessageListProps {
     email: string;
     profile_picture_url?: string | null;
   }>;
+  messagesEndRef?: React.RefObject<HTMLDivElement>;
 }
 
-export function MessageList({ messages, currentUser, allStaff = [] }: MessageListProps) {
+export function MessageList({ messages, currentUser, allStaff = [], messagesEndRef }: MessageListProps) {
   const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null);
 
   console.log('MessageList rendering with messages:', messages.length);
@@ -185,6 +186,7 @@ export function MessageList({ messages, currentUser, allStaff = [] }: MessageLis
   return (
     <div className="space-y-1">
       {messages.map((msg, idx) => renderMessage(msg, idx))}
+      <div ref={messagesEndRef} />
     </div>
   );
 }
