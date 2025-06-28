@@ -53,13 +53,19 @@ export function ClientCard({
         <AccordionTrigger hideChevron className="flex items-center w-full px-4 py-4 hover:bg-muted/50 transition-colors group no-underline hover:no-underline focus:no-underline">
           <div className="flex flex-col items-start flex-1">
             <h3 className="font-semibold text-base mb-1">{client.name}</h3>
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-1">
-              <Building className="w-3 h-3" />
-              <span>{client.company}</span>
-              <MailIcon className="w-3 h-3" />
-              <span>{client.email}</span>
-              <Phone className="w-3 h-3" />
-              <span>{client.phone}</span>
+            <div className="flex flex-col space-y-1 text-sm text-muted-foreground mb-1">
+              <div className="flex items-center space-x-1">
+                <Building className="w-3 h-3" />
+                <span>{client.company}</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <MailIcon className="w-3 h-3" />
+                <span>{client.email}</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <Phone className="w-3 h-3" />
+                <span>{client.phone}</span>
+              </div>
             </div>
             <div className="flex items-center space-x-2">
               {client.is_retainer ? (
@@ -82,24 +88,26 @@ export function ClientCard({
                   No User
                 </Badge>
               )}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(client);
-                }}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <Edit className="w-4 h-4" />
-              </Button>
             </div>
           </div>
           
-          {/* Chevron in a circle at the far right */}
-          <span className="ml-auto flex items-center justify-center w-8 h-8 rounded-full bg-muted group-hover:bg-accent transition-colors">
-            <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-          </span>
+          {/* Edit button and chevron on the right */}
+          <div className="flex items-center space-x-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(client);
+              }}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Edit className="w-4 h-4" />
+            </Button>
+            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-muted group-hover:bg-accent transition-colors">
+              <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+            </span>
+          </div>
         </AccordionTrigger>
         
         <AccordionContent className="px-4 pb-4">
