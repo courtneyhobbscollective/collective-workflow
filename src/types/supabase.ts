@@ -1028,6 +1028,65 @@ export type Database = {
           },
         ]
       }
+      personal_calendar_entries: {
+        Row: {
+          id: string
+          staff_id: string
+          title: string
+          description: string | null
+          entry_date: string
+          start_time: string
+          end_time: string
+          entry_type: string
+          meeting_link: string | null
+          location: string | null
+          is_all_day: boolean
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          staff_id: string
+          title: string
+          description?: string | null
+          entry_date: string
+          start_time: string
+          end_time: string
+          entry_type?: string
+          meeting_link?: string | null
+          location?: string | null
+          is_all_day?: boolean
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          staff_id?: string
+          title?: string
+          description?: string | null
+          entry_date?: string
+          start_time?: string
+          end_time?: string
+          entry_type?: string
+          meeting_link?: string | null
+          location?: string | null
+          is_all_day?: boolean
+          status?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_calendar_entries_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

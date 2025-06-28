@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { format, startOfWeek, addDays, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
-import type { Staff } from "@/types/staff";
+import type { Staff, PersonalCalendarEntry } from "@/types/staff";
 
 interface ProjectBooking {
   id: string;
@@ -42,6 +42,7 @@ interface CalendarGridProps {
   bookings: ProjectBooking[];
   staff: Staff[];
   staffTimeOff: StaffTimeOff[];
+  personalEntries: PersonalCalendarEntry[];
   selectedStaff: string;
   onBookingUpdate: () => void;
   onBookingClick: (booking: ProjectBooking) => void;
@@ -53,6 +54,7 @@ export function CalendarGrid({
   bookings, 
   staff, 
   staffTimeOff,
+  personalEntries,
   selectedStaff,
   onBookingUpdate,
   onBookingClick
@@ -103,6 +105,12 @@ export function CalendarGrid({
     });
   };
 
+  const getPersonalEntriesForDay = (date: Date) => {
+    return personalEntries.filter(entry => 
+      isSameDay(new Date(entry.entry_date), date)
+    );
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'scheduled':
@@ -143,6 +151,15 @@ export function CalendarGrid({
     }
   };
 
+  const getPersonalEntryColor = (type: string) => {
+    switch (type) {
+      case 'meeting': return 'bg-blue-100 text-blue-800 hover:bg-blue-200';
+      case 'client_call': return 'bg-green-100 text-green-800 hover:bg-green-200';
+      case 'personal': return 'bg-purple-100 text-purple-800 hover:bg-purple-200';
+      default: return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
+    }
+  };
+
   const handleDateClick = (date: Date) => {
     setSelectedDate(date);
   };
@@ -168,6 +185,7 @@ export function CalendarGrid({
           {days.map((day) => {
             const dayBookings = getBookingsForDay(day);
             const dayTimeOff = getTimeOffForDay(day);
+            const dayPersonalEntries = getPersonalEntriesForDay(day);
             const isToday = isSameDay(day, new Date());
             
             return (
@@ -195,6 +213,32 @@ export function CalendarGrid({
                           </div>
                           <div className="text-xs opacity-80">
                             {timeOff.is_full_day ? 'Full Day' : `${timeOff.start_time} - ${timeOff.end_time}`}
+                          </div>
+                          {selectedStaff === "all" && staffMember && (
+                            <div className="text-xs opacity-70 truncate">
+                              {staffMember.name}
+                            </div>
+                          )}
+                        </div>
+                      </Badge>
+                    );
+                  })}
+                  {dayPersonalEntries.map((entry) => {
+                    const staffMember = staff.find(s => s.id === entry.staff_id);
+                    return (
+                      <Badge
+                        key={entry.id}
+                        className={cn(
+                          "text-xs block cursor-default transition-colors w-full text-left relative p-2",
+                          getPersonalEntryColor(entry.entry_type)
+                        )}
+                      >
+                        <div className="space-y-1">
+                          <div className="truncate text-xs font-medium">
+                            {entry.title}
+                          </div>
+                          <div className="text-xs opacity-80">
+                            {entry.is_all_day ? 'All Day' : `${entry.start_time} - ${entry.end_time}`}
                           </div>
                           {selectedStaff === "all" && staffMember && (
                             <div className="text-xs opacity-70 truncate">
@@ -266,6 +310,7 @@ export function CalendarGrid({
         {days.map((day) => {
           const dayBookings = getBookingsForDay(day);
           const dayTimeOff = getTimeOffForDay(day);
+          const dayPersonalEntries = getPersonalEntriesForDay(day);
           const isToday = isSameDay(day, new Date());
           const isSelected = selectedDate && isSameDay(day, selectedDate);
           
@@ -292,7 +337,7 @@ export function CalendarGrid({
                 <div className="flex-1 overflow-hidden">
                   {/* Mobile dots (sm and below) */}
                   <div className="sm:hidden">
-                    {(dayBookings.length > 0 || dayTimeOff.length > 0) && (
+                    {(dayBookings.length > 0 || dayTimeOff.length > 0 || dayPersonalEntries.length > 0) && (
                       <div className="flex justify-center items-end h-full pb-1">
                         <div className="flex space-x-1">
                           {dayTimeOff.slice(0, 1).map((timeOff, index) => (
@@ -301,6 +346,15 @@ export function CalendarGrid({
                               className={cn(
                                 "w-1.5 h-1.5 rounded-full",
                                 getTimeOffColor(timeOff.type).split(' ')[0].replace('bg-', 'bg-') // Extract base color
+                              )}
+                            />
+                          ))}
+                          {dayPersonalEntries.slice(0, 1).map((entry, index) => (
+                            <div
+                              key={entry.id}
+                              className={cn(
+                                "w-1.5 h-1.5 rounded-full",
+                                getPersonalEntryColor(entry.entry_type).split(' ')[0].replace('bg-', 'bg-') // Extract base color
                               )}
                             />
                           ))}
@@ -313,7 +367,7 @@ export function CalendarGrid({
                               )}
                             />
                           ))}
-                          {(dayBookings.length + dayTimeOff.length) > 3 && (
+                          {(dayBookings.length + dayTimeOff.length + dayPersonalEntries.length) > 3 && (
                             <div className="w-1.5 h-1.5 rounded-full bg-gray-400" />
                           )}
                         </div>
@@ -348,7 +402,32 @@ export function CalendarGrid({
                         </Badge>
                       );
                     })}
-                    {dayBookings.slice(0, 2 - dayTimeOff.length).map((booking) => {
+                    {dayPersonalEntries.slice(0, 1).map((entry) => {
+                      const staffMember = staff.find(s => s.id === entry.staff_id);
+                      return (
+                        <Badge
+                          key={entry.id}
+                          className={cn(
+                            "text-xs block cursor-default transition-colors w-full text-left relative",
+                            getPersonalEntryColor(entry.entry_type)
+                          )}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <div className="truncate flex-1 min-w-0">
+                              <div className="truncate text-xs">
+                                {entry.title}
+                              </div>
+                              {selectedStaff === "all" && staffMember && (
+                                <div className="text-xs opacity-80 truncate">
+                                  {staffMember.name}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </Badge>
+                      );
+                    })}
+                    {dayBookings.slice(0, 2 - dayTimeOff.length - dayPersonalEntries.length).map((booking) => {
                       const staffMember = staff.find(s => s.id === booking.staff_id);
                       const isMultiDay = multiDayBookings.has(booking.project_id);
                       
@@ -383,9 +462,9 @@ export function CalendarGrid({
                         </Badge>
                       );
                     })}
-                    {(dayBookings.length + dayTimeOff.length) > 2 && (
+                    {(dayBookings.length + dayTimeOff.length + dayPersonalEntries.length) > 2 && (
                       <div className="text-xs text-muted-foreground px-1 cursor-pointer hover:text-foreground">
-                        +{(dayBookings.length + dayTimeOff.length) - 2} more
+                        +{(dayBookings.length + dayTimeOff.length + dayPersonalEntries.length) - 2} more
                       </div>
                     )}
                   </div>
@@ -404,9 +483,9 @@ export function CalendarGrid({
           </div>
           
           <div className="space-y-2">
-            {getBookingsForDay(selectedDate).length === 0 && getTimeOffForDay(selectedDate).length === 0 ? (
+            {getBookingsForDay(selectedDate).length === 0 && getTimeOffForDay(selectedDate).length === 0 && getPersonalEntriesForDay(selectedDate).length === 0 ? (
               <div className="text-center text-sm text-muted-foreground py-4">
-                No bookings or time off for this date
+                No bookings, time off, or personal entries for this date
               </div>
             ) : (
               <>
@@ -435,6 +514,47 @@ export function CalendarGrid({
                         <div className="flex items-center justify-between text-xs">
                           <div>
                             {format(new Date(timeOff.start_date), 'MMM d')} - {format(new Date(timeOff.end_date), 'MMM d')}
+                          </div>
+                          {selectedStaff === "all" && staffMember && (
+                            <div className="text-muted-foreground">
+                              {staffMember.name}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {getPersonalEntriesForDay(selectedDate).map((entry) => {
+                  const staffMember = staff.find(s => s.id === entry.staff_id);
+                  return (
+                    <div
+                      key={entry.id}
+                      className={cn(
+                        "p-3 rounded-lg border cursor-default transition-colors",
+                        getPersonalEntryColor(entry.entry_type)
+                      )}
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm">
+                              {entry.title}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {entry.is_all_day ? 'All Day' : `${entry.start_time} - ${entry.end_time}`}
+                            </div>
+                            {entry.description && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {entry.description}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-xs">
+                          <div>
+                            {entry.entry_type.replace('_', ' ')}
                           </div>
                           {selectedStaff === "all" && staffMember && (
                             <div className="text-muted-foreground">

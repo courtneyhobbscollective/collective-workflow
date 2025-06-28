@@ -10,3 +10,20 @@ export interface Staff {
   available_hours_per_week?: number | null;
   created_at?: string;
 }
+
+export interface PersonalCalendarEntry {
+  id: string;
+  staff_id: string;
+  title: string;
+  description: string | null;
+  entry_date: string;
+  start_time: string;
+  end_time: string;
+  entry_type: 'meeting' | 'client_call' | 'personal' | 'other';
+  meeting_link: string | null;
+  location: string | null;
+  is_all_day: boolean;
+  status: 'confirmed' | 'tentative' | 'cancelled';
+  created_at: string;
+  updated_at: string;
+}

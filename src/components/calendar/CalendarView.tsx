@@ -6,7 +6,7 @@ import { CalendarMainView } from "./CalendarMainView";
 import { BookingModal } from "./BookingModal";
 import { StaffAvailabilityModal } from "./StaffAvailabilityModal";
 import { BookingDetailsModal } from "./BookingDetailsModal";
-import type { Staff } from "@/types/staff";
+import type { Staff, PersonalCalendarEntry } from "@/types/staff";
 
 interface ProjectBooking {
   id: string;
@@ -44,6 +44,7 @@ export function CalendarView() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [bookings, setBookings] = useState<ProjectBooking[]>([]);
   const [staffTimeOff, setStaffTimeOff] = useState<StaffTimeOff[]>([]);
+  const [personalEntries, setPersonalEntries] = useState<PersonalCalendarEntry[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<string>(currentUser?.id || "all");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"week" | "month">("month");
@@ -98,6 +99,14 @@ export function CalendarView() {
 
       if (timeOffError) throw timeOffError;
 
+      // Load personal calendar entries
+      const { data: personalEntriesData, error: personalEntriesError } = await supabase
+        .from('personal_calendar_entries')
+        .select('*')
+        .order('entry_date', { ascending: true });
+
+      if (personalEntriesError) throw personalEntriesError;
+
       // Transform staff data to match our Staff interface
       const transformedStaff = (staffData || []).map((member: any) => ({
         ...member,
@@ -108,6 +117,7 @@ export function CalendarView() {
       setStaff(transformedStaff);
       setBookings(bookingsData || []);
       setStaffTimeOff(timeOffData || []);
+      setPersonalEntries((personalEntriesData || []) as PersonalCalendarEntry[]);
     } catch (error) {
       console.error('Error loading calendar data:', error);
       toast({
@@ -153,6 +163,7 @@ export function CalendarView() {
           bookings={bookings}
           staff={staff}
           staffTimeOff={staffTimeOff}
+          personalEntries={personalEntries}
           selectedStaff={selectedStaff}
           onViewChange={setView}
           onNavigateDate={navigateDate}

@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { CalendarGrid } from "./CalendarGrid";
 import { CalendarHeader } from "./CalendarHeader";
-import type { Staff } from "@/types/staff";
+import type { Staff, PersonalCalendarEntry } from "@/types/staff";
 
 interface ProjectBooking {
   id: string;
@@ -40,6 +40,7 @@ interface CalendarMainViewProps {
   bookings: ProjectBooking[];
   staff: Staff[];
   staffTimeOff: StaffTimeOff[];
+  personalEntries: PersonalCalendarEntry[];
   selectedStaff: string;
   onViewChange: (view: "week" | "month") => void;
   onNavigateDate: (direction: "prev" | "next") => void;
@@ -56,6 +57,7 @@ export function CalendarMainView({
   bookings,
   staff,
   staffTimeOff,
+  personalEntries,
   selectedStaff,
   onViewChange,
   onNavigateDate,
@@ -72,6 +74,10 @@ export function CalendarMainView({
   const filteredTimeOff = selectedStaff === "all"
     ? staffTimeOff
     : staffTimeOff.filter(timeOff => timeOff.staff_id === selectedStaff);
+
+  const filteredPersonalEntries = selectedStaff === "all"
+    ? personalEntries
+    : personalEntries.filter(entry => entry.staff_id === selectedStaff);
 
   return (
     <Card>
@@ -94,6 +100,7 @@ export function CalendarMainView({
             bookings={filteredBookings}
             staff={staff}
             staffTimeOff={filteredTimeOff}
+            personalEntries={filteredPersonalEntries}
             selectedStaff={selectedStaff}
             onBookingUpdate={onBookingUpdate}
             onBookingClick={onBookingClick}
