@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { UserMenu } from "./UserMenu";
 import { Logo } from "@/components/ui/Logo";
+import { NotificationBell } from "@/components/ui/NotificationBell";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface TopNavigationProps {
@@ -93,7 +94,10 @@ export function TopNavigation({ activeTab, onTabChange }: TopNavigationProps) {
               </NavigationMenuList>
             </NavigationMenu>
           </div>
-          <UserMenu />
+          <div className="flex items-center space-x-2">
+            <NotificationBell onTabChange={onTabChange} staffEmail={staff?.email} />
+            <UserMenu />
+          </div>
         </div>
       </div>
 
@@ -102,6 +106,7 @@ export function TopNavigation({ activeTab, onTabChange }: TopNavigationProps) {
         <div className="flex items-center justify-between">
           <Logo size="sm" />
           <div className="flex items-center space-x-2">
+            <NotificationBell onTabChange={onTabChange} staffEmail={staff?.email} />
             <UserMenu />
             <Button
               variant="ghost"

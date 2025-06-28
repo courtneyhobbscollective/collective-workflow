@@ -28,7 +28,7 @@ const Index = ({ activeTab, onTabChange }: IndexProps) => {
 
     // Show staff dashboard for Staff role, full dashboard for Admin
     if (activeTab === "dashboard") {
-      return staff?.role === "Staff" ? <StaffDashboard /> : <Dashboard />;
+      return staff?.role === "Staff" ? <StaffDashboard onTabChange={onTabChange} /> : <Dashboard onTabChange={onTabChange} />;
     }
     
     switch (activeTab) {
@@ -46,9 +46,9 @@ const Index = ({ activeTab, onTabChange }: IndexProps) => {
         return <StaffManagement />;
       case "crm":
         // Only Admin can access CRM
-        return staff?.role === "Admin" ? <CRMDashboard /> : <Dashboard />;
+        return staff?.role === "Admin" ? <CRMDashboard /> : <Dashboard onTabChange={onTabChange} />;
       default:
-        return <Dashboard />;
+        return <Dashboard onTabChange={onTabChange} />;
     }
   };
 

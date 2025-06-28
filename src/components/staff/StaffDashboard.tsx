@@ -2,9 +2,22 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Clock, AlertTriangle, Calendar, User } from "lucide-react";
+import { CheckCircle, Clock, AlertTriangle, Calendar, User, Bell, MessageSquare, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
+import {
+  AlertCircle,
+  XCircle,
+  ArrowRight,
+  Briefcase,
+  Target,
+  TrendingUp,
+  Users,
+  FileText,
+} from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface StaffMember {
   id: string;
@@ -40,79 +53,84 @@ interface ProjectBooking {
 
 interface TodoItem {
   id: string;
-  type: 'project_due' | 'booking_upcoming' | 'project_overdue';
+  type: 'project_due' | 'booking_upcoming' | 'project_overdue' | 'mention_notification';
   title: string;
   description: string;
   priority: 'high' | 'medium' | 'low';
   dueDate?: string;
+  mentionCreatedAt?: string;
 }
 
-export function StaffDashboard() {
+interface MentionNotification {
+  id: string;
+  message_id: string;
+  mentioned_staff_email: string;
+  mentioned_staff_name: string;
+  is_read: boolean;
+  created_at: string;
+  messages: {
+    content: string;
+    sender_name: string;
+    created_at: string;
+    channel_id: string;
+  };
+}
+
+export function StaffDashboard({ onTabChange }: { onTabChange: (tab: string) => void }) {
   const [currentStaff, setCurrentStaff] = useState<StaffMember | null>(null);
   const [assignedProjects, setAssignedProjects] = useState<Project[]>([]);
   const [upcomingBookings, setUpcomingBookings] = useState<ProjectBooking[]>([]);
   const [todoItems, setTodoItems] = useState<TodoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const [personalStats, setPersonalStats] = useState({
+    activeProjects: 0,
+    upcomingBookings: 0,
+    priorityTasks: 0,
+    overdueProjects: 0,
+  });
 
   useEffect(() => {
-    loadStaffData();
+    loadDashboardData();
   }, []);
 
-  const loadStaffData = async () => {
+  const loadDashboardData = async () => {
+    if (!currentStaff) return;
+
     try {
-      // For demo purposes, we'll use the first staff member
-      // In a real app, this would be based on authentication
-      const { data: staffData, error: staffError } = await supabase
-        .from('staff')
-        .select('*')
-        .eq('is_active', true)
-        .limit(1);
+      console.log('Loading staff dashboard data...');
+      
+      // Load projects
+      console.log('Loading projects...');
+      const projectsData = await loadProjects();
+      
+      // Load bookings
+      console.log('Loading bookings...');
+      const bookingsData = await loadBookings();
+      
+      // Generate todo items
+      console.log('Generating todo items...');
+      const todos = generateTodoItems(projectsData, bookingsData, currentStaff.id);
+      setTodoItems(todos);
 
-      if (staffError) throw staffError;
+      // Calculate personal stats
+      const stats = {
+        activeProjects: projectsData.filter(p => p.current_stage !== 'completed' && p.current_stage !== 'cancelled').length,
+        upcomingBookings: bookingsData.filter(b => new Date(b.booking_date) > new Date()).length,
+        priorityTasks: todos.filter(t => t.priority === 'high').length,
+        overdueProjects: projectsData.filter(p => 
+          p.current_stage !== 'completed' && 
+          p.current_stage !== 'cancelled' && 
+          new Date(p.due_date) < new Date()
+        ).length,
+      };
+      setPersonalStats(stats);
 
-      if (staffData && staffData.length > 0) {
-        const staff = staffData[0];
-        setCurrentStaff(staff);
-
-        // Load assigned projects
-        const { data: projectsData, error: projectsError } = await supabase
-          .from('projects')
-          .select(`
-            *,
-            client:clients(company)
-          `)
-          .eq('assigned_staff_id', staff.id)
-          .eq('status', 'active');
-
-        if (projectsError) throw projectsError;
-
-        // Load upcoming bookings
-        const { data: bookingsData, error: bookingsError } = await supabase
-          .from('project_bookings')
-          .select(`
-            *,
-            project:projects(
-              title,
-              client:clients(company)
-            )
-          `)
-          .eq('staff_id', staff.id)
-          .gte('booking_date', new Date().toISOString().split('T')[0])
-          .order('booking_date', { ascending: true })
-          .limit(5);
-
-        if (bookingsError) throw bookingsError;
-
-        setAssignedProjects(projectsData || []);
-        setUpcomingBookings(bookingsData || []);
-        generateTodoItems(projectsData || [], bookingsData || []);
-      }
     } catch (error) {
-      console.error('Error loading staff data:', error);
+      console.error('Error loading dashboard data:', error);
       toast({
         title: "Error",
-        description: "Failed to load staff dashboard data",
+        description: "Failed to load dashboard data",
         variant: "destructive",
       });
     } finally {
@@ -120,7 +138,54 @@ export function StaffDashboard() {
     }
   };
 
-  const generateTodoItems = (projects: Project[], bookings: ProjectBooking[]) => {
+  const loadProjects = async (): Promise<Project[]> => {
+    if (!currentStaff) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          client:clients(company)
+        `)
+        .eq('assigned_staff_id', currentStaff.id)
+        .eq('status', 'active');
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error loading projects:', error);
+      return [];
+    }
+  };
+
+  const loadBookings = async (): Promise<ProjectBooking[]> => {
+    if (!currentStaff) return [];
+
+    try {
+      const { data, error } = await supabase
+        .from('project_bookings')
+        .select(`
+          *,
+          project:projects(
+            title,
+            client:clients(company)
+          )
+        `)
+        .eq('staff_id', currentStaff.id)
+        .gte('booking_date', new Date().toISOString().split('T')[0])
+        .order('booking_date', { ascending: true })
+        .limit(5);
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error loading bookings:', error);
+      return [];
+    }
+  };
+
+  const generateTodoItems = (projects: Project[], bookings: ProjectBooking[], staffId: string) => {
     const todos: TodoItem[] = [];
 
     // Add overdue projects
@@ -168,7 +233,7 @@ export function StaffDashboard() {
       });
     });
 
-    setTodoItems(todos);
+    return todos;
   };
 
   const getPriorityColor = (priority: string) => {
@@ -208,10 +273,11 @@ export function StaffDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-foreground">Welcome back, {currentStaff.name}</h2>
-        <p className="text-muted-foreground">{currentStaff.role}</p>
+        <h2 className="text-3xl font-bold text-foreground">Staff Dashboard</h2>
+        <p className="text-muted-foreground">Your personal workspace and tasks</p>
       </div>
 
+      {/* Personal Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* To-Do List */}
         <Card className="lg:col-span-2">
@@ -230,6 +296,7 @@ export function StaffDashboard() {
                       {todo.type === 'project_overdue' && <AlertTriangle className="w-4 h-4 text-red-500" />}
                       {todo.type === 'project_due' && <Clock className="w-4 h-4 text-orange-500" />}
                       {todo.type === 'booking_upcoming' && <Calendar className="w-4 h-4 text-blue-500" />}
+                      {todo.type === 'mention_notification' && <User className="w-4 h-4 text-gray-500" />}
                       <div>
                         <p className="font-medium text-sm">{todo.title}</p>
                         <p className="text-xs text-muted-foreground">{todo.description}</p>

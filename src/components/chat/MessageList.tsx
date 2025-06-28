@@ -1,8 +1,7 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { Smile, MoreHorizontal } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { EmojiReactionPicker } from "./EmojiReactionPicker";
@@ -83,14 +82,17 @@ export function MessageList({ messages, currentUser, allStaff = [] }: MessageLis
     });
   };
 
-  const renderMessage = (message: Message) => {
+  const renderMessage = (message: Message, idx: number) => {
     const reactions = Array.isArray(message.reactions) ? message.reactions : [];
     const profilePictureUrl = getStaffProfilePicture(message.sender_email);
-    
+    const dateObj = new Date(message.created_at);
+    const formattedDate = format(dateObj, 'MMM d, yyyy HH:mm');
+    const isEven = idx % 2 === 0;
+    const bgClass = isEven ? 'bg-white' : 'bg-gray-50';
     return (
       <div
         key={message.id}
-        className="group flex items-start space-x-3 p-2 hover:bg-muted/50 rounded-lg w-full"
+        className={`group flex items-start space-x-3 p-2 rounded-lg w-full ${bgClass}`}
       >
         <Avatar className="w-8 h-8 flex-shrink-0">
           <AvatarImage src={profilePictureUrl || undefined} />
@@ -103,7 +105,10 @@ export function MessageList({ messages, currentUser, allStaff = [] }: MessageLis
           <div className="flex items-center space-x-2 mb-1">
             <span className="font-medium text-sm">{getFirstName(message.sender_name)}</span>
             <span className="text-xs text-muted-foreground">
-              {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+              {formattedDate}
+            </span>
+            <span className="text-xs text-muted-foreground opacity-60">
+              ({formatDistanceToNow(dateObj, { addSuffix: true })})
             </span>
           </div>
           
@@ -179,7 +184,7 @@ export function MessageList({ messages, currentUser, allStaff = [] }: MessageLis
 
   return (
     <div className="space-y-1">
-      {messages.map(renderMessage)}
+      {messages.map((msg, idx) => renderMessage(msg, idx))}
     </div>
   );
 }

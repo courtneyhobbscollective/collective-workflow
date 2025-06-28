@@ -18,7 +18,14 @@ import {
   Activity,
   Target,
   BarChart3,
-  FileText
+  FileText,
+  Bell,
+  MessageSquare,
+  X,
+  DollarSign,
+  AlertCircle,
+  XCircle,
+  ArrowRight,
 } from "lucide-react";
 import { PoundSterlingIcon } from "@/components/ui/PoundSterlingIcon";
 import { cn } from "@/lib/utils";
@@ -66,12 +73,13 @@ interface ProjectBooking {
 
 interface TodoItem {
   id: string;
-  type: 'project_due' | 'booking_upcoming' | 'project_overdue';
+  type: 'project_due' | 'booking_upcoming' | 'project_overdue' | 'mention_notification';
   title: string;
   description: string;
   priority: 'high' | 'medium' | 'low';
   dueDate?: string;
   staffId?: string;
+  mentionCreatedAt?: string;
 }
 
 interface TeamMemberData {
@@ -99,15 +107,30 @@ interface ActivityItem {
   client_name?: string;
 }
 
-export function Dashboard() {
+interface MentionNotification {
+  id: string;
+  message_id: string;
+  mentioned_staff_email: string;
+  mentioned_staff_name: string;
+  is_read: boolean;
+  created_at: string;
+  messages: {
+    content: string;
+    sender_name: string;
+    created_at: string;
+    channel_id: string;
+  };
+}
+
+export function Dashboard({ onTabChange }: { onTabChange: (tab: string) => void }) {
   const { staff: currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [teamData, setTeamData] = useState<TeamMemberData[]>([]);
   const [overallStats, setOverallStats] = useState({
     totalStaff: 0,
-    totalClients: 0,
     activeProjects: 0,
     pendingBriefs: 0,
+    totalRevenue: 0,
   });
   const [teamEfficiency, setTeamEfficiency] = useState({
     totalBookedHours: 0,
@@ -232,83 +255,85 @@ export function Dashboard() {
 
       // Process team data with utilisation metrics
       console.log('Processing team data...');
-      const teamMemberData: TeamMemberData[] = staffData?.map((staff: any) => {
-        const staffProjects = projectsData?.filter(p => p.assigned_staff_id === staff.id) || [];
-        const staffBookings = bookingsData?.filter(b => b.staff_id === staff.id) || [];
-        const staffTodos = generateTodoItems(staffProjects, staffBookings, staff.id);
-        
-        console.log(`Processing ${staff.name}:`, {
-          totalBookings: staffBookings.length,
-          bookings: staffBookings.map(b => ({
+      const teamMemberData: TeamMemberData[] = await Promise.all(
+        staffData?.map(async (staff: any) => {
+          const staffProjects = projectsData?.filter(p => p.assigned_staff_id === staff.id) || [];
+          const staffBookings = bookingsData?.filter(b => b.staff_id === staff.id) || [];
+          const staffTodos = generateTodoItems(staffProjects, staffBookings, staff.id);
+          
+          console.log(`Processing ${staff.name}:`, {
+            totalBookings: staffBookings.length,
+            bookings: staffBookings.map(b => ({
+              date: b.booking_date,
+              hours: b.hours_booked,
+              project: b.project?.title
+            }))
+          });
+          
+          // Calculate booked hours for this week
+          const thisWeekBookings = staffBookings.filter(booking => {
+            const bookingDate = new Date(booking.booking_date);
+            const now = new Date();
+            const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            return bookingDate >= startOfWeek && bookingDate <= endOfWeek;
+          });
+
+          console.log(`${staff.name} this week bookings:`, thisWeekBookings.map(b => ({
             date: b.booking_date,
             hours: b.hours_booked,
             project: b.project?.title
-          }))
-        });
-        
-        // Calculate booked hours for this week
-        const thisWeekBookings = staffBookings.filter(booking => {
-          const bookingDate = new Date(booking.booking_date);
-          const now = new Date();
-          const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-          const endOfWeek = new Date(startOfWeek);
-          endOfWeek.setDate(startOfWeek.getDate() + 6);
-          return bookingDate >= startOfWeek && bookingDate <= endOfWeek;
-        });
+          })));
 
-        console.log(`${staff.name} this week bookings:`, thisWeekBookings.map(b => ({
-          date: b.booking_date,
-          hours: b.hours_booked,
-          project: b.project?.title
-        })));
+          const bookedHours = thisWeekBookings.reduce((total, booking) => {
+            // Use the hours_booked field directly from the database
+            return total + (booking.hours_booked || 0);
+          }, 0);
 
-        const bookedHours = thisWeekBookings.reduce((total, booking) => {
-          // Use the hours_booked field directly from the database
-          return total + (booking.hours_booked || 0);
-        }, 0);
+          // Also calculate hours from assigned projects (briefs)
+          const assignedProjectHours = staffProjects.reduce((total, project) => {
+            return total + (project.estimated_hours || 0);
+          }, 0);
 
-        // Also calculate hours from assigned projects (briefs)
-        const assignedProjectHours = staffProjects.reduce((total, project) => {
-          return total + (project.estimated_hours || 0);
-        }, 0);
+          // Total booked hours = calendar bookings + assigned project hours
+          const totalBookedHours = bookedHours + assignedProjectHours;
 
-        // Total booked hours = calendar bookings + assigned project hours
-        const totalBookedHours = bookedHours + assignedProjectHours;
+          console.log(`${staff.name} total booked hours:`, {
+            calendarBookings: bookedHours,
+            assignedProjects: assignedProjectHours,
+            total: totalBookedHours
+          });
 
-        console.log(`${staff.name} total booked hours:`, {
-          calendarBookings: bookedHours,
-          assignedProjects: assignedProjectHours,
-          total: totalBookedHours
-        });
+          // Use the available_hours_per_week from the staff data
+          const availableHours = staff.available_hours_per_week || 0; // Default to 0 if not set
 
-        // Use the available_hours_per_week from the staff data
-        const availableHours = staff.available_hours_per_week || 0; // Default to 0 if not set
+          const utilisationPercentage = availableHours > 0 ? (totalBookedHours / availableHours) * 100 : 0;
 
-        const utilisationPercentage = availableHours > 0 ? (totalBookedHours / availableHours) * 100 : 0;
+          console.log(`${staff.name} utilisation:`, {
+            totalBookedHours,
+            availableHours,
+            utilisationPercentage: Math.round(utilisationPercentage * 10) / 10
+          });
 
-        console.log(`${staff.name} utilisation:`, {
-          totalBookedHours,
-          availableHours,
-          utilisationPercentage: Math.round(utilisationPercentage * 10) / 10
-        });
-
-        return {
-          staff: staff as StaffMember,
-          projects: staffProjects,
-          bookings: staffBookings,
-          todos: staffTodos,
-          stats: {
-            activeProjects: staffProjects.length,
-            upcomingBookings: staffBookings.length,
-            priorityTasks: staffTodos.filter(t => t.priority === 'high').length,
-            overdueProjects: staffProjects.filter(p => 
-              p.due_date && new Date(p.due_date) < new Date()
-            ).length,
-            bookedHours: Math.round(totalBookedHours * 10) / 10,
-            utilisationPercentage: Math.round(utilisationPercentage * 10) / 10,
-          }
-        };
-      }) || [];
+          return {
+            staff: staff as StaffMember,
+            projects: staffProjects,
+            bookings: staffBookings,
+            todos: staffTodos,
+            stats: {
+              activeProjects: staffProjects.length,
+              upcomingBookings: staffBookings.length,
+              priorityTasks: staffTodos.filter(t => t.priority === 'high').length,
+              overdueProjects: staffProjects.filter(p => 
+                p.due_date && new Date(p.due_date) < new Date()
+              ).length,
+              bookedHours: Math.round(totalBookedHours * 10) / 10,
+              utilisationPercentage: Math.round(utilisationPercentage * 10) / 10,
+            }
+          };
+        }) || []
+      );
 
       console.log('Team data processed:', teamMemberData.length, 'team members');
 
@@ -336,9 +361,9 @@ export function Dashboard() {
 
       setOverallStats({
         totalStaff: staffData?.length || 0,
-        totalClients: clientsData?.length || 0,
         activeProjects: projectsData?.length || 0,
         pendingBriefs: projectsData?.filter(p => p.current_stage === 'incoming').length || 0,
+        totalRevenue: clientsData?.length || 0,
       });
 
       console.log('=== DASHBOARD LOADING COMPLETE ===');
@@ -539,13 +564,13 @@ export function Dashboard() {
 
   // For staff members, redirect to StaffDashboard
   if (currentUser.role !== 'Admin') {
-    return <StaffDashboard />;
+    return <StaffDashboard onTabChange={onTabChange} />;
   }
 
   // Admin Dashboard
   const stats = [
     { title: "Active Staff", value: overallStats.totalStaff.toString(), icon: Users, color: "text-blue-600" },
-    { title: "Total Clients", value: overallStats.totalClients.toString(), icon: UserPlus, color: "text-green-600" },
+    { title: "Total Revenue", value: overallStats.totalRevenue.toString(), icon: DollarSign, color: "text-green-600" },
     { title: "Active Projects", value: overallStats.activeProjects.toString(), icon: Briefcase, color: "text-purple-600" },
     { title: "Pending Briefs", value: overallStats.pendingBriefs.toString(), icon: Clock, color: "text-orange-600" },
   ];
@@ -884,6 +909,7 @@ export function Dashboard() {
                               {todo.type === 'project_overdue' && <AlertTriangle className="w-3 h-3 text-red-500" />}
                               {todo.type === 'project_due' && <Clock className="w-3 h-3 text-orange-500" />}
                               {todo.type === 'booking_upcoming' && <Calendar className="w-3 h-3 text-blue-500" />}
+                              {todo.type === 'mention_notification' && <Activity className="w-3 h-3 text-purple-500" />}
                               <span className="truncate">{todo.description}</span>
                             </div>
                             <Badge variant={getPriorityColor(todo.priority)} className="text-xs">

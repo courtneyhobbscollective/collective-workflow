@@ -76,10 +76,11 @@ export function StageColumn({
             {projects.length}
           </Badge>
         </div>
-        {stage.description && (
+        {/* Only show description if not a production stage and not stage01 */}
+        {!(isProductionStage(stage) || stage.id === 'stage01') && stage.description && (
           <p className="text-xs text-muted-foreground">{stage.description}</p>
         )}
-        {stage.billing_percentage > 0 && (
+        {stage.billing_percentage > 0 && false && (
           <Badge variant="outline" className="w-fit">
             {stage.billing_percentage}% Billing
           </Badge>
@@ -110,4 +111,8 @@ export function StageColumn({
       </CardContent>
     </Card>
   );
+}
+
+function isProductionStage(stage) {
+  return ["stage02", "stage03", "stage04", "stage05", "stage06", "production"].includes(stage.id);
 }

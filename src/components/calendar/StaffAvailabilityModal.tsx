@@ -14,6 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import type { Staff, PersonalCalendarEntry } from "@/types/staff";
+import axios from 'axios';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TimeOff {
   id: string;
@@ -36,13 +38,141 @@ interface StaffAvailabilityModalProps {
   onAvailabilityUpdated: () => void;
 }
 
+const GOOGLE_CLIENT_ID = '452807347544-jndml49ifaukosogaeanopvod0fp746.apps.googleusercontent.com';
+const GOOGLE_CLIENT_SECRET = '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';
+const GOOGLE_REDIRECT_URI = window.location.origin;
+const GOOGLE_SCOPES = [
+  'https://www.googleapis.com/auth/calendar.events',
+  'https://www.googleapis.com/auth/calendar'
+].join(' ');
+
+function getGoogleOAuthUrl() {
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: GOOGLE_REDIRECT_URI,
+    response_type: 'code',
+    access_type: 'offline',
+    prompt: 'consent',
+    scope: GOOGLE_SCOPES,
+  });
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+}
+
+// Helper to get all time slots for a day
+function getTimeSlots(startHour, endHour, duration) {
+  const slots = [];
+  let start = new Date();
+  start.setHours(startHour, 0, 0, 0);
+  let end = new Date(start);
+  end.setHours(endHour, 0, 0, 0);
+  while (start < end) {
+    const slotEnd = new Date(start.getTime() + duration * 60000);
+    if (slotEnd > end) break;
+    slots.push({
+      start: start.toTimeString().slice(0, 5),
+      end: slotEnd.toTimeString().slice(0, 5),
+    });
+    start = new Date(start.getTime() + 15 * 60000); // 15 min increments for flexibility
+  }
+  return slots;
+}
+
+// Helper to check overlap
+function isOverlapping(slot, events) {
+  const slotStart = slot.start;
+  const slotEnd = slot.end;
+  return events.some(ev => {
+    return (
+      (ev.start_time < slotEnd && ev.end_time > slotStart)
+    );
+  });
+}
+
+// AvailableTimeSlots component
+function AvailableTimeSlots({ date, duration, staffId, onSelect, selectedStart }) {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchEvents() {
+      setLoading(true);
+      const dayStr = date.toISOString().slice(0, 10);
+      // Fetch bookings
+      const { data: bookings } = await supabase
+        .from('project_bookings')
+        .select('start_time, end_time, booking_date')
+        .eq('staff_id', staffId)
+        .eq('booking_date', dayStr);
+      // Fetch time off
+      const { data: timeOff } = await supabase
+        .from('staff_time_off')
+        .select('start_time, end_time, start_date, end_date, is_full_day')
+        .eq('staff_id', staffId)
+        .or(`start_date.eq.${dayStr},end_date.eq.${dayStr}`);
+      // Fetch personal entries
+      const { data: personal } = await supabase
+        .from('personal_calendar_entries')
+        .select('start_time, end_time, entry_date')
+        .eq('staff_id', staffId)
+        .eq('entry_date', dayStr);
+      // Normalize all events to { start_time, end_time }
+      const allEvents = [];
+      (bookings || []).forEach(ev => allEvents.push({ start_time: ev.start_time, end_time: ev.end_time }));
+      (personal || []).forEach(ev => allEvents.push({ start_time: ev.start_time, end_time: ev.end_time }));
+      (timeOff || []).forEach(ev => {
+        if (ev.is_full_day) {
+          allEvents.push({ start_time: '00:00', end_time: '23:59' });
+        } else {
+          allEvents.push({ start_time: ev.start_time, end_time: ev.end_time });
+        }
+      });
+      setEvents(allEvents);
+      setLoading(false);
+    }
+    fetchEvents();
+  }, [date, staffId]);
+
+  // For demo, use 9-17 as working hours, Mon-Fri only
+  const day = date.getDay();
+  if (day === 0 || day === 6) {
+    return <div className="text-sm text-muted-foreground">No working hours on weekends.</div>;
+  }
+  if (loading) {
+    return <div className="text-sm text-muted-foreground">Loading available slots...</div>;
+  }
+  const slots = getTimeSlots(9, 17, duration);
+  const available = slots.filter(slot => !isOverlapping(slot, events));
+  if (available.length === 0) {
+    return <div className="text-sm text-muted-foreground">No available slots for this day. Try another date or duration.</div>;
+  }
+  return (
+    <div className="space-y-2">
+      <Label>Available Time Slots</Label>
+      <div className="flex flex-wrap gap-2">
+        {available.map(slot => (
+          <Button
+            key={slot.start}
+            type="button"
+            variant={selectedStart === slot.start ? "default" : "outline"}
+            onClick={() => onSelect(slot)}
+          >
+            {slot.start} - {slot.end}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function StaffAvailabilityModal({ 
   isOpen, 
   onClose, 
   staff, 
   onAvailabilityUpdated 
 }: StaffAvailabilityModalProps) {
-  const [selectedStaff, setSelectedStaff] = useState<string>("");
+  const { staff: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === 'Admin';
+  const [selectedStaff, setSelectedStaff] = useState<string>(isAdmin ? '' : currentUser?.id || '');
   const [timeOffRecords, setTimeOffRecords] = useState<TimeOff[]>([]);
   const [personalEntries, setPersonalEntries] = useState<PersonalCalendarEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -67,9 +197,11 @@ export function StaffAvailabilityModal({
     entry_type: "meeting" as const,
     meeting_link: "",
     location: "",
-    is_all_day: false
+    is_all_day: false,
+    duration: 30
   });
   const { toast } = useToast();
+  const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && selectedStaff) {
@@ -77,6 +209,37 @@ export function StaffAvailabilityModal({
       loadPersonalEntries();
     }
   }, [isOpen, selectedStaff]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get('code');
+    if (code && !googleAccessToken) {
+      (async () => {
+        try {
+          const params = new URLSearchParams();
+          params.append('code', code);
+          params.append('client_id', GOOGLE_CLIENT_ID);
+          params.append('client_secret', GOOGLE_CLIENT_SECRET);
+          params.append('redirect_uri', GOOGLE_REDIRECT_URI);
+          params.append('grant_type', 'authorization_code');
+          const tokenRes = await axios.post('https://oauth2.googleapis.com/token', params);
+          setGoogleAccessToken(tokenRes.data.access_token);
+          toast({ title: 'Google login successful', description: 'Access token acquired' });
+          url.searchParams.delete('code');
+          window.history.replaceState({}, document.title, url.pathname);
+        } catch (err) {
+          toast({ title: 'Failed to get access token', description: String(err), variant: 'destructive' });
+        }
+      })();
+    }
+  }, []);
+
+  // If not admin, always use current user's staff ID
+  useEffect(() => {
+    if (!isAdmin && currentUser?.id) {
+      setSelectedStaff(currentUser.id);
+    }
+  }, [isAdmin, currentUser]);
 
   const loadTimeOffRecords = async () => {
     if (!selectedStaff) return;
@@ -117,8 +280,7 @@ export function StaffAvailabilityModal({
 
       if (error) {
         console.error('Database error loading personal entries:', error);
-        // If table doesn't exist, just set empty array
-        if (error.code === '42P01') { // Table doesn't exist
+        if (error.code === '42P01') {
           setPersonalEntries([]);
           return;
         }
@@ -127,13 +289,14 @@ export function StaffAvailabilityModal({
       setPersonalEntries((data || []) as PersonalCalendarEntry[]);
     } catch (error) {
       console.error('Error loading personal entries:', error);
-      // Set empty array as fallback to prevent white screen
       setPersonalEntries([]);
-      toast({
-        title: "Warning",
-        description: "Personal calendar entries not available yet. Please run the database migration.",
-        variant: "destructive",
-      });
+      if (error && typeof error === 'object' && 'code' in error && error.code !== '42P01') {
+        toast({
+          title: "Error",
+          description: "Failed to load personal calendar entries",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -208,7 +371,7 @@ export function StaffAvailabilityModal({
 
       if (error) {
         console.error('Database error adding personal entry:', error);
-        if (error.code === '42P01') { // Table doesn't exist
+        if (error.code === '42P01') {
           toast({
             title: "Error",
             description: "Personal calendar entries not available yet. Please run the database migration first.",
@@ -234,7 +397,8 @@ export function StaffAvailabilityModal({
         entry_type: "meeting",
         meeting_link: "",
         location: "",
-        is_all_day: false
+        is_all_day: false,
+        duration: 30
       });
       loadPersonalEntries();
       onAvailabilityUpdated();
@@ -283,7 +447,7 @@ export function StaffAvailabilityModal({
 
       if (error) {
         console.error('Database error deleting personal entry:', error);
-        if (error.code === '42P01') { // Table doesn't exist
+        if (error.code === '42P01') {
           toast({
             title: "Error",
             description: "Personal calendar entries not available yet. Please run the database migration first.",
@@ -330,6 +494,41 @@ export function StaffAvailabilityModal({
     }
   };
 
+  // Function to create a Google Meet event
+  async function createGoogleMeetEvent({ summary, start, end }: { summary: string, start: string, end: string }) {
+    if (!googleAccessToken) {
+      toast({ title: 'Please sign in with Google first', variant: 'destructive' });
+      return null;
+    }
+    try {
+      const event = {
+        summary,
+        start: { dateTime: start },
+        end: { dateTime: end },
+        conferenceData: {
+          createRequest: {
+            requestId: Math.random().toString(36).substring(2)
+          }
+        }
+      };
+      const response = await axios.post(
+        'https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1',
+        event,
+        {
+          headers: {
+            Authorization: `Bearer ${googleAccessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      const meetLink = response.data.conferenceData?.entryPoints?.find((e: any) => e.entryPointType === 'video')?.uri;
+      return meetLink;
+    } catch (error) {
+      toast({ title: 'Failed to create Google Meet event', description: String(error), variant: 'destructive' });
+      return null;
+    }
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -338,22 +537,21 @@ export function StaffAvailabilityModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div>
-            <Label>Select Staff Member</Label>
-            <Select value={selectedStaff || "select-staff-member"} onValueChange={(value) => setSelectedStaff(value === "select-staff-member" ? "" : value)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose staff member" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="select-staff-member">Choose staff member</SelectItem>
-                {staff.map((member) => (
-                  <SelectItem key={member.id} value={member.id}>
-                    {member.name} - {member.role}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {isAdmin && (
+            <div>
+              <Label>Select Staff Member</Label>
+              <Select value={selectedStaff} onValueChange={setSelectedStaff}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select staff" />
+                </SelectTrigger>
+                <SelectContent>
+                  {staff.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {selectedStaff && (
             <Tabs defaultValue="time-off" className="w-full">
@@ -519,6 +717,48 @@ export function StaffAvailabilityModal({
 
                 {showPersonalEntryForm && (
                   <form onSubmit={handlePersonalEntrySubmit} className="space-y-4 p-4 border rounded-lg">
+                    {!googleAccessToken && (
+                      <div className="mb-2 flex flex-col items-start space-y-2">
+                        <span className="text-sm text-muted-foreground">To create a Google Meet link, please sign in with your Google account:</span>
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          onClick={() => { window.location.href = getGoogleOAuthUrl(); }}
+                        >
+                          Sign in with Google
+                        </button>
+                      </div>
+                    )}
+                    <div>
+                      <Label>Meeting Duration</Label>
+                      <select
+                        value={personalEntryFormData.duration || 30}
+                        onChange={e => setPersonalEntryFormData(prev => ({ ...prev, duration: Number(e.target.value) }))}
+                        className="input"
+                      >
+                        <option value={15}>15 minutes</option>
+                        <option value={30}>30 minutes</option>
+                        <option value={60}>60 minutes</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label>Date</Label>
+                      <Calendar
+                        mode="single"
+                        selected={personalEntryFormData.entry_date}
+                        onSelect={date => date && setPersonalEntryFormData(prev => ({ ...prev, entry_date: date }))}
+                        className="rounded-md border"
+                      />
+                    </div>
+                    {personalEntryFormData.entry_date && personalEntryFormData.duration && (
+                      <AvailableTimeSlots
+                        date={personalEntryFormData.entry_date}
+                        duration={personalEntryFormData.duration}
+                        staffId={selectedStaff}
+                        onSelect={slot => setPersonalEntryFormData(prev => ({ ...prev, start_time: slot.start, end_time: slot.end }))}
+                        selectedStart={personalEntryFormData.start_time}
+                      />
+                    )}
                     <div>
                       <Label>Title</Label>
                       <Input
@@ -538,16 +778,6 @@ export function StaffAvailabilityModal({
                       />
                     </div>
 
-                    <div>
-                      <Label>Date</Label>
-                      <Calendar
-                        mode="single"
-                        selected={personalEntryFormData.entry_date}
-                        onSelect={(date) => date && setPersonalEntryFormData(prev => ({ ...prev, entry_date: date }))}
-                        className="rounded-md border"
-                      />
-                    </div>
-
                     <div className="flex items-center space-x-2">
                       <Switch
                         checked={personalEntryFormData.is_all_day}
@@ -559,58 +789,47 @@ export function StaffAvailabilityModal({
                     {!personalEntryFormData.is_all_day && (
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label>Start Time</Label>
+                          <Label>Location (Optional)</Label>
                           <Input
-                            type="time"
-                            value={personalEntryFormData.start_time}
-                            onChange={(e) => setPersonalEntryFormData(prev => ({ ...prev, start_time: e.target.value }))}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label>End Time</Label>
-                          <Input
-                            type="time"
-                            value={personalEntryFormData.end_time}
-                            onChange={(e) => setPersonalEntryFormData(prev => ({ ...prev, end_time: e.target.value }))}
-                            required
+                            value={personalEntryFormData.location}
+                            onChange={(e) => setPersonalEntryFormData(prev => ({ ...prev, location: e.target.value }))}
+                            placeholder="Meeting location"
                           />
                         </div>
                       </div>
                     )}
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Type</Label>
-                        <Select value={personalEntryFormData.entry_type} onValueChange={(value: any) => setPersonalEntryFormData(prev => ({ ...prev, entry_type: value }))}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="meeting">Meeting</SelectItem>
-                            <SelectItem value="client_call">Client Call</SelectItem>
-                            <SelectItem value="personal">Personal</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>Location (Optional)</Label>
-                        <Input
-                          value={personalEntryFormData.location}
-                          onChange={(e) => setPersonalEntryFormData(prev => ({ ...prev, location: e.target.value }))}
-                          placeholder="Meeting location"
-                        />
-                      </div>
-                    </div>
-
                     <div>
-                      <Label>Meeting Link (Optional)</Label>
-                      <Input
-                        value={personalEntryFormData.meeting_link}
-                        onChange={(e) => setPersonalEntryFormData(prev => ({ ...prev, meeting_link: e.target.value }))}
-                        placeholder="Google Meet, Zoom, etc."
-                      />
+                      <Label>Meeting Link</Label>
+                      <div className="flex items-center space-x-2">
+                        <Input
+                          value={personalEntryFormData.meeting_link}
+                          onChange={(e) => setPersonalEntryFormData(prev => ({ ...prev, meeting_link: e.target.value }))}
+                          placeholder="Google Meet or Zoom link"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            if (!personalEntryFormData.title || !personalEntryFormData.start_time || !personalEntryFormData.end_time) {
+                              toast({ title: 'Please fill in title, start, and end time first', variant: 'destructive' });
+                              return;
+                            }
+                            const start = `${format(personalEntryFormData.entry_date, 'yyyy-MM-dd')}T${personalEntryFormData.start_time}`;
+                            const end = `${format(personalEntryFormData.entry_date, 'yyyy-MM-dd')}T${personalEntryFormData.end_time}`;
+                            const meetLink = await createGoogleMeetEvent({
+                              summary: personalEntryFormData.title,
+                              start,
+                              end
+                            });
+                            if (meetLink) setPersonalEntryFormData(prev => ({ ...prev, meeting_link: meetLink }));
+                          }}
+                          disabled={!googleAccessToken}
+                        >
+                          Create Google Meet Link
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="flex space-x-2">

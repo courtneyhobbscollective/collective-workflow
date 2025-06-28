@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -72,6 +71,21 @@ export function ChatInterface() {
       loadMentionCounts();
     }
   }, [currentStaff]);
+
+  // Check for target channel ID from mention notifications
+  useEffect(() => {
+    const targetChannelId = sessionStorage.getItem('targetChannelId');
+    if (targetChannelId && channels.length > 0) {
+      const targetChannel = channels.find(channel => channel.id === targetChannelId);
+      if (targetChannel) {
+        setActiveChannel(targetChannel);
+        sessionStorage.removeItem('targetChannelId'); // Clear after use
+      }
+    } else if (channels.length > 0 && !activeChannel) {
+      // Only set default channel if no target channel is specified
+      setActiveChannel(channels[0]);
+    }
+  }, [channels, activeChannel]);
 
   useEffect(() => {
     if (activeChannel) {
@@ -153,14 +167,6 @@ export function ChatInterface() {
     }
   }, [currentStaff]);
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
   const loadChannels = async () => {
     try {
       const { data, error } = await supabase
@@ -177,9 +183,6 @@ export function ChatInterface() {
       
       console.log('Loaded channels:', data?.length);
       setChannels(data || []);
-      if (data && data.length > 0) {
-        setActiveChannel(data[0]);
-      }
     } catch (error) {
       console.error('Error loading channels:', error);
       toast({
@@ -296,26 +299,43 @@ export function ChatInterface() {
   const processMentions = async (content: string, messageId: string) => {
     if (!currentStaff) return;
 
+    console.log('Processing mentions for message:', content);
+    console.log('Current staff:', currentStaff);
+
     const mentionRegex = /@(\w+)/g;
     const mentions = content.match(mentionRegex);
+    
+    console.log('Found mentions:', mentions);
     
     if (mentions) {
       for (const mention of mentions) {
         const username = mention.substring(1).toLowerCase();
+        console.log('Processing mention:', username);
+        
         const mentionedStaff = allStaff.find(staff => 
           staff.name.toLowerCase().includes(username) ||
           staff.email.toLowerCase().includes(username)
         );
 
-        if (mentionedStaff && mentionedStaff.email !== currentStaff.email) {
+        console.log('Found mentioned staff:', mentionedStaff);
+
+        if (mentionedStaff) {
           try {
-            await supabase
+            console.log('Creating mention for:', mentionedStaff.email);
+            const { data, error } = await supabase
               .from('message_mentions')
               .insert({
                 message_id: messageId,
                 mentioned_staff_email: mentionedStaff.email,
                 mentioned_staff_name: mentionedStaff.name
-              });
+              })
+              .select();
+
+            if (error) {
+              console.error('Error creating mention:', error);
+            } else {
+              console.log('Mention created successfully:', data);
+            }
           } catch (error) {
             console.error('Error creating mention:', error);
           }
@@ -416,6 +436,11 @@ export function ChatInterface() {
     return mentionData?.unread_count || 0;
   };
 
+  function truncateText(text, maxLength) {
+    if (!text) return '';
+    return text.length > maxLength ? text.slice(0, maxLength) + '…' : text;
+  }
+
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
   }
@@ -432,10 +457,6 @@ export function ChatInterface() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Team Chat</h2>
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-muted-foreground">Chatting as:</span>
-          <span className="font-medium">{currentStaff.name}</span>
-        </div>
       </div>
 
       <div className="flex h-[calc(100vh-200px)] bg-background border border-border rounded-lg overflow-hidden">
@@ -476,7 +497,7 @@ export function ChatInterface() {
                       {getChannelIcon(channel)}
                       <div className="flex-1 text-left">
                         <div className="font-medium">
-                          {formatChannelDisplayName(channel.name, channel.client?.company)}
+                          {truncateText(formatChannelDisplayName(channel.name, channel.client?.company), 16)}
                         </div>
                       </div>
                       <div className="flex items-center space-x-1">
@@ -505,7 +526,7 @@ export function ChatInterface() {
                   {getChannelIcon(activeChannel)}
                   <div>
                     <h3 className="font-semibold">
-                      {formatChannelDisplayName(activeChannel.name, activeChannel.client?.company)}
+                      {truncateText(formatChannelDisplayName(activeChannel.name, activeChannel.client?.company), 16)}
                     </h3>
                   </div>
                 </div>
@@ -532,7 +553,7 @@ export function ChatInterface() {
                     <MentionInput
                       value={newMessage}
                       onChange={setNewMessage}
-                      placeholder={`Message ${formatChannelDisplayName(activeChannel.name, activeChannel.client?.company)}`}
+                      placeholder={`Message ${truncateText(formatChannelDisplayName(activeChannel.name, activeChannel.client?.company), 16)}`}
                       onSubmit={sendMessage}
                       allStaff={allStaff}
                     />
