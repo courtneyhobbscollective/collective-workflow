@@ -8,7 +8,8 @@ import { Plus, UserPlus, Edit, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { CreateClientUserModal } from "./CreateClientUserModal";
-import { ResendPasswordModal } from "./ResendPasswordModal"; // New import
+import { ResendPasswordModal } from "./ResendPasswordModal";
+import { ClientCard } from "./ClientCard";
 
 interface Client {
   id: string;
@@ -289,74 +290,20 @@ export function ClientManagement() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {clients.map((client) => {
           const clientUser = clientProfiles.find(profile => profile.client_id === client.id);
           const hasUser = !!clientUser;
           
           return (
-            <Card key={client.id}>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <UserPlus className="w-5 h-5" />
-                    <span>{client.name}</span>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleEdit(client)}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">{client.company}</p>
-                  <p className="text-sm text-muted-foreground">{client.email}</p>
-                  <p className="text-sm text-muted-foreground">{client.phone}</p>
-                  {client.contact_person && (
-                    <p className="text-sm text-muted-foreground">Contact: {client.contact_person}</p>
-                  )}
-                  {client.is_retainer ? (
-                    <div className="p-2 bg-green-50 rounded-md">
-                      <p className="text-sm font-medium text-green-800">Retainer Client</p>
-                    </div>
-                  ) : (
-                    <div className="p-2 bg-blue-50 rounded-md">
-                      <p className="text-sm font-medium text-blue-800">Project Client</p>
-                    </div>
-                  )}
-                  {hasUser ? (
-                    <div className="space-y-2">
-                      <div className="p-2 bg-green-50 border border-green-200 rounded-md text-sm">
-                        <p className="font-medium text-green-800">Client User Created</p>
-                        <p className="text-xs text-green-600 mt-1">A user account is linked to this client.</p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => handleResendPasswordClick(client)}
-                      >
-                        <Mail className="w-4 h-4 mr-2" />
-                        Resend Password
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      size="sm"
-                      className="w-full mt-2"
-                      onClick={() => handleCreateUserClick(client)}
-                      disabled={hasUser}
-                    >
-                      Create Client User
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <ClientCard 
+              key={client.id} 
+              client={client} 
+              hasUser={hasUser} 
+              onEdit={handleEdit} 
+              onCreateUser={handleCreateUserClick}
+              onResendPassword={handleResendPasswordClick} 
+            />
           );
         })}
       </div>
