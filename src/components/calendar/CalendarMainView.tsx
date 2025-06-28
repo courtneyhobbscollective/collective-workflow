@@ -47,6 +47,7 @@ interface CalendarMainViewProps {
   onTodayClick: () => void;
   onBookingUpdate: () => void;
   onBookingClick: (booking: ProjectBooking) => void;
+  onStaffChange: (staffId: string) => void;
 }
 
 export function CalendarMainView({
@@ -61,7 +62,8 @@ export function CalendarMainView({
   onShowAvailabilityModal,
   onTodayClick,
   onBookingUpdate,
-  onBookingClick
+  onBookingClick,
+  onStaffChange
 }: CalendarMainViewProps) {
   const filteredBookings = selectedStaff === "all" 
     ? bookings 
@@ -81,6 +83,9 @@ export function CalendarMainView({
           onNavigateDate={onNavigateDate}
           onShowAvailabilityModal={onShowAvailabilityModal}
           onTodayClick={onTodayClick}
+          staff={staff}
+          selectedStaff={selectedStaff}
+          onStaffChange={onStaffChange}
         />
         <div className="mt-6">
           <CalendarGrid

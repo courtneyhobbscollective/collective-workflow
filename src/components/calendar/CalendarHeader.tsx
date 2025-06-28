@@ -1,7 +1,7 @@
-
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, ChevronLeft, ChevronRight, Settings } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Settings, Users } from "lucide-react";
+import type { Staff } from "@/types/staff";
 
 interface CalendarHeaderProps {
   currentDate: Date;
@@ -10,6 +10,9 @@ interface CalendarHeaderProps {
   onNavigateDate: (direction: "prev" | "next") => void;
   onShowAvailabilityModal: () => void;
   onTodayClick: () => void;
+  staff: Staff[];
+  selectedStaff: string;
+  onStaffChange: (staffId: string) => void;
 }
 
 export function CalendarHeader({
@@ -18,7 +21,10 @@ export function CalendarHeader({
   onViewChange,
   onNavigateDate,
   onShowAvailabilityModal,
-  onTodayClick
+  onTodayClick,
+  staff,
+  selectedStaff,
+  onStaffChange
 }: CalendarHeaderProps) {
   return (
     <div className="flex flex-col space-y-4">
@@ -29,6 +35,22 @@ export function CalendarHeader({
         </div>
         
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <div className="flex items-center space-x-2">
+            <Users className="w-4 h-4" />
+            <Select value={selectedStaff} onValueChange={onStaffChange}>
+              <SelectTrigger className="w-32">
+                <SelectValue placeholder="All Staff" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Staff</SelectItem>
+                {staff.map((member) => (
+                  <SelectItem key={member.id} value={member.id}>
+                    {member.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <Button
             variant="outline"
             size="sm"

@@ -2,23 +2,11 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { StaffFilter } from "./StaffFilter";
 import { CalendarMainView } from "./CalendarMainView";
-import { UnscheduledProjects } from "./UnscheduledProjects";
 import { BookingModal } from "./BookingModal";
 import { StaffAvailabilityModal } from "./StaffAvailabilityModal";
 import { BookingDetailsModal } from "./BookingDetailsModal";
 import type { Staff } from "@/types/staff";
-
-interface Project {
-  id: string;
-  title: string;
-  estimated_hours: number;
-  assigned_staff_id: string;
-  client: {
-    company: string;
-  };
-}
 
 interface ProjectBooking {
   id: string;
@@ -54,7 +42,6 @@ interface StaffTimeOff {
 export function CalendarView() {
   const { staff: currentUser } = useAuth();
   const [staff, setStaff] = useState<Staff[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
   const [bookings, setBookings] = useState<ProjectBooking[]>([]);
   const [staffTimeOff, setStaffTimeOff] = useState<StaffTimeOff[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<string>(currentUser?.id || "all");
@@ -63,7 +50,6 @@ export function CalendarView() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [showBookingDetailsModal, setShowBookingDetailsModal] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<ProjectBooking | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -88,19 +74,6 @@ export function CalendarView() {
         .eq('is_active', true);
 
       if (staffError) throw staffError;
-
-      // Load projects with staff assignments
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select(`
-          *,
-          client:clients(company)
-        `)
-        .eq('status', 'active')
-        .not('assigned_staff_id', 'is', null)
-        .not('estimated_hours', 'is', null);
-
-      if (projectsError) throw projectsError;
 
       // Load bookings
       const { data: bookingsData, error: bookingsError } = await supabase
@@ -133,7 +106,6 @@ export function CalendarView() {
       })) as Staff[];
 
       setStaff(transformedStaff);
-      setProjects(projectsData || []);
       setBookings(bookingsData || []);
       setStaffTimeOff(timeOffData || []);
     } catch (error) {
@@ -158,11 +130,6 @@ export function CalendarView() {
     setCurrentDate(newDate);
   };
 
-  const openBookingModal = (project: Project) => {
-    setSelectedProject(project);
-    setShowBookingModal(true);
-  };
-
   const openBookingDetailsModal = (booking: ProjectBooking) => {
     setSelectedBooking(booking);
     setShowBookingDetailsModal(true);
@@ -178,26 +145,6 @@ export function CalendarView() {
 
   return (
     <div className="space-y-4 p-4 max-w-full">
-      {/* Compact top section with filter and unscheduled projects */}
-      <div className="flex flex-col lg:flex-row gap-4">
-        <div className="lg:w-64">
-          <StaffFilter
-            staff={staff}
-            selectedStaff={selectedStaff}
-            onStaffChange={setSelectedStaff}
-          />
-        </div>
-        
-        <div className="flex-1">
-          <UnscheduledProjects
-            projects={projects}
-            bookings={bookings}
-            selectedStaff={selectedStaff}
-            onOpenBookingModal={openBookingModal}
-          />
-        </div>
-      </div>
-
       {/* Full-width calendar */}
       <div className="w-full">
         <CalendarMainView
@@ -213,16 +160,9 @@ export function CalendarView() {
           onTodayClick={handleTodayClick}
           onBookingUpdate={loadData}
           onBookingClick={openBookingDetailsModal}
+          onStaffChange={setSelectedStaff}
         />
       </div>
-
-      <BookingModal
-        isOpen={showBookingModal}
-        onClose={() => setShowBookingModal(false)}
-        project={selectedProject}
-        staff={staff}
-        onBookingCreated={loadData}
-      />
 
       <StaffAvailabilityModal
         isOpen={showAvailabilityModal}
