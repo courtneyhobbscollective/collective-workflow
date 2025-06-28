@@ -17,8 +17,10 @@ import {
   TrendingUp,
   Activity,
   Target,
-  BarChart3
+  BarChart3,
+  FileText
 } from "lucide-react";
+import { PoundSterlingIcon } from "@/components/ui/PoundSterlingIcon";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -749,31 +751,76 @@ export function Dashboard() {
             {/* Recent Activity */}
             <Card>
               <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
+                <CardTitle className="flex items-center space-x-2">
+                  <Activity className="w-5 h-5" />
+                  <span>Recent Activity</span>
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {recentActivity.length > 0 ? (
-                    recentActivity.map((activity) => (
-                      <div key={activity.id} className="flex items-center space-x-3">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm">{activity.description}</span>
-                            {activity.client_name && (
-                              <Badge variant="outline" className="text-xs">
-                                {activity.client_name}
-                              </Badge>
-                            )}
+                    recentActivity.map((activity) => {
+                      // Get appropriate icon and color for activity type
+                      const getActivityIcon = (type: string) => {
+                        switch (type) {
+                          case 'project_moved':
+                            return { icon: TrendingUp, color: 'text-blue-600', bgColor: 'bg-blue-100' };
+                          case 'booking_created':
+                            return { icon: Calendar, color: 'text-green-600', bgColor: 'bg-green-100' };
+                          case 'project_created':
+                            return { icon: Briefcase, color: 'text-purple-600', bgColor: 'bg-purple-100' };
+                          case 'invoice_generated':
+                            return { icon: PoundSterlingIcon, color: 'text-orange-600', bgColor: 'bg-orange-100' };
+                          case 'brief_submitted':
+                            return { icon: FileText, color: 'text-indigo-600', bgColor: 'bg-indigo-100' };
+                          default:
+                            return { icon: Activity, color: 'text-gray-600', bgColor: 'bg-gray-100' };
+                        }
+                      };
+
+                      const { icon: ActivityIcon, color, bgColor } = getActivityIcon(activity.type);
+                      
+                      return (
+                        <div key={activity.id} className="flex items-start space-x-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                          <div className={`w-8 h-8 ${bgColor} rounded-full flex items-center justify-center flex-shrink-0`}>
+                            <ActivityIcon className={`w-4 h-4 ${color}`} />
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(activity.timestamp).toLocaleDateString()} at {new Date(activity.timestamp).toLocaleTimeString()}
-                          </p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-foreground leading-tight">
+                                  {activity.description}
+                                </p>
+                                {activity.staff_name && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    by {activity.staff_name}
+                                  </p>
+                                )}
+                              </div>
+                              {activity.client_name && (
+                                <Badge variant="outline" className="text-xs ml-2 flex-shrink-0">
+                                  {activity.client_name}
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2">
+                              {new Date(activity.timestamp).toLocaleDateString('en-GB', {
+                                day: 'numeric',
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
-                    <p className="text-muted-foreground text-center py-4">No recent activity</p>
+                    <div className="text-center py-8">
+                      <Activity className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+                      <p className="text-muted-foreground">No recent activity</p>
+                      <p className="text-xs text-muted-foreground mt-1">Activity will appear here as projects and bookings are updated</p>
+                    </div>
                   )}
                 </div>
               </CardContent>
