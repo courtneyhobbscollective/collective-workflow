@@ -105,7 +105,15 @@ export function CalendarView() {
         .select('*')
         .order('entry_date', { ascending: true });
 
-      if (personalEntriesError) throw personalEntriesError;
+      if (personalEntriesError) {
+        console.error('Error loading personal entries:', personalEntriesError);
+        // If table doesn't exist, just continue with empty array
+        if (personalEntriesError.code === '42P01') {
+          console.log('Personal calendar entries table does not exist yet');
+        } else {
+          throw personalEntriesError;
+        }
+      }
 
       // Transform staff data to match our Staff interface
       const transformedStaff = (staffData || []).map((member: any) => ({

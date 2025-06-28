@@ -115,13 +115,23 @@ export function StaffAvailabilityModal({
         .gte('entry_date', format(new Date(), 'yyyy-MM-dd'))
         .order('entry_date');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error loading personal entries:', error);
+        // If table doesn't exist, just set empty array
+        if (error.code === '42P01') { // Table doesn't exist
+          setPersonalEntries([]);
+          return;
+        }
+        throw error;
+      }
       setPersonalEntries((data || []) as PersonalCalendarEntry[]);
     } catch (error) {
       console.error('Error loading personal entries:', error);
+      // Set empty array as fallback to prevent white screen
+      setPersonalEntries([]);
       toast({
-        title: "Error",
-        description: "Failed to load personal calendar entries",
+        title: "Warning",
+        description: "Personal calendar entries not available yet. Please run the database migration.",
         variant: "destructive",
       });
     }
@@ -196,7 +206,18 @@ export function StaffAvailabilityModal({
           is_all_day: personalEntryFormData.is_all_day
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error adding personal entry:', error);
+        if (error.code === '42P01') { // Table doesn't exist
+          toast({
+            title: "Error",
+            description: "Personal calendar entries not available yet. Please run the database migration first.",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw error;
+      }
 
       toast({
         title: "Success",
@@ -260,7 +281,18 @@ export function StaffAvailabilityModal({
         .delete()
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error deleting personal entry:', error);
+        if (error.code === '42P01') { // Table doesn't exist
+          toast({
+            title: "Error",
+            description: "Personal calendar entries not available yet. Please run the database migration first.",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw error;
+      }
 
       toast({
         title: "Success",
