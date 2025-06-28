@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { StaffFilter } from "./StaffFilter";
 import { CalendarMainView } from "./CalendarMainView";
 import { UnscheduledProjects } from "./UnscheduledProjects";
@@ -51,11 +52,12 @@ interface StaffTimeOff {
 }
 
 export function CalendarView() {
+  const { staff: currentUser } = useAuth();
   const [staff, setStaff] = useState<Staff[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [bookings, setBookings] = useState<ProjectBooking[]>([]);
   const [staffTimeOff, setStaffTimeOff] = useState<StaffTimeOff[]>([]);
-  const [selectedStaff, setSelectedStaff] = useState<string>("all");
+  const [selectedStaff, setSelectedStaff] = useState<string>(currentUser?.id || "all");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"week" | "month">("month");
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -69,6 +71,13 @@ export function CalendarView() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Update selectedStaff when currentUser changes
+  useEffect(() => {
+    if (currentUser?.id) {
+      setSelectedStaff(currentUser.id);
+    }
+  }, [currentUser]);
 
   const loadData = async () => {
     try {
@@ -169,14 +178,17 @@ export function CalendarView() {
 
   return (
     <div className="space-y-4 p-4 max-w-full">
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-1 space-y-4">
+      {/* Top section with filter and unscheduled projects */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-1">
           <StaffFilter
             staff={staff}
             selectedStaff={selectedStaff}
             onStaffChange={setSelectedStaff}
           />
-          
+        </div>
+        
+        <div className="lg:col-span-2">
           <UnscheduledProjects
             projects={projects}
             bookings={bookings}
@@ -184,23 +196,24 @@ export function CalendarView() {
             onOpenBookingModal={openBookingModal}
           />
         </div>
+      </div>
 
-        <div className="lg:col-span-3">
-          <CalendarMainView
-            currentDate={currentDate}
-            view={view}
-            bookings={bookings}
-            staff={staff}
-            staffTimeOff={staffTimeOff}
-            selectedStaff={selectedStaff}
-            onViewChange={setView}
-            onNavigateDate={navigateDate}
-            onShowAvailabilityModal={() => setShowAvailabilityModal(true)}
-            onTodayClick={handleTodayClick}
-            onBookingUpdate={loadData}
-            onBookingClick={openBookingDetailsModal}
-          />
-        </div>
+      {/* Full-width calendar */}
+      <div className="w-full">
+        <CalendarMainView
+          currentDate={currentDate}
+          view={view}
+          bookings={bookings}
+          staff={staff}
+          staffTimeOff={staffTimeOff}
+          selectedStaff={selectedStaff}
+          onViewChange={setView}
+          onNavigateDate={navigateDate}
+          onShowAvailabilityModal={() => setShowAvailabilityModal(true)}
+          onTodayClick={handleTodayClick}
+          onBookingUpdate={loadData}
+          onBookingClick={openBookingDetailsModal}
+        />
       </div>
 
       <BookingModal

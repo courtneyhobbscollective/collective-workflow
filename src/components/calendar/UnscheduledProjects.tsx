@@ -1,7 +1,6 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Clock, AlertTriangle } from "lucide-react";
 import type { Staff } from "@/types/staff";
 
 interface Project {
@@ -53,29 +52,42 @@ export function UnscheduledProjects({
   );
 
   return (
-    <Card className="lg:max-h-96 overflow-hidden">
+    <Card className="h-full">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center space-x-2 text-base">
           <Clock className="w-4 h-4" />
           <span>Unscheduled Projects</span>
+          {unscheduledProjects.length > 0 && (
+            <Badge variant="destructive" className="ml-auto">
+              {unscheduledProjects.length}
+            </Badge>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="max-h-80 overflow-y-auto">
-        <div className="space-y-2">
-          {unscheduledProjects.map((project) => (
-            <div key={project.id} className="p-3 border rounded-lg">
-              <h4 className="font-medium text-sm line-clamp-2">{project.title}</h4>
-              <p className="text-xs text-muted-foreground truncate">{project.client.company}</p>
-              <p className="text-xs text-blue-600">{project.estimated_hours}h estimated</p>
-              <Button
-                size="sm"
-                className="mt-2 w-full"
-                onClick={() => onOpenBookingModal(project)}
-              >
-                Schedule
-              </Button>
+        <div className="space-y-3">
+          {unscheduledProjects.length > 0 ? (
+            unscheduledProjects.map((project) => (
+              <div key={project.id} className="p-3 border border-orange-200 rounded-lg bg-orange-50">
+                <div className="flex items-start space-x-2">
+                  <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-medium text-sm line-clamp-2 text-orange-900">{project.title}</h4>
+                    <p className="text-xs text-orange-700 truncate">{project.client.company}</p>
+                    <p className="text-xs text-orange-600 font-medium">{project.estimated_hours}h estimated</p>
+                    <p className="text-xs text-orange-600 mt-1">
+                      ⚠️ This project needs to be scheduled through the workflow production stages
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8">
+              <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">All projects are scheduled</p>
             </div>
-          ))}
+          )}
         </div>
       </CardContent>
     </Card>
