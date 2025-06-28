@@ -53,8 +53,8 @@ export function UnscheduledProjects({
 
   return (
     <Card className="h-full">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center space-x-2 text-base">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center space-x-2 text-sm">
           <Clock className="w-4 h-4" />
           <span>Unscheduled Projects</span>
           {unscheduledProjects.length > 0 && (
@@ -64,29 +64,30 @@ export function UnscheduledProjects({
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent className="max-h-80 overflow-y-auto">
-        <div className="space-y-3">
+      <CardContent className="max-h-32 overflow-y-auto">
+        <div className="space-y-2">
           {unscheduledProjects.length > 0 ? (
-            unscheduledProjects.map((project) => (
-              <div key={project.id} className="p-3 border border-orange-200 rounded-lg bg-orange-50">
+            unscheduledProjects.slice(0, 3).map((project) => (
+              <div key={project.id} className="p-2 border border-orange-200 rounded bg-orange-50">
                 <div className="flex items-start space-x-2">
-                  <AlertTriangle className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
+                  <AlertTriangle className="w-3 h-3 text-orange-600 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-sm line-clamp-2 text-orange-900">{project.title}</h4>
-                    <p className="text-xs text-orange-700 truncate">{project.client.company}</p>
-                    <p className="text-xs text-orange-600 font-medium">{project.estimated_hours}h estimated</p>
-                    <p className="text-xs text-orange-600 mt-1">
-                      ⚠️ This project needs to be scheduled through the workflow production stages
-                    </p>
+                    <h4 className="font-medium text-xs line-clamp-1 text-orange-900">{project.title}</h4>
+                    <p className="text-xs text-orange-700 truncate">{project.client.company} • {project.estimated_hours}h</p>
                   </div>
                 </div>
               </div>
             ))
           ) : (
-            <div className="text-center py-8">
-              <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">All projects are scheduled</p>
+            <div className="text-center py-4">
+              <Clock className="w-4 h-4 text-muted-foreground mx-auto mb-1" />
+              <p className="text-xs text-muted-foreground">All projects scheduled</p>
             </div>
+          )}
+          {unscheduledProjects.length > 3 && (
+            <p className="text-xs text-muted-foreground text-center">
+              +{unscheduledProjects.length - 3} more unscheduled projects
+            </p>
           )}
         </div>
       </CardContent>

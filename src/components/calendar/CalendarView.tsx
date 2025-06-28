@@ -178,9 +178,9 @@ export function CalendarView() {
 
   return (
     <div className="space-y-4 p-4 max-w-full">
-      {/* Top section with filter and unscheduled projects */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-1">
+      {/* Compact top section with filter and unscheduled projects */}
+      <div className="flex flex-col lg:flex-row gap-4">
+        <div className="lg:w-64">
           <StaffFilter
             staff={staff}
             selectedStaff={selectedStaff}
@@ -188,7 +188,7 @@ export function CalendarView() {
           />
         </div>
         
-        <div className="lg:col-span-2">
+        <div className="flex-1">
           <UnscheduledProjects
             projects={projects}
             bookings={bookings}
