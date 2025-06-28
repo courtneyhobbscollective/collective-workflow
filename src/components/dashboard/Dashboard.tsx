@@ -623,12 +623,13 @@ export function Dashboard() {
                     </div>
                     <Progress 
                       value={member.stats.utilisationPercentage} 
-                      className="h-1.5" 
-                      style={{
-                        '--progress-background': member.stats.utilisationPercentage > 65 ? 'hsl(var(--primary))' : 
-                                                 member.stats.utilisationPercentage >= 40 ? 'hsl(var(--warning))' : 
-                                                 'hsl(var(--destructive))'
-                      } as React.CSSProperties}
+                      className={`h-1.5 ${
+                        member.stats.utilisationPercentage > 65 
+                          ? 'bg-green-100 [&>div]:bg-green-500' 
+                          : member.stats.utilisationPercentage >= 40 
+                          ? 'bg-orange-100 [&>div]:bg-orange-500' 
+                          : 'bg-red-100 [&>div]:bg-red-500'
+                      }`}
                     />
                   </div>
                 ))}
