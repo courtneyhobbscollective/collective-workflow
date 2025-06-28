@@ -137,7 +137,38 @@ export function BriefCard({ project, onDelete }: BriefCardProps) {
         
         <AccordionContent className="px-4 pb-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Left: Project Details and Description */}
+            {/* Left: Client Information and Status */}
+            <div className="space-y-4 h-full">
+              <Card className="bg-gray-50 h-full">
+                <CardContent className="p-4">
+                  <h4 className="font-medium text-sm mb-2">Client Information</h4>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center space-x-1">
+                      <Building className="w-3 h-3" />
+                      <span className="font-medium">Company:</span> {project.client?.company || project.client?.name}
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <User className="w-3 h-3" />
+                      <span className="font-medium">Contact:</span> {project.client?.name}
+                    </div>
+                    <div><span className="font-medium">Client Type:</span> {project.client?.is_retainer ? 'Retainer' : 'Project'}</div>
+                  </div>
+                  
+                  <div className="mt-4">
+                    <h4 className="font-medium text-sm mb-2">Project Status</h4>
+                    <div className="space-y-1 text-xs">
+                      <div><span className="font-medium">Current Stage:</span> {getStageDisplayName(project.current_stage)}</div>
+                      <div><span className="font-medium">Due Date:</span> {dueDate.toLocaleDateString()}</div>
+                      {isOverdue && (
+                        <div className="text-red-600 font-medium">⚠️ Overdue</div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Right: Project Details and Description */}
             <div className="space-y-4 h-full">
               <Card className="bg-gray-50 h-full">
                 <CardContent className="p-4">
@@ -165,37 +196,6 @@ export function BriefCard({ project, onDelete }: BriefCardProps) {
                       </ul>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            </div>
-            
-            {/* Right: Client Information and Status */}
-            <div className="space-y-4 h-full">
-              <Card className="bg-gray-50 h-full">
-                <CardContent className="p-4">
-                  <h4 className="font-medium text-sm mb-2">Client Information</h4>
-                  <div className="space-y-1 text-xs">
-                    <div className="flex items-center space-x-1">
-                      <Building className="w-3 h-3" />
-                      <span className="font-medium">Company:</span> {project.client?.company || project.client?.name}
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <User className="w-3 h-3" />
-                      <span className="font-medium">Contact:</span> {project.client?.name}
-                    </div>
-                    <div><span className="font-medium">Client Type:</span> {project.client?.is_retainer ? 'Retainer' : 'Project'}</div>
-                  </div>
-                  
-                  <div className="mt-4">
-                    <h4 className="font-medium text-sm mb-2">Project Status</h4>
-                    <div className="space-y-1 text-xs">
-                      <div><span className="font-medium">Current Stage:</span> {getStageDisplayName(project.current_stage)}</div>
-                      <div><span className="font-medium">Due Date:</span> {dueDate.toLocaleDateString()}</div>
-                      {isOverdue && (
-                        <div className="text-red-600 font-medium">⚠️ Overdue</div>
-                      )}
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             </div>
