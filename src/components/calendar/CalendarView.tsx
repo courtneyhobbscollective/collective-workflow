@@ -68,15 +68,22 @@ export function CalendarView() {
 
   const loadData = async () => {
     try {
+      console.log('Loading calendar data...');
+      
       // Load staff
+      console.log('Loading staff data...');
       const { data: staffData, error: staffError } = await supabase
         .from('staff')
         .select('*')
         .eq('is_active', true);
 
-      if (staffError) throw staffError;
+      if (staffError) {
+        console.error('Staff loading error:', staffError);
+        throw new Error(`Failed to load staff: ${staffError.message}`);
+      }
 
       // Load bookings
+      console.log('Loading bookings data...');
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('project_bookings')
         .select(`
@@ -88,18 +95,27 @@ export function CalendarView() {
         `)
         .order('booking_date', { ascending: true });
 
-      if (bookingsError) throw bookingsError;
+      if (bookingsError) {
+        console.error('Bookings loading error:', bookingsError);
+        throw new Error(`Failed to load bookings: ${bookingsError.message}`);
+      }
 
       // Load staff time off
+      console.log('Loading time off data...');
       const { data: timeOffData, error: timeOffError } = await supabase
         .from('staff_time_off')
         .select('*')
         .eq('status', 'approved') // Only show approved time off
         .order('start_date', { ascending: true });
 
-      if (timeOffError) throw timeOffError;
+      if (timeOffError) {
+        console.error('Time off loading error:', timeOffError);
+        // Don't throw for time off - just use empty array
+        console.log('Using empty time off array due to error');
+      }
 
       // Load personal calendar entries
+      console.log('Loading personal entries data...');
       const { data: personalEntriesData, error: personalEntriesError } = await supabase
         .from('personal_calendar_entries')
         .select('*')
@@ -111,7 +127,7 @@ export function CalendarView() {
         if (personalEntriesError.code === '42P01') {
           console.log('Personal calendar entries table does not exist yet');
         } else {
-          throw personalEntriesError;
+          console.log('Using empty personal entries array due to error');
         }
       }
 
@@ -122,15 +138,18 @@ export function CalendarView() {
         invitation_status: member.invitation_status as 'pending' | 'invited' | 'accepted'
       })) as Staff[];
 
+      console.log('Setting calendar data...');
       setStaff(transformedStaff);
       setBookings(bookingsData || []);
       setStaffTimeOff(timeOffData || []);
       setPersonalEntries((personalEntriesData || []) as PersonalCalendarEntry[]);
+      
+      console.log('Calendar data loaded successfully');
     } catch (error) {
       console.error('Error loading calendar data:', error);
       toast({
         title: "Error",
-        description: "Failed to load calendar data",
+        description: error instanceof Error ? error.message : "Failed to load calendar data",
         variant: "destructive",
       });
     } finally {
