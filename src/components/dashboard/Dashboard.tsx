@@ -718,8 +718,18 @@ export function Dashboard() {
                   {teamData.map((member) => (
                     <div key={member.staff.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <User className="w-4 h-4 text-blue-600" />
+                        <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100">
+                          {member.staff.profile_picture_url ? (
+                            <img 
+                              src={member.staff.profile_picture_url} 
+                              alt={member.staff.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xs font-medium text-gray-600">
+                              {member.staff.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                            </div>
+                          )}
                         </div>
                         <div>
                           <p className="font-medium text-sm">{member.staff.name}</p>
@@ -779,8 +789,18 @@ export function Dashboard() {
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <User className="w-5 h-5 text-blue-600" />
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100">
+                        {member.staff.profile_picture_url ? (
+                          <img 
+                            src={member.staff.profile_picture_url} 
+                            alt={member.staff.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs font-medium text-gray-600">
+                            {member.staff.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                          </div>
+                        )}
                       </div>
                       <div>
                         <h3 className="text-lg font-semibold">{member.staff.name}</h3>
