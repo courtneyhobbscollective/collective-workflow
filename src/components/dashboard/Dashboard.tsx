@@ -603,16 +603,31 @@ export function Dashboard() {
                 .map((member) => (
                   <div key={member.staff.id} className="space-y-1">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="truncate">{member.staff.name}</span>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 rounded-full overflow-hidden bg-gray-100">
+                          {member.staff.profile_picture_url ? (
+                            <img 
+                              src={member.staff.profile_picture_url} 
+                              alt={member.staff.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xs font-medium text-gray-600">
+                              {member.staff.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <span className="truncate">{member.staff.name}</span>
+                      </div>
                       <span className="font-medium">{member.stats.utilisationPercentage}%</span>
                     </div>
                     <Progress 
                       value={member.stats.utilisationPercentage} 
                       className="h-1.5" 
                       style={{
-                        '--progress-background': member.stats.utilisationPercentage > 85 ? 'hsl(var(--primary))' : 
-                                                 member.stats.utilisationPercentage > 60 ? 'hsl(var(--warning))' : 
-                                                 'hsl(var(--muted))'
+                        '--progress-background': member.stats.utilisationPercentage > 65 ? 'hsl(var(--primary))' : 
+                                                 member.stats.utilisationPercentage >= 40 ? 'hsl(var(--warning))' : 
+                                                 'hsl(var(--destructive))'
                       } as React.CSSProperties}
                     />
                   </div>
@@ -645,8 +660,18 @@ export function Dashboard() {
                 return (
                   <div key={member.staff.id} className="flex items-center justify-between p-2 border rounded">
                     <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                        <User className="w-3 h-3 text-blue-600" />
+                      <div className="w-6 h-6 rounded-full overflow-hidden bg-gray-100">
+                        {member.staff.profile_picture_url ? (
+                          <img 
+                            src={member.staff.profile_picture_url} 
+                            alt={member.staff.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs font-medium text-gray-600">
+                            {member.staff.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                          </div>
+                        )}
                       </div>
                       <span className="text-sm font-medium">{member.staff.name}</span>
                     </div>
