@@ -97,63 +97,85 @@ export function IncomingBriefCard({
   return (
     <Accordion type="single" collapsible className="w-full">
       <AccordionItem value={project.id} className="border rounded-lg bg-white shadow-sm">
-        {/* This div now acts as the header, containing both the AccordionTrigger and the Popover */}
-        <AccordionTrigger hideChevron className="flex items-center w-full px-4 py-4 hover:bg-muted/50 transition-colors group no-underline hover:no-underline focus:no-underline">
-          <div className="flex flex-col items-start flex-1">
-            {project.client?.company || project.client?.name ? (
-              <Badge className="mb-1 bg-blue-100 text-blue-800 border border-blue-300 font-normal">{project.client?.company || project.client?.name}</Badge>
-            ) : null}
-            <h3 className="font-semibold text-base mb-1">{project.title}</h3>
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-1">
-              <FileText className="w-3 h-3" />
-              <Calendar className="w-3 h-3" />
-              <span className={isOverdue ? "text-red-600 font-medium" : ""}>{dueDate.toLocaleDateString()}</span>
-              {project.estimated_hours && (
-                <>
-                  <Clock className="w-3 h-3" />
-                  <span>{project.estimated_hours}h</span>
-                </>
-              )}
-              {project.is_retainer ? (
-                <Badge className="bg-green-100 text-green-800 border border-green-300 font-normal">Retainer</Badge>
-              ) : (
-                <Badge className="bg-blue-100 text-blue-800 border border-blue-300 font-normal">Project</Badge>
-              )}
-            </div>
+        <div className="flex w-full px-4 py-4 hover:bg-muted/50 transition-colors group items-center">
+          {/* Left: AccordionTrigger fills all space except right controls */}
+          <div className="flex-1 min-w-0">
+            <AccordionTrigger hideChevron className="w-full h-full block no-underline hover:no-underline focus:no-underline select-none p-0 m-0">
+              <div className="flex flex-col min-w-0 w-full gap-1">
+                <div className="flex items-center">
+                  {project.client?.company || project.client?.name ? (
+                    <Badge className="bg-blue-100 text-blue-800 border border-blue-300 font-normal px-3 py-1 whitespace-nowrap max-w-xs overflow-hidden text-ellipsis">
+                      {project.client?.company || project.client?.name}
+                    </Badge>
+                  ) : null}
+                </div>
+                <h3 className="font-semibold text-base text-left truncate" style={{maxWidth: '100%'}}>{project.title}</h3>
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                  <FileText className="w-3 h-3" />
+                  <Calendar className="w-3 h-3" />
+                  <span className={isOverdue ? "text-red-600 font-medium" : ""}>{dueDate.toLocaleDateString()}</span>
+                  {project.estimated_hours && (
+                    <>
+                      <Clock className="w-3 h-3" />
+                      <span>{project.estimated_hours}h</span>
+                    </>
+                  )}
+                  {project.is_retainer ? (
+                    <Badge className="bg-green-100 text-green-800 border border-green-300 font-normal">Retainer</Badge>
+                  ) : (
+                    <Badge className="bg-blue-100 text-blue-800 border border-blue-300 font-normal">Project</Badge>
+                  )}
+                </div>
+              </div>
+            </AccordionTrigger>
           </div>
-          {assignedStaff ? (
-            <Avatar className="w-6 h-6 ml-2">
-              <AvatarImage src={assignedStaff.profile_picture_url || undefined} />
-              <AvatarFallback className="text-xs">
-                {assignedStaff.name.split(' ').map(n => n[0]).join('')}
-              </AvatarFallback>
-            </Avatar>
-          ) : (
-            <div className="flex items-center text-orange-600 ml-2">
-              <User className="w-4 h-4" />
-            </div>
-          )}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Badge className={`cursor-pointer ml-2 ${getStatusColor(project.stage_status || 'in_progress')}`}>{formatStatusLabel(project.stage_status || 'in_progress')}</Badge>
-            </PopoverTrigger>
-            <PopoverContent className="w-48 p-0">
-              <StatusSelector
-                currentStage={project.current_stage}
-                currentStatus={project.stage_status || 'in_progress'}
-                internalReviewCompleted={project.internal_review_completed || false}
-                picterLink={project.picter_link}
-                onStatusChange={handleStatusChange}
-                onEmailClient={handleEmailClient}
-                project={project}
-              />
-            </PopoverContent>
-          </Popover>
-          {/* Chevron in a circle at the far right */}
-          <span className="ml-auto flex items-center justify-center w-8 h-8 rounded-full bg-muted group-hover:bg-accent transition-colors">
-            <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-          </span>
-        </AccordionTrigger>
+          {/* Right-side controls, always right-aligned */}
+          <div className="flex items-center flex-shrink-0 ml-2 space-x-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  data-status-badge
+                  className={
+                    getStatusColor(project.stage_status || 'in_progress') +
+                    ' cursor-pointer rounded-full px-3 py-1 text-xs font-medium border focus:outline-none focus:ring-2 focus:ring-blue-500'
+                  }
+                  style={{ zIndex: 9999, position: 'relative' }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  {formatStatusLabel(project.stage_status || 'in_progress')}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-0" style={{ zIndex: 99999, position: 'relative' }}>
+                <StatusSelector
+                  currentStage={project.current_stage}
+                  currentStatus={project.stage_status || 'in_progress'}
+                  internalReviewCompleted={project.internal_review_completed || false}
+                  picterLink={project.picter_link}
+                  onStatusChange={handleStatusChange}
+                  onEmailClient={handleEmailClient}
+                  project={project}
+                />
+              </PopoverContent>
+            </Popover>
+            {assignedStaff ? (
+              <Avatar className="w-6 h-6 avatar" onClick={e => e.stopPropagation()}>
+                <AvatarImage src={assignedStaff.profile_picture_url || undefined} />
+                <AvatarFallback className="text-xs">
+                  {assignedStaff.name.split(' ').map(n => n[0]).join('')}
+                </AvatarFallback>
+              </Avatar>
+            ) : (
+              <div className="flex items-center text-orange-600">
+                <User className="w-4 h-4" />
+              </div>
+            )}
+            {/* Chevron in a circle at the far right */}
+            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-muted group-hover:bg-accent transition-colors chevron-down" onClick={e => e.stopPropagation()}>
+              <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+            </span>
+          </div>
+        </div>
         
         <AccordionContent className="px-4 pb-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
