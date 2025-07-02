@@ -46,11 +46,10 @@ const Index = ({ activeTab, onTabChange }: IndexProps) => {
       case "briefs":
         return <BriefManagement />;
       case "staff":
-        return <StaffManagement />;
+        return staff?.role === "Admin" ? <StaffManagement /> : <Dashboard onTabChange={onTabChange} />;
       case "crm":
-        return <CRMDashboard />;
+        return staff?.role === "Admin" ? <CRMDashboard /> : <Dashboard onTabChange={onTabChange} />;
       case "billing":
-        // Only Admin can access Billing
         return staff?.role === "Admin" ? <BillingDashboard /> : <Dashboard onTabChange={onTabChange} />;
       default:
         return <Dashboard onTabChange={onTabChange} />;

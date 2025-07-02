@@ -49,9 +49,11 @@ export function TopNavigation({ activeTab, onTabChange }: TopNavigationProps) {
     { id: "clients", label: "Clients", icon: Building },
     { id: "calendar", label: "Calendar", icon: Calendar },
     { id: "chat", label: "Chat", icon: MessageCircle },
-    { id: "crm", label: "CRM", icon: MessageSquare },
-    { id: "staff", label: "Staff", icon: Users },
-    ...(staff?.role === 'Admin' ? [{ id: "billing", label: "Billing", icon: TrendingUp }] : []),
+    ...(staff?.role === 'Admin' ? [
+      { id: "crm", label: "CRM", icon: MessageSquare },
+      { id: "staff", label: "Staff", icon: Users },
+      { id: "billing", label: "Billing", icon: TrendingUp },
+    ] : []),
   ];
 
   const NavButton = ({ item }: { item: typeof navigationItems[0] }) => (
