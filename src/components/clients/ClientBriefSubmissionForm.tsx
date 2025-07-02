@@ -24,6 +24,7 @@ const workTypes = [
   "Print Design",
   "Photography",
   "Video Production",
+  "Social content",
   "Other",
 ];
 

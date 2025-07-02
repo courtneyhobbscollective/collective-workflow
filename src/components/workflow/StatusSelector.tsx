@@ -22,27 +22,22 @@ interface StatusSelectorProps {
 }
 
 const getStatusOptions = (stage: string) => {
-  const baseOptions = ["in_progress", "on_hold"];
-  
-  if (["stage03", "stage04", "stage05"].includes(stage)) {
-    return [...baseOptions, "ready_for_internal_review", "ready_to_send_client", "sent_to_client"];
-  }
-  
-  if (stage === "stage06") {
-    return [...baseOptions, "ready_for_internal_review", "ready_to_send_client", "close_project"];
-  }
-  
-  return baseOptions;
+  return [
+    "on_hold",
+    "in_progress",
+    "shoot_booked",
+    "edit_booked",
+    "waiting_for_client_sign_off"
+  ];
 };
 
 export const formatStatusLabel = (status: string) => {
   const labels: Record<string, string> = {
     in_progress: "In Progress",
     on_hold: "On Hold",
-    ready_for_internal_review: "Ready for Internal Review",
-    ready_to_send_client: "Ready to be Sent to Client",
-    sent_to_client: "Sent to Client",
-    close_project: "Close Down This Project"
+    shoot_booked: "Shoot Booked",
+    edit_booked: "Edit Booked",
+    waiting_for_client_sign_off: "Waiting for Client sign off"
   };
   return labels[status] || status;
 };

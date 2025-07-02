@@ -20,7 +20,8 @@ import {
   FileText,
   Download,
   Eye,
-  EyeOff
+  EyeOff,
+  Trash2
 } from "lucide-react";
 import { useState } from "react";
 
@@ -52,6 +53,7 @@ interface ClientCardProps {
   onEdit: (client: Client) => void;
   onCreateUser: (client: Client) => void;
   onResendPassword: (client: Client) => void;
+  onDelete: (client: Client) => void;
 }
 
 export function ClientCard({ 
@@ -59,7 +61,8 @@ export function ClientCard({
   hasUser, 
   onEdit, 
   onCreateUser, 
-  onResendPassword 
+  onResendPassword,
+  onDelete
 }: ClientCardProps) {
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
 
@@ -126,6 +129,17 @@ export function ClientCard({
               className="text-muted-foreground hover:text-foreground"
             >
               <Edit className="w-4 h-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(client);
+              }}
+              className="hover:text-red-600"
+            >
+              <Trash2 className="w-4 h-4" />
             </Button>
             <span className="flex items-center justify-center w-8 h-8 rounded-full bg-muted group-hover:bg-accent transition-colors">
               <ChevronDown className="h-4 w-4 transition-transform duration-200" />

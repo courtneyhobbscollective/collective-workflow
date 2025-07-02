@@ -530,6 +530,32 @@ export function ClientManagement() {
     }));
   };
 
+  // Add this function to handle client deletion
+  const handleDeleteClient = async (client: Client) => {
+    if (!window.confirm(`Are you sure you want to delete client '${client.name}'? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({ is_active: false })
+        .eq('id', client.id);
+      if (error) throw error;
+      toast({
+        title: 'Client deleted',
+        description: `Client '${client.name}' has been deleted.`,
+      });
+      loadClients();
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete client',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
   }
@@ -911,6 +937,7 @@ export function ClientManagement() {
               onEdit={handleEdit} 
               onCreateUser={handleCreateUserClick}
               onResendPassword={handleResendPasswordClick} 
+              onDelete={handleDeleteClient}
             />
           );
         })}
