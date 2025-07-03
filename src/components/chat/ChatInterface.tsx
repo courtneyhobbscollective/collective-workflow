@@ -171,15 +171,29 @@ export function ChatInterface() {
   }, [loggedInStaff]);
 
   useEffect(() => {
-    // Scroll to bottom when messages change
-    messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+    // Scroll to bottom when messages change (reliable patch)
+    if (messagesEndRef.current) {
+      // Use requestAnimationFrame for smoothness
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+      });
+      // Fallback: setTimeout in case of custom scrollbars/slow render
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+      }, 100);
+    }
   }, [messages]);
 
   useEffect(() => {
     // Scroll the chat thread to the bottom by setting scrollTop
     const viewport = scrollAreaViewportRef.current;
     if (viewport) {
-      viewport.scrollTop = viewport.scrollHeight;
+      requestAnimationFrame(() => {
+        viewport.scrollTop = viewport.scrollHeight;
+      });
+      setTimeout(() => {
+        viewport.scrollTop = viewport.scrollHeight;
+      }, 100);
     }
   }, [messages]);
 
