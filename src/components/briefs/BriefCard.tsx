@@ -35,6 +35,8 @@ interface Project {
   project_value: number | null;
   treat_as_oneoff: boolean;
   client: Client;
+  generated_from_template_id?: string;
+  recurrence_type?: string;
 }
 
 interface BriefCardProps {
@@ -110,6 +112,11 @@ export function BriefCard({ project, onDelete }: BriefCardProps) {
               {project.treat_as_oneoff && (
                 <Badge className="bg-purple-100 text-purple-800 border border-purple-300 font-normal">
                   One-off
+                </Badge>
+              )}
+              {project.generated_from_template_id && (
+                <Badge className="bg-orange-100 text-orange-800 border border-orange-300 font-normal">
+                  {project.recurrence_type ? project.recurrence_type.charAt(0).toUpperCase() + project.recurrence_type.slice(1) : 'Recurring'}
                 </Badge>
               )}
               <Badge className={`${getStatusColor(project.current_stage)}`}>

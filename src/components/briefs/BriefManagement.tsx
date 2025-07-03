@@ -500,28 +500,28 @@ export function BriefManagement() {
                     {isDualHoursType ? (
                       <>
                         <div>
-                          <Label htmlFor="estimatedShootHours">Estimated Shoot Hours *</Label>
+                          <Label htmlFor="estimatedShootHours">Estimated Shoot Hours</Label>
                           <Input
                             id="estimatedShootHours"
                             type="number"
                             value={formData.estimatedShootHours}
                             onChange={(e) => setFormData({ ...formData, estimatedShootHours: e.target.value })}
                             placeholder="e.g., 8"
-                            min="1"
-                            required
+                            min="0"
                           />
+                          <p className="text-xs text-muted-foreground">Set to 0 if no shoot hours are required. 0 means no shoot booking will be created.</p>
                         </div>
                         <div>
-                          <Label htmlFor="estimatedEditHours">Estimated Edit Hours *</Label>
+                          <Label htmlFor="estimatedEditHours">Estimated Edit Hours</Label>
                           <Input
                             id="estimatedEditHours"
                             type="number"
                             value={formData.estimatedEditHours}
                             onChange={(e) => setFormData({ ...formData, estimatedEditHours: e.target.value })}
                             placeholder="e.g., 12"
-                            min="1"
-                            required
+                            min="0"
                           />
+                          <p className="text-xs text-muted-foreground">Set to 0 if no edit hours are required. 0 means no edit booking will be created.</p>
                         </div>
                       </>
                     ) : (
