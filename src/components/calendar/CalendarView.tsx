@@ -90,6 +90,9 @@ export function CalendarView() {
           *,
           project:projects(
             title,
+            estimated_hours,
+            estimated_shoot_hours,
+            estimated_edit_hours,
             client:clients(company)
           )
         `)
@@ -140,7 +143,20 @@ export function CalendarView() {
 
       console.log('Setting calendar data...');
       setStaff(transformedStaff);
-      setBookings(bookingsData || []);
+
+      // After fetching bookingsData, filter out any with project join errors and ensure project fields are present
+      const cleanedBookings = (bookingsData || []).filter((b: any) => b.project && !b.project.error).map((b: any) => ({
+        ...b,
+        project: {
+          title: b.project.title,
+          estimated_hours: b.project.estimated_hours ?? null,
+          estimated_shoot_hours: b.project.estimated_shoot_hours ?? null,
+          estimated_edit_hours: b.project.estimated_edit_hours ?? null,
+          client: b.project.client,
+        }
+      }));
+      setBookings(cleanedBookings);
+
       setStaffTimeOff(timeOffData || []);
       setPersonalEntries((personalEntriesData || []) as PersonalCalendarEntry[]);
       

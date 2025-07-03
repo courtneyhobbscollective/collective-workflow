@@ -7,6 +7,8 @@ interface Project {
   id: string;
   title: string;
   estimated_hours: number;
+  estimated_shoot_hours?: number | null;
+  estimated_edit_hours?: number | null;
   assigned_staff_id: string;
   client: {
     company: string;

@@ -36,6 +36,11 @@ interface BriefTemplate {
   client: {
     company: string;
   };
+  recurrence_type: string;
+  recurrence_day: string;
+  recurrence_start_date: string | null;
+  recurrence_end_date: string | null;
+  billing_frequency: string;
 }
 
 interface Project {
@@ -48,6 +53,8 @@ interface Project {
   due_date: string;
   po_number: string;
   estimated_hours: number;
+  estimated_shoot_hours?: number | null;
+  estimated_edit_hours?: number | null;
   is_retainer: boolean;
   current_stage: string;
   project_value: number | null;
@@ -143,7 +150,11 @@ export function BriefManagement() {
       if (templatesError) throw templatesError;
 
       setClients(clientsData || []);
-      setProjects(projectsData || []);
+      setProjects((projectsData || []).map((p: any) => ({
+        ...p,
+        estimated_shoot_hours: p.estimated_shoot_hours ?? null,
+        estimated_edit_hours: p.estimated_edit_hours ?? null,
+      })));
       setTemplates((templatesData || []).map((t: any) => ({
         ...t,
         estimated_shoot_hours: t.estimated_shoot_hours ?? null,
