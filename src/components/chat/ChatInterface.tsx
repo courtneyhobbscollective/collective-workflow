@@ -13,6 +13,7 @@ import { GifPicker } from "./GifPicker";
 import { ChannelCreationModal } from "./ChannelCreationModal";
 import { MentionInput } from "./MentionInput";
 import { formatChannelDisplayName } from "@/utils/channelUtils";
+import { useAuth } from "@/contexts/AuthContext";
 import { useStaff } from "@/contexts/StaffContext";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -63,15 +64,16 @@ export function ChatInterface() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaViewportRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { currentStaff, allStaff } = useStaff();
+  const { staff: loggedInStaff } = useAuth();
+  const { allStaff } = useStaff();
 
   useEffect(() => {
     loadChannels();
     loadClients();
-    if (currentStaff) {
+    if (loggedInStaff) {
       loadMentionCounts();
     }
-  }, [currentStaff]);
+  }, [loggedInStaff]);
 
   // Check for target channel ID from mention notifications
   useEffect(() => {
@@ -144,7 +146,7 @@ export function ChatInterface() {
   }, [activeChannel]);
 
   useEffect(() => {
-    if (currentStaff) {
+    if (loggedInStaff) {
       // Subscribe to mention updates
       const mentionChannel = supabase
         .channel('mention-updates')
@@ -154,7 +156,7 @@ export function ChatInterface() {
             event: '*',
             schema: 'public',
             table: 'message_mentions',
-            filter: `mentioned_staff_email=eq.${currentStaff.email}`
+            filter: `mentioned_staff_email=eq.${loggedInStaff.email}`
           },
           () => {
             loadMentionCounts();
@@ -166,7 +168,7 @@ export function ChatInterface() {
         supabase.removeChannel(mentionChannel);
       };
     }
-  }, [currentStaff]);
+  }, [loggedInStaff]);
 
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -225,7 +227,7 @@ export function ChatInterface() {
   };
 
   const loadMentionCounts = async () => {
-    if (!currentStaff) return;
+    if (!loggedInStaff) return;
 
     try {
       const { data, error } = await supabase
@@ -234,7 +236,7 @@ export function ChatInterface() {
           message_id,
           messages!inner(channel_id)
         `)
-        .eq('mentioned_staff_email', currentStaff.email)
+        .eq('mentioned_staff_email', loggedInStaff.email)
         .eq('is_read', false);
 
       if (error) throw error;
@@ -258,7 +260,7 @@ export function ChatInterface() {
   };
 
   const markMentionsAsRead = async (channelId: string) => {
-    if (!currentStaff) return;
+    if (!loggedInStaff) return;
 
     try {
       // First get the message IDs for the channel
@@ -275,7 +277,7 @@ export function ChatInterface() {
         const { error } = await supabase
           .from('message_mentions')
           .update({ is_read: true })
-          .eq('mentioned_staff_email', currentStaff.email)
+          .eq('mentioned_staff_email', loggedInStaff.email)
           .eq('is_read', false)
           .in('message_id', messageIds);
 
@@ -311,10 +313,10 @@ export function ChatInterface() {
   };
 
   const processMentions = async (content: string, messageId: string) => {
-    if (!currentStaff) return;
+    if (!loggedInStaff) return;
 
     console.log('Processing mentions for message:', content);
-    console.log('Current staff:', currentStaff);
+    console.log('Current staff:', loggedInStaff);
 
     const mentionRegex = /@(\w+)/g;
     const mentions = content.match(mentionRegex);
@@ -359,7 +361,7 @@ export function ChatInterface() {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !activeChannel || !currentStaff) return;
+    if (!newMessage.trim() || !activeChannel || !loggedInStaff) return;
 
     console.log('Sending message:', newMessage);
     try {
@@ -368,8 +370,8 @@ export function ChatInterface() {
         .insert([{
           channel_id: activeChannel.id,
           content: newMessage,
-          sender_name: currentStaff.name,
-          sender_email: currentStaff.email,
+          sender_name: loggedInStaff.name,
+          sender_email: loggedInStaff.email,
           message_type: 'text'
         }])
         .select()
@@ -400,7 +402,7 @@ export function ChatInterface() {
   };
 
   const sendGif = async (gifUrl: string) => {
-    if (!activeChannel || !currentStaff) return;
+    if (!activeChannel || !loggedInStaff) return;
 
     try {
       const { error } = await supabase
@@ -408,8 +410,8 @@ export function ChatInterface() {
         .insert([{
           channel_id: activeChannel.id,
           content: gifUrl,
-          sender_name: currentStaff.name,
-          sender_email: currentStaff.email,
+          sender_name: loggedInStaff.name,
+          sender_email: loggedInStaff.email,
           message_type: 'gif'
         }]);
 
@@ -459,10 +461,10 @@ export function ChatInterface() {
     return <div className="flex justify-center items-center h-64">Loading...</div>;
   }
 
-  if (!currentStaff) {
+  if (!loggedInStaff) {
     return (
       <div className="flex justify-center items-center h-64">
-        <p>Please select a staff member to use the chat.</p>
+        <p>You must be logged in as a staff member to use the chat.</p>
       </div>
     );
   }
@@ -551,9 +553,9 @@ export function ChatInterface() {
                 <MessageList 
                   messages={messages} 
                   currentUser={{
-                    name: currentStaff.name,
-                    email: currentStaff.email,
-                    profile_picture_url: currentStaff.profile_picture_url
+                    name: loggedInStaff.name,
+                    email: loggedInStaff.email,
+                    profile_picture_url: loggedInStaff.profile_picture_url
                   }}
                   allStaff={allStaff}
                 />
