@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -24,6 +23,8 @@ interface BriefTemplate {
   deliverables: number;
   description: string | null;
   estimated_hours: number | null;
+  estimated_shoot_hours: number | null;
+  estimated_edit_hours: number | null;
   project_value: number | null;
 }
 
@@ -40,7 +41,7 @@ const workTypes = [
   "Website Development",
   "Branding",
   "Marketing Campaign",
-  "Social Media Management",
+  "Social Media Content",
   "Print Design",
   "Photography",
   "Video Production",
@@ -60,12 +61,16 @@ export function BriefTemplateModal({
     deliverables: template?.deliverables?.toString() || "1",
     description: template?.description || "",
     estimatedHours: template?.estimated_hours?.toString() || "",
+    estimatedShootHours: template?.estimated_shoot_hours?.toString() || "",
+    estimatedEditHours: template?.estimated_edit_hours?.toString() || "",
     projectValue: template?.project_value?.toString() || "",
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   const retainerClients = clients.filter(client => client.is_retainer);
+
+  const isDualHoursType = ["Video Production", "Photography", "Social Media Content"].includes(formData.workType);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,7 +84,9 @@ export function BriefTemplateModal({
         work_type: formData.workType,
         deliverables: parseInt(formData.deliverables),
         description: formData.description || null,
-        estimated_hours: formData.estimatedHours ? parseInt(formData.estimatedHours) : null,
+        estimated_hours: !isDualHoursType ? (formData.estimatedHours ? parseInt(formData.estimatedHours) : null) : null,
+        estimated_shoot_hours: isDualHoursType ? (formData.estimatedShootHours ? parseInt(formData.estimatedShootHours) : null) : null,
+        estimated_edit_hours: isDualHoursType ? (formData.estimatedEditHours ? parseInt(formData.estimatedEditHours) : null) : null,
         project_value: formData.projectValue ? parseFloat(formData.projectValue) : null,
         created_by: "System", // TODO: Replace with actual user when auth is implemented
       };
@@ -118,6 +125,8 @@ export function BriefTemplateModal({
         deliverables: "1",
         description: "",
         estimatedHours: "",
+        estimatedShootHours: "",
+        estimatedEditHours: "",
         projectValue: "",
       });
     } catch (error) {
@@ -194,16 +203,45 @@ export function BriefTemplateModal({
                 placeholder="e.g., 3"
               />
             </div>
-            <div>
-              <Label htmlFor="estimatedHours">Est. Hours</Label>
-              <Input
-                id="estimatedHours"
-                type="number"
-                value={formData.estimatedHours}
-                onChange={(e) => setFormData({ ...formData, estimatedHours: e.target.value })}
-                placeholder="e.g., 40"
-              />
-            </div>
+            {isDualHoursType ? (
+              <>
+                <div>
+                  <Label htmlFor="estimatedShootHours">Estimated Shoot Hours *</Label>
+                  <Input
+                    id="estimatedShootHours"
+                    type="number"
+                    value={formData.estimatedShootHours}
+                    onChange={(e) => setFormData({ ...formData, estimatedShootHours: e.target.value })}
+                    placeholder="e.g., 8"
+                    min="1"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="estimatedEditHours">Estimated Edit Hours *</Label>
+                  <Input
+                    id="estimatedEditHours"
+                    type="number"
+                    value={formData.estimatedEditHours}
+                    onChange={(e) => setFormData({ ...formData, estimatedEditHours: e.target.value })}
+                    placeholder="e.g., 12"
+                    min="1"
+                    required
+                  />
+                </div>
+              </>
+            ) : (
+              <div>
+                <Label htmlFor="estimatedHours">Est. Hours</Label>
+                <Input
+                  id="estimatedHours"
+                  type="number"
+                  value={formData.estimatedHours}
+                  onChange={(e) => setFormData({ ...formData, estimatedHours: e.target.value })}
+                  placeholder="e.g., 12"
+                />
+              </div>
+            )}
           </div>
 
           <div>
