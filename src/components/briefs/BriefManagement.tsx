@@ -30,6 +30,8 @@ interface BriefTemplate {
   deliverables: number;
   description: string | null;
   estimated_hours: number | null;
+  estimated_shoot_hours: number | null;
+  estimated_edit_hours: number | null;
   project_value: number | null;
   client: {
     company: string;
@@ -140,7 +142,11 @@ export function BriefManagement() {
 
       setClients(clientsData || []);
       setProjects(projectsData || []);
-      setTemplates(templatesData || []);
+      setTemplates((templatesData || []).map((t: any) => ({
+        ...t,
+        estimated_shoot_hours: t.estimated_shoot_hours ?? null,
+        estimated_edit_hours: t.estimated_edit_hours ?? null,
+      })));
     } catch (error) {
       console.error('Error loading data:', error);
       toast({
@@ -227,9 +233,9 @@ export function BriefManagement() {
         work_type: formData.workType,
         deliverables: parseInt(formData.deliverables),
         due_date: formData.dueDate || null,
+        estimated_hours: !isDualHoursType ? (formData.estimatedHours ? parseInt(formData.estimatedHours) : null) : null,
         estimated_shoot_hours: isDualHoursType ? (formData.estimatedShootHours ? parseInt(formData.estimatedShootHours) : null) : null,
         estimated_edit_hours: isDualHoursType ? (formData.estimatedEditHours ? parseInt(formData.estimatedEditHours) : null) : null,
-        estimated_hours: !isDualHoursType ? (formData.estimatedHours ? parseInt(formData.estimatedHours) : null) : null,
         po_number: formData.poNumber || null,
         project_value: showProjectValue && formData.projectValue ? parseFloat(formData.projectValue) : null,
         is_retainer: selectedClient?.is_retainer || false,
@@ -580,7 +586,11 @@ export function BriefManagement() {
           <BriefTemplateList
             templates={templates}
             onEditTemplate={(template) => {
-              setEditingTemplate(template);
+              setEditingTemplate({
+                ...(template as any),
+                estimated_shoot_hours: (template as any).estimated_shoot_hours ?? null,
+                estimated_edit_hours: (template as any).estimated_edit_hours ?? null,
+              });
               setShowTemplateModal(true);
             }}
             onTemplateDeleted={loadData}
