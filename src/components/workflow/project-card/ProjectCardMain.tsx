@@ -70,7 +70,7 @@ interface ProjectCardMainProps {
   onUpdateContract: (projectId: string, signed: boolean) => void;
   onUpdatePoNumber: (projectId: string, poNumber: string) => void;
   onMoveProject: (projectId: string, newStageId: string) => void;
-  onUpdateStatus: (projectId: string, status: string, picterLink?: string) => void;
+  onUpdateStatus: (projectId: string, status: string, picterLink?: string, details?: { reason?: string; action?: string }) => void;
   onBookingCreated?: () => void;
   onMoveProjectBack: (projectId: string, newStageId: string) => void;
   reload: () => void;
@@ -111,13 +111,13 @@ export function ProjectCardMain({
     setAlternativeStaff(alternatives);
   };
 
-  const handleStatusChange = (newStatus: string) => {
+  const handleStatusChange = (newStatus: string, details?: { reason?: string; action?: string }) => {
     if (newStatus === "ready_for_internal_review") {
       setPicterModalOpen(true);
     } else if (newStatus === "close_project") {
       setClosureModalOpen(true);
     } else {
-      onUpdateStatus(project.id, newStatus);
+      onUpdateStatus(project.id, newStatus, undefined, details);
     }
   };
 

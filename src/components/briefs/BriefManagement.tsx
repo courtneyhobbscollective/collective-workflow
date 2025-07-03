@@ -58,7 +58,7 @@ const workTypes = [
   "Website Development",
   "Branding",
   "Marketing Campaign",
-  "Social Media Management",
+  "Social Media Content",
   "Print Design",
   "Photography",
   "Video Production",
@@ -84,6 +84,8 @@ export function BriefManagement() {
     dueDate: "",
     poNumber: "",
     description: "",
+    estimatedShootHours: "",
+    estimatedEditHours: "",
     estimatedHours: "",
     projectValue: "",
     treatAsOneoff: false,
@@ -97,6 +99,7 @@ export function BriefManagement() {
   // or if it's a non-retainer, or a retainer treated as one-off.
   const showProjectValue = (formData.projectValue !== "" && formData.projectValue !== "0") || !selectedClient?.is_retainer || formData.treatAsOneoff;
   const clientTemplates = templates.filter(t => t.client_id === formData.clientId);
+  const isDualHoursType = ["Video Production", "Photography", "Social Media Content"].includes(formData.workType);
 
   useEffect(() => {
     loadData();
@@ -108,7 +111,6 @@ export function BriefManagement() {
       const { data: clientsData, error: clientsError } = await supabase
         .from('clients')
         .select('id, name, company, is_retainer')
-        .eq('is_active', true)
         .order('company');
 
       if (clientsError) throw clientsError;
@@ -160,7 +162,9 @@ export function BriefManagement() {
       dueDate: "",
       poNumber: "",
       description: template.description || "",
-      estimatedHours: template.estimated_hours?.toString() || "",
+      estimatedShootHours: "",
+      estimatedEditHours: "",
+      estimatedHours: "",
       projectValue: template.project_value?.toString() || "",
       treatAsOneoff: false,
       contractSigned: false,
@@ -188,6 +192,8 @@ export function BriefManagement() {
         workType: "",
         deliverables: "",
         description: "",
+        estimatedShootHours: "",
+        estimatedEditHours: "",
         estimatedHours: "",
         projectValue: "",
         poRequired: true, // Reset to default true
@@ -221,7 +227,9 @@ export function BriefManagement() {
         work_type: formData.workType,
         deliverables: parseInt(formData.deliverables),
         due_date: formData.dueDate || null,
-        estimated_hours: formData.estimatedHours ? parseInt(formData.estimatedHours) : null,
+        estimated_shoot_hours: isDualHoursType ? (formData.estimatedShootHours ? parseInt(formData.estimatedShootHours) : null) : null,
+        estimated_edit_hours: isDualHoursType ? (formData.estimatedEditHours ? parseInt(formData.estimatedEditHours) : null) : null,
+        estimated_hours: !isDualHoursType ? (formData.estimatedHours ? parseInt(formData.estimatedHours) : null) : null,
         po_number: formData.poNumber || null,
         project_value: showProjectValue && formData.projectValue ? parseFloat(formData.projectValue) : null,
         is_retainer: selectedClient?.is_retainer || false,
@@ -245,6 +253,8 @@ export function BriefManagement() {
         dueDate: "",
         poNumber: "",
         description: "",
+        estimatedShootHours: "",
+        estimatedEditHours: "",
         estimatedHours: "",
         projectValue: "",
         treatAsOneoff: false,
@@ -477,16 +487,47 @@ export function BriefManagement() {
                         placeholder="e.g., PO-2024-001"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="estimatedHours">Estimated Hours</Label>
-                      <Input
-                        id="estimatedHours"
-                        type="number"
-                        value={formData.estimatedHours}
-                        onChange={(e) => setFormData({ ...formData, estimatedHours: e.target.value })}
-                        placeholder="e.g., 40"
-                      />
-                    </div>
+                    {isDualHoursType ? (
+                      <>
+                        <div>
+                          <Label htmlFor="estimatedShootHours">Estimated Shoot Hours *</Label>
+                          <Input
+                            id="estimatedShootHours"
+                            type="number"
+                            value={formData.estimatedShootHours}
+                            onChange={(e) => setFormData({ ...formData, estimatedShootHours: e.target.value })}
+                            placeholder="e.g., 8"
+                            min="1"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="estimatedEditHours">Estimated Edit Hours *</Label>
+                          <Input
+                            id="estimatedEditHours"
+                            type="number"
+                            value={formData.estimatedEditHours}
+                            onChange={(e) => setFormData({ ...formData, estimatedEditHours: e.target.value })}
+                            placeholder="e.g., 12"
+                            min="1"
+                            required
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div>
+                        <Label htmlFor="estimatedHours">Estimated Hours *</Label>
+                        <Input
+                          id="estimatedHours"
+                          type="number"
+                          value={formData.estimatedHours}
+                          onChange={(e) => setFormData({ ...formData, estimatedHours: e.target.value })}
+                          placeholder="e.g., 12"
+                          min="1"
+                          required
+                        />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <Label htmlFor="description">Brief Description</Label>

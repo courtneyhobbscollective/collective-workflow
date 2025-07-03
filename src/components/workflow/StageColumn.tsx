@@ -47,7 +47,7 @@ interface StageColumnProps {
   onUpdateContract: (projectId: string, signed: boolean) => void;
   onUpdatePoNumber: (projectId: string, poNumber: string) => void;
   onMoveProject: (projectId: string, newStageId: string) => void;
-  onUpdateStatus: (projectId: string, status: string, picterLink?: string) => void;
+  onUpdateStatus: (projectId: string, status: string, picterLink?: string, details?: { reason?: string; action?: string }) => void;
   onBookingCreated?: () => void;
   isIncomingStage?: boolean;
   onMoveProjectBack: (projectId: string, newStageId: string) => void;

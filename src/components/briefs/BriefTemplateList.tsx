@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -107,7 +106,7 @@ export function BriefTemplateList({
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <p className="text-sm font-medium">{template.client.company}</p>
+              <p className="text-sm font-medium">{template.client ? template.client.company : "Unknown Client"}</p>
               <Badge variant="secondary" className="text-xs">
                 {template.work_type}
               </Badge>

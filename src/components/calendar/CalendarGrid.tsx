@@ -20,6 +20,7 @@ interface ProjectBooking {
       company: string;
     };
   };
+  type?: string;
 }
 
 interface StaffTimeOff {
@@ -252,7 +253,6 @@ export function CalendarGrid({
                   {dayBookings.map((booking) => {
                     const staffMember = staff.find(s => s.id === booking.staff_id);
                     const isMultiDay = multiDayBookings.has(booking.project_id);
-                    
                     return (
                       <Badge
                         key={booking.id}
@@ -267,6 +267,14 @@ export function CalendarGrid({
                             <div className="truncate flex-1 min-w-0">
                               <div className="truncate text-xs font-medium">
                                 {booking.project.title}
+                                {booking.type && (
+                                  <span className={cn(
+                                    "ml-2 px-2 py-0.5 rounded text-xs font-semibold",
+                                    booking.type === 'shoot' ? 'bg-blue-200 text-blue-800' : 'bg-green-200 text-green-800'
+                                  )}>
+                                    {booking.type === 'shoot' ? 'Shoot' : booking.type === 'edit' ? 'Edit' : booking.type}
+                                  </span>
+                                )}
                               </div>
                             </div>
                             {isMultiDay && (
@@ -447,6 +455,14 @@ export function CalendarGrid({
                             <div className="truncate flex-1 min-w-0">
                               <div className="truncate text-xs">
                                 {booking.project.title}
+                                {booking.type && (
+                                  <span className={cn(
+                                    "ml-2 px-2 py-0.5 rounded text-xs font-semibold",
+                                    booking.type === 'shoot' ? 'bg-blue-200 text-blue-800' : 'bg-green-200 text-green-800'
+                                  )}>
+                                    {booking.type === 'shoot' ? 'Shoot' : booking.type === 'edit' ? 'Edit' : booking.type}
+                                  </span>
+                                )}
                               </div>
                               {selectedStaff === "all" && staffMember && (
                                 <div className="text-xs opacity-80 truncate">
@@ -584,6 +600,14 @@ export function CalendarGrid({
                           <div className="flex-1 min-w-0">
                             <div className="font-medium text-sm">
                               {booking.project.title}
+                              {booking.type && (
+                                <span className={cn(
+                                  "ml-2 px-2 py-0.5 rounded text-xs font-semibold",
+                                  booking.type === 'shoot' ? 'bg-blue-200 text-blue-800' : 'bg-green-200 text-green-800'
+                                )}>
+                                  {booking.type === 'shoot' ? 'Shoot' : booking.type === 'edit' ? 'Edit' : booking.type}
+                                </span>
+                              )}
                             </div>
                             <div className="text-xs text-muted-foreground">
                               {booking.project.client.company}

@@ -1,4 +1,3 @@
-
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { getValidationIssues, canMoveToStageOne } from "@/components/workflow/ProjectValidation";
@@ -144,7 +143,7 @@ export function useProjectOperations(
     }
   };
 
-  const updateProjectStatus = async (projectId: string, status: string, picterLink?: string, allProjects?: Project[]) => {
+  const updateProjectStatus = async (projectId: string, status: string, picterLink?: string, allProjects?: Project[], details?: { reason?: string; action?: string }) => {
     const project = allProjects?.find(p => p.id === projectId);
     if (!project) return;
 
@@ -186,7 +185,21 @@ export function useProjectOperations(
           picter_link: picterLink
         });
 
-      // Create admin notification for internal review
+      // Always create admin notification for any status change
+      let description = `Status changed from ${originalStageStatus} to ${status}`;
+      if (details?.reason) description += `\nReason: ${details.reason}`;
+      if (details?.action) description += `\nAction: ${details.action}`;
+      await supabase
+        .from('admin_notifications')
+        .insert({
+          project_id: projectId,
+          notification_type: 'status_change',
+          title: `Status Changed: ${project.title}`,
+          description,
+          extra_data: details ? JSON.stringify(details) : null
+        });
+
+      // Existing special-case notifications
       if (status === "ready_for_internal_review" && picterLink) {
         await supabase
           .from('admin_notifications')
@@ -198,8 +211,6 @@ export function useProjectOperations(
             picter_link: picterLink
           });
       }
-
-      // Create admin notification for project closure
       if (status === "closed") {
         await supabase
           .from('admin_notifications')

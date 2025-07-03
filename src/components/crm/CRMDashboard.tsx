@@ -314,7 +314,7 @@ export function CRMDashboard() {
                         </div>
                         <div className="font-medium text-sm mb-1">{msg.subject}</div>
                         <div className="text-sm text-muted-foreground mb-2">
-                          To: {msg.client.company} - {msg.client.name}
+                          To: {msg.client ? `${msg.client.company} - ${msg.client.name}` : "Unknown Client"}
                         </div>
                         <div className="text-sm">
                           {msg.message.length > 100 

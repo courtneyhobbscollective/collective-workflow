@@ -82,7 +82,6 @@ export function ClientManagement() {
       const { data, error } = await supabase
         .from('clients')
         .select('*')
-        .eq('is_active', true)
         .order('company');
 
       if (error) throw error;

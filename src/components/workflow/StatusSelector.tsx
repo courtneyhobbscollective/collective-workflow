@@ -3,6 +3,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Mail } from "lucide-react";
 import { useChaseUpAlerts } from "@/hooks/useChaseUpAlerts";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface StatusSelectorProps {
   currentStage: string;
@@ -53,7 +55,30 @@ export function StatusSelector({
 }: StatusSelectorProps) {
   const statusOptions = getStatusOptions(currentStage);
   const { createChaseUpAlert } = useChaseUpAlerts();
-  
+  const [showOnHoldModal, setShowOnHoldModal] = useState(false);
+  const [onHoldReason, setOnHoldReason] = useState("");
+  const [onHoldAction, setOnHoldAction] = useState("");
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+
+  const handleStatusSelect = (status: string) => {
+    if (status === "on_hold") {
+      setPendingStatus(status);
+      setShowOnHoldModal(true);
+    } else {
+      onStatusChange(status);
+    }
+  };
+
+  const handleOnHoldSubmit = () => {
+    setShowOnHoldModal(false);
+    if (pendingStatus) {
+      onStatusChange(pendingStatus, { reason: onHoldReason, action: onHoldAction });
+      setOnHoldReason("");
+      setOnHoldAction("");
+      setPendingStatus(null);
+    }
+  };
+
   const getEmailContent = (stage: string) => {
     const clientName = project.client.name;
     const projectTitle = project.title;
@@ -98,7 +123,7 @@ export function StatusSelector({
     <div className="space-y-2">
       <Select 
         value={currentStatus} 
-        onValueChange={onStatusChange}
+        onValueChange={handleStatusSelect}
       >
         <SelectTrigger className="h-8 text-xs">
           <SelectValue />
@@ -127,6 +152,36 @@ export function StatusSelector({
           Email Client
         </Button>
       )}
+      <Dialog open={showOnHoldModal} onOpenChange={setShowOnHoldModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Put Brief On Hold</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Reason for putting on hold</label>
+              <Textarea
+                value={onHoldReason}
+                onChange={e => setOnHoldReason(e.target.value)}
+                placeholder="Describe why this brief is being put on hold..."
+                rows={3}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Action plan to get back on track</label>
+              <Textarea
+                value={onHoldAction}
+                onChange={e => setOnHoldAction(e.target.value)}
+                placeholder="Describe what needs to happen to resume progress..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleOnHoldSubmit} disabled={!onHoldReason.trim()}>Submit</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

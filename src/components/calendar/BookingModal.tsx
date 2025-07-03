@@ -25,7 +25,9 @@ interface Staff {
 interface Project {
   id: string;
   title: string;
-  estimated_hours: number;
+  estimated_hours?: number;
+  estimated_shoot_hours?: number;
+  estimated_edit_hours?: number;
   assigned_staff_id: string;
   client: {
     company: string;
@@ -83,6 +85,31 @@ export function BookingModal({
   const [showMultiDayPreview, setShowMultiDayPreview] = useState(false);
   const [multiDayLoading, setMultiDayLoading] = useState(false);
   const { toast } = useToast();
+  const [bookingStep, setBookingStep] = useState<'shoot' | 'edit' | null>(null);
+  const [shootSlot, setShootSlot] = useState<TimeSlot | null>(null);
+  const [editSlot, setEditSlot] = useState<TimeSlot | null>(null);
+  const [shootDate, setShootDate] = useState<Date>();
+  const [editDate, setEditDate] = useState<Date>();
+
+  // Determine if dual booking is needed
+  const needsDualBooking = !!project?.estimated_shoot_hours && !!project?.estimated_edit_hours;
+
+  // Reset booking step when modal opens/closes or project changes
+  useEffect(() => {
+    if (isOpen && needsDualBooking) {
+      setBookingStep('shoot');
+      setShootSlot(null);
+      setEditSlot(null);
+      setShootDate(undefined);
+      setEditDate(undefined);
+    } else {
+      setBookingStep(null);
+      setShootSlot(null);
+      setEditSlot(null);
+      setShootDate(undefined);
+      setEditDate(undefined);
+    }
+  }, [isOpen, project]);
 
   useEffect(() => {
     if (selectedDate && project) {
@@ -341,6 +368,208 @@ export function BookingModal({
   };
 
   const staffMember = project ? staff.find(s => s.id === project.assigned_staff_id) : null;
+
+  // Modified booking handler for dual booking
+  const handleDualBooking = async () => {
+    if (!project || !shootSlot || !editSlot) return;
+    setLoading(true);
+    try {
+      // Insert shoot booking
+      const { error: shootError } = await supabase
+        .from('project_bookings')
+        .insert({
+          project_id: project.id,
+          staff_id: project.assigned_staff_id,
+          booking_date: format(shootSlot.date, 'yyyy-MM-dd'),
+          start_time: shootSlot.startTime,
+          end_time: shootSlot.endTime,
+          hours_booked: shootSlot.hours,
+          status: 'scheduled',
+          type: 'shoot',
+        });
+      if (shootError) throw shootError;
+      // Insert edit booking
+      const { error: editError } = await supabase
+        .from('project_bookings')
+        .insert({
+          project_id: project.id,
+          staff_id: project.assigned_staff_id,
+          booking_date: format(editSlot.date, 'yyyy-MM-dd'),
+          start_time: editSlot.startTime,
+          end_time: editSlot.endTime,
+          hours_booked: editSlot.hours,
+          status: 'scheduled',
+          type: 'edit',
+        });
+      if (editError) throw editError;
+      toast({
+        title: 'Success',
+        description: 'Shoot and Edit bookings created successfully',
+      });
+      onBookingCreated();
+      onClose();
+      resetForm();
+    } catch (error) {
+      console.error('Error creating dual booking:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create shoot/edit bookings',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // UI for dual booking
+  if (project && needsDualBooking && bookingStep) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Schedule Project: {project.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Project Details</Label>
+                <div className="space-y-1 text-sm">
+                  <p><strong>Client:</strong> {project.client.company}</p>
+                  <p><strong>Estimated Shoot Hours:</strong> {project.estimated_shoot_hours}h</p>
+                  <p><strong>Estimated Edit Hours:</strong> {project.estimated_edit_hours}h</p>
+                  <p><strong>Assigned to:</strong> {staffMember?.name}</p>
+                </div>
+              </div>
+            </div>
+            {bookingStep === 'shoot' && (
+              <>
+                <h3 className="text-lg font-semibold">Book Shoot Slot</h3>
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <Label>Select Shoot Date</Label>
+                    <Calendar
+                      mode="single"
+                      selected={shootDate}
+                      onSelect={setShootDate}
+                      disabled={(date) => date < new Date() || date.getDay() === 0 || date.getDay() === 6}
+                      className="rounded-md border"
+                    />
+                  </div>
+                  <div>
+                    <Label>Available Shoot Time Slots</Label>
+                    {shootDate ? (
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {loadingSlots ? (
+                          <p className="text-sm text-muted-foreground">Finding available slots...</p>
+                        ) : availableSlots.length > 0 ? (
+                          availableSlots.map((slot, index) => (
+                            <Button
+                              key={index}
+                              variant={shootSlot === slot ? "default" : "outline"}
+                              className="w-full justify-between"
+                              onClick={() => setShootSlot(slot)}
+                            >
+                              <span>{slot.startTime} - {slot.endTime}</span>
+                              <Badge variant="secondary">{slot.hours}h</Badge>
+                            </Button>
+                          ))
+                        ) : (
+                          <div className="text-center py-4">
+                            <CalendarIcon className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                            <p className="text-sm text-muted-foreground">
+                              {capacityWarning ? "Staff member at capacity" : "No available slots"}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Select a date to see available time slots.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={() => setBookingStep('edit')}
+                    disabled={!shootSlot || loading || !!capacityWarning}
+                    className="flex-1"
+                  >
+                    Next: Book Edit Slot
+                  </Button>
+                  <Button variant="outline" onClick={onClose}>
+                    Cancel
+                  </Button>
+                </div>
+              </>
+            )}
+            {bookingStep === 'edit' && (
+              <>
+                <h3 className="text-lg font-semibold">Book Edit Slot</h3>
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <Label>Select Edit Date</Label>
+                    <Calendar
+                      mode="single"
+                      selected={editDate}
+                      onSelect={setEditDate}
+                      disabled={(date) => date < new Date() || date.getDay() === 0 || date.getDay() === 6}
+                      className="rounded-md border"
+                    />
+                  </div>
+                  <div>
+                    <Label>Available Edit Time Slots</Label>
+                    {editDate ? (
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {loadingSlots ? (
+                          <p className="text-sm text-muted-foreground">Finding available slots...</p>
+                        ) : availableSlots.length > 0 ? (
+                          availableSlots.map((slot, index) => (
+                            <Button
+                              key={index}
+                              variant={editSlot === slot ? "default" : "outline"}
+                              className="w-full justify-between"
+                              onClick={() => setEditSlot(slot)}
+                            >
+                              <span>{slot.startTime} - {slot.endTime}</span>
+                              <Badge variant="secondary">{slot.hours}h</Badge>
+                            </Button>
+                          ))
+                        ) : (
+                          <div className="text-center py-4">
+                            <CalendarIcon className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                            <p className="text-sm text-muted-foreground">
+                              {capacityWarning ? "Staff member at capacity" : "No available slots"}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Select a date to see available time slots.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={handleDualBooking}
+                    disabled={!editSlot || loading || !!capacityWarning}
+                    className="flex-1"
+                  >
+                    {loading ? "Creating Bookings..." : "Create Shoot & Edit Bookings"}
+                  </Button>
+                  <Button variant="outline" onClick={onClose}>
+                    Cancel
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

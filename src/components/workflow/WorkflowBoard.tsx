@@ -37,8 +37,8 @@ export function WorkflowBoard() {
     return stageProjects.filter(project => project.assigned_staff_id === selectedStaff);
   };
 
-  const handleUpdateProjectStatus = (projectId: string, status: string, picterLink?: string) => {
-    updateProjectStatus(projectId, status, picterLink, projects);
+  const handleUpdateProjectStatus = (projectId: string, status: string, picterLink?: string, details?: { reason?: string; action?: string }) => {
+    updateProjectStatus(projectId, status, picterLink, projects, details);
   };
 
   const handleMoveProject = (projectId: string, newStageId: string) => {

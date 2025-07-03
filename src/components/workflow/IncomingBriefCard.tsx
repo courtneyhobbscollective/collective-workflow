@@ -56,7 +56,7 @@ interface IncomingBriefCardProps {
   onUpdateContract: (projectId: string, signed: boolean) => void;
   onUpdatePoNumber: (projectId: string, poNumber: string) => void;
   onMoveProject: (projectId: string, newStageId: string) => void;
-  onUpdateStatus: (projectId: string, status: string, picterLink?: string) => void;
+  onUpdateStatus: (projectId: string, status: string, picterLink?: string, details?: { reason?: string; action?: string }) => void;
   onBookingCreated?: () => void;
   onMoveProjectBack: (projectId: string, newStageId: string) => void;
 }
@@ -85,8 +85,8 @@ export function IncomingBriefCard({
     }
   };
 
-  const handleStatusChange = (newStatus: string) => {
-    onUpdateStatus(project.id, newStatus);
+  const handleStatusChange = (newStatus: string, details?: { reason?: string; action?: string }) => {
+    onUpdateStatus(project.id, newStatus, undefined, details);
   };
 
   const handleEmailClient = (emailData: { subject: string; body: string; to: string }) => {
