@@ -51,6 +51,25 @@ export function StaffManagement() {
     }
   };
 
+  // Helper to sync staff_availability after add/edit
+  async function syncStaffAvailability(staffId: string, availableHoursPerWeek: number) {
+    const dailyHours = availableHoursPerWeek / 5;
+    const startHour = 9;
+    const endHour = startHour + dailyHours;
+    const start_time = `${startHour.toString().padStart(2, '0')}:00`;
+    const end_time = `${Math.floor(endHour).toString().padStart(2, '0')}:00`;
+    // For each weekday (Mon=1 to Fri=5)
+    for (let day = 1; day <= 5; day++) {
+      await supabase.from('staff_availability').upsert({
+        staff_id: staffId,
+        day_of_week: day,
+        start_time,
+        end_time,
+        is_available: dailyHours > 0
+      }, { onConflict: ['staff_id', 'day_of_week'] });
+    }
+  }
+
   const handleAddStaff = async (formData: {
     name: string;
     email: string;
@@ -71,14 +90,12 @@ export function StaffManagement() {
       // Insert staff member with invitation_status = 'pending'
       const { data: staffData, error: staffError } = await supabase
         .from('staff')
-        .insert([{
-          ...formData,
-          invitation_status: 'pending'
-        }])
+        .insert([{ ...formData, invitation_status: 'pending' }])
         .select()
         .single();
-
       if (staffError) throw staffError;
+      // Sync staff_availability
+      await syncStaffAvailability(staffData.id, formData.available_hours_per_week);
 
       // Send invitation
       await sendInvitation(staffData.id, formData.email, formData.name);
@@ -254,6 +271,11 @@ export function StaffManagement() {
       if (error) {
         console.error('Database update error:', error);
         throw error;
+      }
+      
+      // Sync staff_availability if available_hours_per_week is present
+      if (typeof updates.available_hours_per_week === 'number') {
+        await syncStaffAvailability(id, updates.available_hours_per_week);
       }
       
       console.log('Staff update successful');
