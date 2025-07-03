@@ -145,6 +145,17 @@ export function BookingModal({
     }
   };
 
+  // Helper to get the correct hours for the current booking type
+  function getCurrentBookingHours() {
+    if (needsSingleShoot) return project?.estimated_shoot_hours || 0;
+    if (needsSingleEdit) return project?.estimated_edit_hours || 0;
+    if (fallbackSingle) return project?.estimated_hours || 0;
+    // For dual, fallback to estimated_shoot_hours for shoot step, estimated_edit_hours for edit step
+    if (needsDualBooking && bookingStep === 'shoot') return project?.estimated_shoot_hours || 0;
+    if (needsDualBooking && bookingStep === 'edit') return project?.estimated_edit_hours || 0;
+    return 0;
+  }
+
   const findAvailableSlots = async () => {
     if (!selectedDate || !project) return;
 
@@ -154,7 +165,7 @@ export function BookingModal({
     try {
       const dayOfWeek = selectedDate.getDay();
       const adjustedDay = dayOfWeek === 0 ? 7 : dayOfWeek;
-      const hoursNeeded = customHours ? parseFloat(customHours) : project.estimated_hours;
+      const hoursNeeded = customHours ? parseFloat(customHours) : getCurrentBookingHours();
 
       // Get staff availability for the selected day
       const { data: availability, error: availError } = await supabase
@@ -250,7 +261,7 @@ export function BookingModal({
 
     setMultiDayLoading(true);
     try {
-      const hoursNeeded = customHours ? parseFloat(customHours) : project.estimated_hours;
+      const hoursNeeded = customHours ? parseFloat(customHours) : getCurrentBookingHours();
       const engine = new MultiDayBookingEngine(project.assigned_staff_id, hoursNeeded);
       const result = await engine.findOptimalBookingSlots();
 
@@ -577,9 +588,9 @@ export function BookingModal({
   }
 
   // UI for single shoot or single edit booking
-  if (project && (needsSingleShoot || needsSingleEdit)) {
-    const label = needsSingleShoot ? 'Shoot' : 'Edit';
-    const hours = needsSingleShoot ? project.estimated_shoot_hours : project.estimated_edit_hours;
+  if (project && (needsSingleShoot || needsSingleEdit || fallbackSingle)) {
+    const label = needsSingleShoot ? 'Shoot' : needsSingleEdit ? 'Edit' : 'Project';
+    const hours = getCurrentBookingHours();
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -631,7 +642,7 @@ export function BookingModal({
             {showMultiDayPreview && multiDaySlots.length > 0 && (
               <MultiDayBookingPreview
                 bookingSlots={multiDaySlots}
-                totalHours={customHours ? parseFloat(customHours) : project.estimated_hours}
+                totalHours={customHours ? parseFloat(customHours) : hours}
                 projectTitle={project.title}
                 onConfirm={handleMultiDayBooking}
                 onCancel={() => setShowMultiDayPreview(false)}
@@ -644,7 +655,6 @@ export function BookingModal({
                   <TabsTrigger value="single">Single Day Booking</TabsTrigger>
                   <TabsTrigger value="multi">Smart Multi-Day</TabsTrigger>
                 </TabsList>
-                
                 <TabsContent value="single" className="space-y-4">
                   <div className="grid grid-cols-2 gap-6">
                     <div>
@@ -657,7 +667,6 @@ export function BookingModal({
                         className="rounded-md border"
                       />
                     </div>
-
                     <div>
                       <Label>Available Time Slots</Label>
                       {selectedDate ? (
@@ -692,7 +701,6 @@ export function BookingModal({
                       )}
                     </div>
                   </div>
-
                   <div className="flex space-x-2">
                     <Button 
                       onClick={handleBooking} 
@@ -706,162 +714,6 @@ export function BookingModal({
                     </Button>
                   </div>
                 </TabsContent>
-
-                <TabsContent value="multi" className="space-y-4">
-                  <div className="text-center space-y-4">
-                    <div className="p-6 border-2 border-dashed border-gray-200 rounded-lg">
-                      <Zap className="w-12 h-12 mx-auto text-blue-600 mb-4" />
-                      <h3 className="text-lg font-medium mb-2">Smart Multi-Day Scheduling</h3>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        Automatically find the best way to split this project across multiple days based on staff availability.
-                      </p>
-                      <Button 
-                        onClick={findMultiDaySlots}
-                        disabled={multiDayLoading}
-                        size="lg"
-                      >
-                        {multiDayLoading ? "Analyzing Availability..." : "Find Optimal Schedule"}
-                      </Button>
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
-  // Fallback: use estimated_hours if both shoot/edit are missing
-  if (project && fallbackSingle) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Schedule Project: {project.title}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Project Details</Label>
-                <div className="space-y-1 text-sm">
-                  <p><strong>Client:</strong> {project.client.company}</p>
-                  <p><strong>Estimated Hours:</strong> {project.estimated_hours}h</p>
-                  <p><strong>Assigned to:</strong> {staffMember?.name}</p>
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="customHours">Custom Hours (Optional)</Label>
-                <Input
-                  id="customHours"
-                  type="number"
-                  step="0.5"
-                  value={customHours}
-                  onChange={(e) => setCustomHours(e.target.value)}
-                  placeholder={`Default: ${project.estimated_hours}h`}
-                />
-              </div>
-            </div>
-            {capacityWarning && (
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  {capacityWarning}
-                  {alternativeStaff.length > 0 && (
-                    <div className="mt-2">
-                      <p className="font-medium">Alternative staff members available:</p>
-                      <ul className="mt-1 space-y-1">
-                        {alternativeStaff.map(staff => (
-                          <li key={staff.id} className="text-sm">
-                            • {staff.name} ({staff.role})
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </AlertDescription>
-              </Alert>
-            )}
-            {showMultiDayPreview && multiDaySlots.length > 0 && (
-              <MultiDayBookingPreview
-                bookingSlots={multiDaySlots}
-                totalHours={customHours ? parseFloat(customHours) : project.estimated_hours}
-                projectTitle={project.title}
-                onConfirm={handleMultiDayBooking}
-                onCancel={() => setShowMultiDayPreview(false)}
-                loading={loading}
-              />
-            )}
-            {!showMultiDayPreview && (
-              <Tabs defaultValue="single" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="single">Single Day Booking</TabsTrigger>
-                  <TabsTrigger value="multi">Smart Multi-Day</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="single" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-6">
-                    <div>
-                      <Label>Select Date</Label>
-                      <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={setSelectedDate}
-                        disabled={(date) => date < new Date() || date.getDay() === 0 || date.getDay() === 6}
-                        className="rounded-md border"
-                      />
-                    </div>
-
-                    <div>
-                      <Label>Available Time Slots</Label>
-                      {selectedDate ? (
-                        <div className="space-y-2 max-h-60 overflow-y-auto">
-                          {loadingSlots ? (
-                            <p className="text-sm text-muted-foreground">Finding available slots...</p>
-                          ) : availableSlots.length > 0 ? (
-                            availableSlots.map((slot, index) => (
-                              <Button
-                                key={index}
-                                variant={selectedSlot === slot ? "default" : "outline"}
-                                className="w-full justify-between"
-                                onClick={() => setSelectedSlot(slot)}
-                              >
-                                <span>{slot.startTime} - {slot.endTime}</span>
-                                <Badge variant="secondary">{slot.hours}h</Badge>
-                              </Button>
-                            ))
-                          ) : (
-                            <div className="text-center py-4">
-                              <CalendarIcon className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                              <p className="text-sm text-muted-foreground">
-                                {capacityWarning ? "Staff member at capacity" : "No available slots"}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          Select a date to see available time slots.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex space-x-2">
-                    <Button 
-                      onClick={handleBooking} 
-                      disabled={!selectedSlot || loading || !!capacityWarning}
-                      className="flex-1"
-                    >
-                      {loading ? "Creating Booking..." : "Create Single Day Booking"}
-                    </Button>
-                    <Button variant="outline" onClick={onClose}>
-                      Cancel
-                    </Button>
-                  </div>
-                </TabsContent>
-
                 <TabsContent value="multi" className="space-y-4">
                   <div className="text-center space-y-4">
                     <div className="p-6 border-2 border-dashed border-gray-200 rounded-lg">
