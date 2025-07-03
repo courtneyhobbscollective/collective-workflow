@@ -38,6 +38,8 @@ interface Project {
   due_date: string;
   po_number: string;
   estimated_hours: number;
+  estimated_shoot_hours?: number | null;
+  estimated_edit_hours?: number | null;
   is_retainer: boolean;
   status: string;
   contract_signed: boolean;
@@ -117,9 +119,11 @@ export function IncomingProjectCardMain({
                 id: project.id,
                 title: project.title,
                 estimated_hours: project.estimated_hours,
+                estimated_shoot_hours: project.estimated_shoot_hours ?? null,
+                estimated_edit_hours: project.estimated_edit_hours ?? null,
                 assigned_staff_id: project.assigned_staff_id,
                 client: project.client
-              }}
+              } as any}
               staff={staff}
               onBookingCreated={onBookingCreated}
             />
