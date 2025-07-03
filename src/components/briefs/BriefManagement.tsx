@@ -129,6 +129,8 @@ export function BriefManagement() {
 
       if (projectsError) throw projectsError;
 
+      console.log('Loaded projects:', projectsData);
+
       // Load templates
       const { data: templatesData, error: templatesError } = await supabase
         .from('brief_templates')
@@ -242,6 +244,7 @@ export function BriefManagement() {
         treat_as_oneoff: formData.treatAsOneoff,
         contract_signed: formData.contractSigned,
         po_required: formData.poRequired, // Use value from form data
+        status: 'active', // Ensure new briefs are visible
       };
 
       const { error } = await supabase
@@ -275,11 +278,12 @@ export function BriefManagement() {
         title: "Success",
         description: "Brief created successfully",
       });
-    } catch (error) {
-      console.error('Error creating brief:', error);
+    } catch (error: any) {
+      // Improved error logging for debugging
+      console.error('Error creating brief:', error, error?.message, error?.details, error?.hint);
       toast({
         title: "Error",
-        description: "Failed to create brief",
+        description: error?.message || error?.details || error?.hint || "Failed to create brief",
         variant: "destructive",
       });
     } finally {
@@ -565,13 +569,22 @@ export function BriefManagement() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {projects.map((project) => (
-              <BriefCard
-                key={project.id}
-                project={project}
-                onDelete={() => setDeletingProject(project)}
-              />
-            ))}
+            {(() => { console.log('Rendering projects:', projects); return null; })()}
+            {projects.length === 0 && (
+              <div className="col-span-2 text-center text-muted-foreground">
+                <p>No briefs found. If you just created a brief and it does not appear, check the console for debug info.</p>
+              </div>
+            )}
+            {projects.map((project, idx) => {
+              console.log('Rendering project', idx, project);
+              return (
+                <BriefCard
+                  key={project.id}
+                  project={project}
+                  onDelete={() => setDeletingProject(project)}
+                />
+              );
+            })}
           </div>
         </TabsContent>
 
