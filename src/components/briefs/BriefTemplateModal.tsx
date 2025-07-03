@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +58,7 @@ export function BriefTemplateModal({
   template,
   onTemplateCreated
 }: BriefTemplateModalProps) {
+  console.log('BriefTemplateModal props:', { isOpen, template });
   const [formData, setFormData] = useState({
     templateName: template?.template_name || "",
     clientId: template?.client_id || "",
@@ -76,12 +77,31 @@ export function BriefTemplateModal({
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  useEffect(() => {
+    setFormData({
+      templateName: template?.template_name || "",
+      clientId: template?.client_id || "",
+      workType: template?.work_type || "",
+      deliverables: template?.deliverables?.toString() || "1",
+      description: template?.description || "",
+      estimatedHours: template?.estimated_hours?.toString() || "",
+      estimatedShootHours: template?.estimated_shoot_hours?.toString() || "",
+      estimatedEditHours: template?.estimated_edit_hours?.toString() || "",
+      projectValue: template?.project_value?.toString() || "",
+      recurrenceType: template?.recurrence_type || "none",
+      recurrenceDay: template?.recurrence_day || "",
+      recurrenceStartDate: template?.recurrence_start_date || "",
+      recurrenceEndDate: template?.recurrence_end_date || "",
+    });
+  }, [template, isOpen]);
+
   const retainerClients = clients.filter(client => client.is_retainer);
 
   const isDualHoursType = ["Video Production", "Photography", "Social Media Content"].includes(formData.workType);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('handleSubmit called', { template, formData });
     if (!formData.templateName || !formData.clientId || !formData.workType) return;
 
     setLoading(true);
@@ -159,7 +179,7 @@ export function BriefTemplateModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
         <DialogHeader>
           <DialogTitle>
             {template ? "Edit Template" : "Create Brief Template"}

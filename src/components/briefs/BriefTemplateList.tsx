@@ -18,6 +18,7 @@ interface BriefTemplate {
   client: {
     company: string;
   };
+  recurrence_type?: string;
 }
 
 interface BriefTemplateListProps {
@@ -82,31 +83,38 @@ export function BriefTemplateList({
       {templates.map((template) => (
         <Card key={template.id}>
           <CardHeader>
-            <CardTitle className="flex items-center justify-between text-base">
-              <span>{template.template_name}</span>
-              <div className="flex space-x-1">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onEditTemplate(template)}
-                >
-                  <Edit2 className="w-3 h-3" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleDeleteTemplate(template.id)}
-                  disabled={deletingTemplate === template.id}
-                  className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
+            <CardTitle className="flex flex-col items-start text-base">
+              <span className="text-sm font-medium mb-1">{template.client ? template.client.company : "Unknown Client"}</span>
+              <div className="flex items-center w-full justify-between">
+                <span>{template.template_name}</span>
+                <div className="flex space-x-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onEditTemplate(template)}
+                  >
+                    <Edit2 className="w-3 h-3" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDeleteTemplate(template.id)}
+                    disabled={deletingTemplate === template.id}
+                    className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
               </div>
+              {template.recurrence_type && template.recurrence_type !== 'none' && (
+                <Badge className="bg-orange-100 text-orange-800 border border-orange-300 font-normal mt-1">
+                  {template.recurrence_type.charAt(0).toUpperCase() + template.recurrence_type.slice(1)}
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <p className="text-sm font-medium">{template.client ? template.client.company : "Unknown Client"}</p>
               <Badge variant="secondary" className="text-xs">
                 {template.work_type}
               </Badge>
