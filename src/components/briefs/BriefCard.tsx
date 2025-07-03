@@ -115,17 +115,6 @@ export function BriefCard({ project, onDelete }: BriefCardProps) {
               <Badge className={`${getStatusColor(project.current_stage)}`}>
                 {getStageDisplayName(project.current_stage)}
               </Badge>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(project);
-                }}
-                className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
             </div>
           </div>
           
@@ -196,6 +185,16 @@ export function BriefCard({ project, onDelete }: BriefCardProps) {
                       </ul>
                     </div>
                   )}
+                  <div className="flex justify-end mt-4">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onDelete(project)}
+                      className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    >
+                      <Trash2 className="w-4 h-4" /> Delete
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>
