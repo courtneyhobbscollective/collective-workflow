@@ -163,16 +163,16 @@ export function BriefManagement() {
 
   const loadTemplateData = (template: BriefTemplate) => {
     setFormData({
-      title: "",
+      title: template.template_name || "",
       clientId: template.client_id,
       workType: template.work_type,
       deliverables: template.deliverables.toString(),
       dueDate: "",
       poNumber: "",
       description: template.description || "",
-      estimatedShootHours: "",
-      estimatedEditHours: "",
-      estimatedHours: "",
+      estimatedShootHours: template.estimated_shoot_hours?.toString() || "",
+      estimatedEditHours: template.estimated_edit_hours?.toString() || "",
+      estimatedHours: template.estimated_hours?.toString() || "",
       projectValue: template.project_value?.toString() || "",
       treatAsOneoff: false,
       contractSigned: false,
