@@ -66,8 +66,25 @@ export function StaffManagement() {
         start_time,
         end_time,
         is_available: dailyHours > 0
-      }, { onConflict: ['staff_id', 'day_of_week'] });
+      }, { onConflict: 'staff_id,day_of_week' });
     }
+  }
+
+  // One-time sync for all staff
+  async function syncAllStaffAvailability() {
+    const { data: allStaff, error } = await supabase
+      .from('staff')
+      .select('id, available_hours_per_week')
+      .eq('is_active', true);
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to fetch staff', variant: 'destructive' });
+      return;
+    }
+    for (const staff of allStaff) {
+      if (!staff.id || typeof staff.available_hours_per_week !== 'number') continue;
+      await syncStaffAvailability(staff.id, staff.available_hours_per_week || 0);
+    }
+    toast({ title: 'Success', description: 'All staff availability synced to weekly hours.' });
   }
 
   const handleAddStaff = async (formData: {
@@ -297,10 +314,15 @@ export function StaffManagement() {
           <h2 className="text-3xl font-bold text-foreground">Staff Management</h2>
           <p className="text-muted-foreground">Manage your team members and send invitations</p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Staff Member
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={syncAllStaffAvailability} variant="secondary">
+            Sync All Staff Availability
+          </Button>
+          <Button onClick={() => setShowForm(!showForm)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Staff Member
+          </Button>
+        </div>
       </div>
 
       {showForm && (

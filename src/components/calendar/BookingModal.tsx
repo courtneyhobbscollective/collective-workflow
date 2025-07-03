@@ -145,12 +145,16 @@ export function BookingModal({
     }
   };
 
+  // Debug: log project, selectedDate, and booking type
+  console.log('[BookingModal] Project:', project);
+  console.log('[BookingModal] Selected Date:', selectedDate);
+  console.log('[BookingModal] Booking Step:', bookingStep);
+
   // Helper to get the correct hours for the current booking type
   function getCurrentBookingHours() {
     if (needsSingleShoot) return project?.estimated_shoot_hours || 0;
     if (needsSingleEdit) return project?.estimated_edit_hours || 0;
     if (fallbackSingle) return project?.estimated_hours || 0;
-    // For dual, fallback to estimated_shoot_hours for shoot step, estimated_edit_hours for edit step
     if (needsDualBooking && bookingStep === 'shoot') return project?.estimated_shoot_hours || 0;
     if (needsDualBooking && bookingStep === 'edit') return project?.estimated_edit_hours || 0;
     return 0;
@@ -158,102 +162,94 @@ export function BookingModal({
 
   const findAvailableSlots = async () => {
     if (!selectedDate || !project) return;
-
     setLoadingSlots(true);
     setCapacityWarning(null);
-    
     try {
       const dayOfWeek = selectedDate.getDay();
       const adjustedDay = dayOfWeek === 0 ? 7 : dayOfWeek;
       const hoursNeeded = customHours ? parseFloat(customHours) : getCurrentBookingHours();
-
+      console.log('[BookingModal] Looking for slots:', { staff_id: project.assigned_staff_id, adjustedDay, hoursNeeded });
       // Get staff availability for the selected day
       const { data: availability, error: availError } = await supabase
         .from('staff_availability')
         .select('*')
         .eq('staff_id', project.assigned_staff_id)
         .eq('day_of_week', adjustedDay)
-        .eq('is_available', true);
-
-      if (availError) throw availError;
-
-      if (!availability || availability.length === 0) {
-        setCapacityWarning(`Staff member is not available on ${selectedDate.toLocaleDateString()}`);
-        setAvailableSlots([]);
-        return;
-      }
-
-      // Get existing bookings for the selected date
-      const { data: existingBookings, error: bookingError } = await supabase
+        .eq('is_available', true)
+        .single();
+      console.log('[BookingModal] Fetched staff_availability:', availability, availError);
+      // Get existing bookings for the staff on this date
+      const { data: bookings, error: bookingsError } = await supabase
         .from('project_bookings')
         .select('*')
         .eq('staff_id', project.assigned_staff_id)
-        .eq('booking_date', format(selectedDate, 'yyyy-MM-dd'));
+        .eq('booking_date', selectedDate.toISOString().slice(0, 10));
+      console.log('[BookingModal] Fetched existing bookings:', bookings, bookingsError);
 
-      if (bookingError) throw bookingError;
+      if (!availability) {
+        setAvailableSlots([]);
+        setLoadingSlots(false);
+        return;
+      }
 
       // Calculate available time slots
       const slots: TimeSlot[] = [];
 
-      availability?.forEach((avail) => {
-        const startHour = parseInt(avail.start_time.split(':')[0]);
-        const endHour = parseInt(avail.end_time.split(':')[0]);
-        const totalAvailableHours = endHour - startHour;
+      // Use the single 'availability' object directly for slot calculation
+      // Example: const startHour = parseInt(availability.start_time.split(':')[0]);
+      const startHour = parseInt(availability.start_time.split(':')[0]);
+      const endHour = parseInt(availability.end_time.split(':')[0]);
+      const totalAvailableHours = endHour - startHour;
+      
+      // Calculate booked hours for this day
+      const bookedHours = bookings?.reduce((total, booking) => {
+        return total + booking.hours_booked;
+      }, 0) || 0;
+
+      const remainingHours = totalAvailableHours - bookedHours;
+      console.log('Slot calculation:', { startHour, endHour, totalAvailableHours, bookedHours, remainingHours, hoursNeeded });
+
+      if (remainingHours < hoursNeeded) {
+        setCapacityWarning(
+          `Staff member only has ${remainingHours} hours available but needs ${hoursNeeded} hours. Please choose another staff member, reduce the hours, or try Smart Multi-Day.`
+        );
+        return;
+      }
+
+      // Check each possible starting hour
+      for (let hour = startHour; hour <= endHour - hoursNeeded; hour++) {
+        const slotStart = `${hour.toString().padStart(2, '0')}:00`;
+        const slotEnd = `${(hour + hoursNeeded).toString().padStart(2, '0')}:00`;
         
-        // Calculate booked hours for this day
-        const bookedHours = existingBookings?.reduce((total, booking) => {
-          return total + booking.hours_booked;
-        }, 0) || 0;
+        // Check if this slot conflicts with existing bookings
+        const hasConflict = bookings?.some(booking => {
+          const bookingStart = parseInt(booking.start_time.split(':')[0]);
+          const bookingEnd = parseInt(booking.end_time.split(':')[0]);
+          return (hour < bookingEnd && (hour + hoursNeeded) > bookingStart);
+        });
 
-        const remainingHours = totalAvailableHours - bookedHours;
-
-        if (remainingHours < hoursNeeded) {
-          setCapacityWarning(
-            `Staff member only has ${remainingHours} hours available but needs ${hoursNeeded} hours. Please choose another staff member or reduce the hours.`
-          );
-          return;
-        }
-
-        // Check each possible starting hour
-        for (let hour = startHour; hour <= endHour - hoursNeeded; hour++) {
-          const slotStart = `${hour.toString().padStart(2, '0')}:00`;
-          const slotEnd = `${(hour + hoursNeeded).toString().padStart(2, '0')}:00`;
-          
-          // Check if this slot conflicts with existing bookings
-          const hasConflict = existingBookings?.some(booking => {
-            const bookingStart = parseInt(booking.start_time.split(':')[0]);
-            const bookingEnd = parseInt(booking.end_time.split(':')[0]);
-            return (hour < bookingEnd && (hour + hoursNeeded) > bookingStart);
+        if (!hasConflict && (hour + hoursNeeded) <= endHour) {
+          slots.push({
+            date: selectedDate,
+            startTime: slotStart,
+            endTime: slotEnd,
+            hours: hoursNeeded
           });
-
-          if (!hasConflict && (hour + hoursNeeded) <= endHour) {
-            slots.push({
-              date: selectedDate,
-              startTime: slotStart,
-              endTime: slotEnd,
-              hours: hoursNeeded
-            });
-          }
         }
-      });
+      }
 
       if (slots.length === 0 && !capacityWarning) {
         setCapacityWarning(
-          `No available slots found for ${hoursNeeded} hours on ${selectedDate.toLocaleDateString()}. This staff member is at capacity.`
+          `No available slots found for ${hoursNeeded} hours on ${selectedDate.toLocaleDateString()}. This staff member is at capacity. Try Smart Multi-Day to split the booking.`
         );
       }
 
       setAvailableSlots(slots);
-    } catch (error) {
-      console.error('Error finding available slots:', error);
-      toast({
-        title: "Error",
-        description: "Failed to find available time slots",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingSlots(false);
+      console.log('[BookingModal] Slot calculation result:', slots);
+    } catch (err) {
+      console.error('[BookingModal] Error in findAvailableSlots:', err);
     }
+    setLoadingSlots(false);
   };
 
   const findMultiDaySlots = async () => {
@@ -624,6 +620,9 @@ export function BookingModal({
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
                   {capacityWarning}
+                  <div className="mt-2">
+                    <p className="font-medium">Tip: Try Smart Multi-Day if you can't find a single-day slot.</p>
+                  </div>
                   {alternativeStaff.length > 0 && (
                     <div className="mt-2">
                       <p className="font-medium">Alternative staff members available:</p>
@@ -651,11 +650,11 @@ export function BookingModal({
             )}
             {!showMultiDayPreview && (
               <Tabs defaultValue="single" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="single">Single Day Booking</TabsTrigger>
+                <TabsList className="mb-4">
+                  <TabsTrigger value="single">Single Day</TabsTrigger>
                   <TabsTrigger value="multi">Smart Multi-Day</TabsTrigger>
                 </TabsList>
-                <TabsContent value="single" className="space-y-4">
+                <TabsContent value="single">
                   <div className="grid grid-cols-2 gap-6">
                     <div>
                       <Label>Select Date</Label>
@@ -714,7 +713,7 @@ export function BookingModal({
                     </Button>
                   </div>
                 </TabsContent>
-                <TabsContent value="multi" className="space-y-4">
+                <TabsContent value="multi">
                   <div className="text-center space-y-4">
                     <div className="p-6 border-2 border-dashed border-gray-200 rounded-lg">
                       <Zap className="w-12 h-12 mx-auto text-blue-600 mb-4" />
@@ -776,6 +775,9 @@ export function BookingModal({
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
                   {capacityWarning}
+                  <div className="mt-2">
+                    <p className="font-medium">Tip: Try Smart Multi-Day if you can't find a single-day slot.</p>
+                  </div>
                   {alternativeStaff.length > 0 && (
                     <div className="mt-2">
                       <p className="font-medium">Alternative staff members available:</p>
@@ -805,12 +807,11 @@ export function BookingModal({
 
             {!showMultiDayPreview && (
               <Tabs defaultValue="single" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="single">Single Day Booking</TabsTrigger>
+                <TabsList className="mb-4">
+                  <TabsTrigger value="single">Single Day</TabsTrigger>
                   <TabsTrigger value="multi">Smart Multi-Day</TabsTrigger>
                 </TabsList>
-                
-                <TabsContent value="single" className="space-y-4">
+                <TabsContent value="single">
                   <div className="grid grid-cols-2 gap-6">
                     <div>
                       <Label>Select Date</Label>
@@ -871,8 +872,7 @@ export function BookingModal({
                     </Button>
                   </div>
                 </TabsContent>
-
-                <TabsContent value="multi" className="space-y-4">
+                <TabsContent value="multi">
                   <div className="text-center space-y-4">
                     <div className="p-6 border-2 border-dashed border-gray-200 rounded-lg">
                       <Zap className="w-12 h-12 mx-auto text-blue-600 mb-4" />
