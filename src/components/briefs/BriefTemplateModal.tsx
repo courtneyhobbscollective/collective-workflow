@@ -30,6 +30,7 @@ interface BriefTemplate {
   recurrence_day: string;
   recurrence_start_date: string | null;
   recurrence_end_date: string | null;
+  billing_frequency: string;
 }
 
 interface BriefTemplateModalProps {
@@ -73,6 +74,7 @@ export function BriefTemplateModal({
     recurrenceDay: template?.recurrence_day || "",
     recurrenceStartDate: template?.recurrence_start_date || "",
     recurrenceEndDate: template?.recurrence_end_date || "",
+    billingFrequency: template?.billing_frequency || "monthly",
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -92,6 +94,7 @@ export function BriefTemplateModal({
       recurrenceDay: template?.recurrence_day || "",
       recurrenceStartDate: template?.recurrence_start_date || "",
       recurrenceEndDate: template?.recurrence_end_date || "",
+      billingFrequency: template?.billing_frequency || "monthly",
     });
   }, [template, isOpen]);
 
@@ -121,6 +124,7 @@ export function BriefTemplateModal({
         recurrence_day: formData.recurrenceDay,
         recurrence_start_date: formData.recurrenceStartDate || null,
         recurrence_end_date: formData.recurrenceEndDate || null,
+        billing_frequency: formData.billingFrequency,
       };
 
       if (template) {
@@ -164,6 +168,7 @@ export function BriefTemplateModal({
         recurrenceDay: "",
         recurrenceStartDate: "",
         recurrenceEndDate: "",
+        billingFrequency: "monthly",
       });
     } catch (error) {
       console.error('Error saving template:', error);
@@ -371,6 +376,19 @@ export function BriefTemplateModal({
               placeholder="Describe the template requirements..."
               rows={3}
             />
+          </div>
+
+          <div>
+            <Label htmlFor="billingFrequency">Billing Frequency</Label>
+            <Select value={formData.billingFrequency} onValueChange={value => setFormData({ ...formData, billingFrequency: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select billing frequency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="monthly">Monthly (default)</SelectItem>
+                <SelectItem value="per_brief">Per Brief</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex space-x-2">
