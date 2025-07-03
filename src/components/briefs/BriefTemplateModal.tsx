@@ -26,6 +26,10 @@ interface BriefTemplate {
   estimated_shoot_hours: number | null;
   estimated_edit_hours: number | null;
   project_value: number | null;
+  recurrence_type: string;
+  recurrence_day: string;
+  recurrence_start_date: string | null;
+  recurrence_end_date: string | null;
 }
 
 interface BriefTemplateModalProps {
@@ -64,6 +68,10 @@ export function BriefTemplateModal({
     estimatedShootHours: template?.estimated_shoot_hours?.toString() || "",
     estimatedEditHours: template?.estimated_edit_hours?.toString() || "",
     projectValue: template?.project_value?.toString() || "",
+    recurrenceType: template?.recurrence_type || "none",
+    recurrenceDay: template?.recurrence_day || "",
+    recurrenceStartDate: template?.recurrence_start_date || "",
+    recurrenceEndDate: template?.recurrence_end_date || "",
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -89,6 +97,10 @@ export function BriefTemplateModal({
         estimated_edit_hours: isDualHoursType ? (formData.estimatedEditHours ? parseInt(formData.estimatedEditHours) : null) : null,
         project_value: formData.projectValue ? parseFloat(formData.projectValue) : null,
         created_by: "System", // TODO: Replace with actual user when auth is implemented
+        recurrence_type: formData.recurrenceType,
+        recurrence_day: formData.recurrenceDay,
+        recurrence_start_date: formData.recurrenceStartDate || null,
+        recurrence_end_date: formData.recurrenceEndDate || null,
       };
 
       if (template) {
@@ -128,6 +140,10 @@ export function BriefTemplateModal({
         estimatedShootHours: "",
         estimatedEditHours: "",
         projectValue: "",
+        recurrenceType: "none",
+        recurrenceDay: "",
+        recurrenceStartDate: "",
+        recurrenceEndDate: "",
       });
     } catch (error) {
       console.error('Error saving template:', error);
@@ -206,28 +222,28 @@ export function BriefTemplateModal({
             {isDualHoursType ? (
               <>
                 <div>
-                  <Label htmlFor="estimatedShootHours">Estimated Shoot Hours *</Label>
+                  <Label htmlFor="estimatedShootHours">Estimated Shoot Hours</Label>
                   <Input
                     id="estimatedShootHours"
                     type="number"
                     value={formData.estimatedShootHours}
                     onChange={(e) => setFormData({ ...formData, estimatedShootHours: e.target.value })}
                     placeholder="e.g., 8"
-                    min="1"
-                    required
+                    min="0"
                   />
+                  <p className="text-xs text-muted-foreground">Set to 0 if no shoot hours are required. 0 means no shoot booking will be created.</p>
                 </div>
                 <div>
-                  <Label htmlFor="estimatedEditHours">Estimated Edit Hours *</Label>
+                  <Label htmlFor="estimatedEditHours">Estimated Edit Hours</Label>
                   <Input
                     id="estimatedEditHours"
                     type="number"
                     value={formData.estimatedEditHours}
                     onChange={(e) => setFormData({ ...formData, estimatedEditHours: e.target.value })}
                     placeholder="e.g., 12"
-                    min="1"
-                    required
+                    min="0"
                   />
+                  <p className="text-xs text-muted-foreground">Set to 0 if no edit hours are required. 0 means no edit booking will be created.</p>
                 </div>
               </>
             ) : (
@@ -255,6 +271,76 @@ export function BriefTemplateModal({
               placeholder="e.g., 5000.00"
             />
           </div>
+
+          <div>
+            <Label htmlFor="recurrenceType">Recurrence</Label>
+            <Select value={formData.recurrenceType} onValueChange={value => setFormData({ ...formData, recurrenceType: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select recurrence" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="biweekly">Biweekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {formData.recurrenceType === "weekly" || formData.recurrenceType === "biweekly" ? (
+            <div>
+              <Label htmlFor="recurrenceDay">Day of Week</Label>
+              <Select value={formData.recurrenceDay} onValueChange={value => setFormData({ ...formData, recurrenceDay: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select day of week" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Monday">Monday</SelectItem>
+                  <SelectItem value="Tuesday">Tuesday</SelectItem>
+                  <SelectItem value="Wednesday">Wednesday</SelectItem>
+                  <SelectItem value="Thursday">Thursday</SelectItem>
+                  <SelectItem value="Friday">Friday</SelectItem>
+                  <SelectItem value="Saturday">Saturday</SelectItem>
+                  <SelectItem value="Sunday">Sunday</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+          {formData.recurrenceType === "monthly" ? (
+            <div>
+              <Label htmlFor="recurrenceDay">Day of Month</Label>
+              <Input
+                id="recurrenceDay"
+                type="number"
+                min="1"
+                max="31"
+                value={formData.recurrenceDay}
+                onChange={e => setFormData({ ...formData, recurrenceDay: e.target.value })}
+                placeholder="e.g., 1 for 1st of month"
+              />
+            </div>
+          ) : null}
+          {formData.recurrenceType !== "none" && (
+            <div className="flex gap-2">
+              <div>
+                <Label htmlFor="recurrenceStartDate">Start Date</Label>
+                <Input
+                  id="recurrenceStartDate"
+                  type="date"
+                  value={formData.recurrenceStartDate}
+                  onChange={e => setFormData({ ...formData, recurrenceStartDate: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="recurrenceEndDate">End Date</Label>
+                <Input
+                  id="recurrenceEndDate"
+                  type="date"
+                  value={formData.recurrenceEndDate}
+                  onChange={e => setFormData({ ...formData, recurrenceEndDate: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
 
           <div>
             <Label htmlFor="description">Description</Label>
