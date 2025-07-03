@@ -83,6 +83,7 @@ export function StaffDashboard({ onTabChange }: { onTabChange: (tab: string) => 
   const [todoItems, setTodoItems] = useState<TodoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { staff: loggedInStaff } = useAuth();
   const [personalStats, setPersonalStats] = useState({
     activeProjects: 0,
     upcomingBookings: 0,
@@ -91,8 +92,12 @@ export function StaffDashboard({ onTabChange }: { onTabChange: (tab: string) => 
   });
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    if (loggedInStaff) setCurrentStaff(loggedInStaff);
+  }, [loggedInStaff]);
+
+  useEffect(() => {
+    if (currentStaff) loadDashboardData();
+  }, [currentStaff]);
 
   const loadDashboardData = async () => {
     if (!currentStaff) return;

@@ -45,11 +45,11 @@ export function TopNavigation({ activeTab, onTabChange }: TopNavigationProps) {
   const navigationItems = [
     { id: "dashboard", label: "Dashboard", icon: Home },
     { id: "workflow", label: "Workflow", icon: Kanban },
-    { id: "briefs", label: "Briefs", icon: FileText },
     { id: "clients", label: "Clients", icon: Building },
     { id: "calendar", label: "Calendar", icon: Calendar },
     { id: "chat", label: "Chat", icon: MessageCircle },
     ...(staff?.role === 'Admin' ? [
+      { id: "briefs", label: "Briefs", icon: FileText },
       { id: "crm", label: "CRM", icon: MessageSquare },
       { id: "staff", label: "Staff", icon: Users },
       { id: "billing", label: "Billing", icon: TrendingUp },
