@@ -3,14 +3,17 @@ import { useApp } from '../../context/AppContext';
 import { Invoice } from '../../types';
 import LoadingSpinner from '../LoadingSpinner';
 import EmptyState from '../EmptyState';
+import AutomatedBillingQueue from './AutomatedBillingQueue';
 import { 
   DollarSign, FileText, Calendar, AlertTriangle, 
-  CheckCircle, Clock, Download, Send, Plus, Filter 
+  CheckCircle, Clock, Download, Send, Plus, Filter,
+  Zap, Users, FileText as FileTextIcon
 } from 'lucide-react';
 
 const BillingPage: React.FC = () => {
   const { invoices, clients, briefs, loading, error, clearError } = useApp();
   const [filterStatus, setFilterStatus] = useState<'all' | 'draft' | 'sent' | 'paid' | 'overdue'>('all');
+  const [activeTab, setActiveTab] = useState<'invoices' | 'automated'>('invoices');
 
   const filteredInvoices = invoices.filter(invoice => 
     filterStatus === 'all' || invoice.status === filterStatus
@@ -56,7 +59,7 @@ const BillingPage: React.FC = () => {
       <div className="card card-hover p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">{invoice.number}</h3>
+            <h3 className="text-lg font-semibold text-gray-900">{invoice.invoiceNumber}</h3>
             <p className="text-sm text-gray-600">{client?.name}</p>
             {brief && (
               <p className="text-xs text-gray-500 mt-1">{brief.title}</p>
@@ -176,111 +179,145 @@ const BillingPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="card p-6">
-          <div className="flex items-center">
-            <div className="p-3 bg-green-50 rounded-lg">
-              <DollarSign className="h-6 w-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-2xl font-semibold text-gray-900">
-                £{totalRevenue.toLocaleString()}
-              </p>
-              <p className="text-sm text-gray-600">Total Revenue</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="card p-6">
-          <div className="flex items-center">
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <Clock className="h-6 w-6 text-blue-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-2xl font-semibold text-gray-900">
-                £{pendingAmount.toLocaleString()}
-              </p>
-              <p className="text-sm text-gray-600">Pending</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="card p-6">
-          <div className="flex items-center">
-            <div className="p-3 bg-red-50 rounded-lg">
-              <AlertTriangle className="h-6 w-6 text-red-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-2xl font-semibold text-gray-900">
-                £{overdueAmount.toLocaleString()}
-              </p>
-              <p className="text-sm text-gray-600">Overdue</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="card p-6">
-          <div className="flex items-center">
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <FileText className="h-6 w-6 text-gray-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-2xl font-semibold text-gray-900">
-                {invoices.length}
-              </p>
-              <p className="text-sm text-gray-600">Total Invoices</p>
-            </div>
-          </div>
-        </div>
+      {/* Tab Navigation */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab('invoices')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'invoices'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <FileText className="h-4 w-4 inline mr-2" />
+            Invoices
+          </button>
+          <button
+            onClick={() => setActiveTab('automated')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'automated'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <Zap className="h-4 w-4 inline mr-2" />
+            Automated Billing
+          </button>
+        </nav>
       </div>
 
-      {/* Filters */}
-      <div className="card p-4">
-        <div className="flex items-center space-x-4">
-          <Filter className="h-4 w-4 text-gray-400" />
-          <div className="flex space-x-2">
-            {(['all', 'draft', 'sent', 'paid', 'overdue'] as const).map(status => (
-              <button
-                key={status}
-                onClick={() => setFilterStatus(status)}
-                className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors ${
-                  filterStatus === status
-                    ? 'bg-gray-100 text-gray-900'
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
-              </button>
+      {activeTab === 'invoices' ? (
+        <>
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="card p-6">
+              <div className="flex items-center">
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <DollarSign className="h-6 w-6 text-green-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-2xl font-semibold text-gray-900">
+                    £{totalRevenue.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-gray-600">Total Revenue</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="card p-6">
+              <div className="flex items-center">
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <Clock className="h-6 w-6 text-blue-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-2xl font-semibold text-gray-900">
+                    £{pendingAmount.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-gray-600">Pending</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="card p-6">
+              <div className="flex items-center">
+                <div className="p-3 bg-red-50 rounded-lg">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-2xl font-semibold text-gray-900">
+                    £{overdueAmount.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-gray-600">Overdue</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="card p-6">
+              <div className="flex items-center">
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <FileText className="h-6 w-6 text-gray-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {invoices.length}
+                  </p>
+                  <p className="text-sm text-gray-600">Total Invoices</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div className="card p-4">
+            <div className="flex items-center space-x-4">
+              <Filter className="h-4 w-4 text-gray-400" />
+              <div className="flex space-x-2">
+                {(['all', 'draft', 'sent', 'paid', 'overdue'] as const).map(status => (
+                  <button
+                    key={status}
+                    onClick={() => setFilterStatus(status)}
+                    className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors ${
+                      filterStatus === status
+                        ? 'bg-gray-100 text-gray-900'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Invoices Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {filteredInvoices.map(invoice => (
+              <InvoiceCard key={invoice.id} invoice={invoice} />
             ))}
           </div>
-        </div>
-      </div>
 
-      {/* Invoices Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredInvoices.map(invoice => (
-          <InvoiceCard key={invoice.id} invoice={invoice} />
-        ))}
-      </div>
-
-      {filteredInvoices.length === 0 && (
-        <EmptyState
-          icon={FileText}
-          title="No invoices found"
-          description={
-            filterStatus !== 'all' 
-              ? `No ${filterStatus} invoices at the moment.`
-              : 'Get started by creating your first invoice.'
-          }
-          action={
-            filterStatus === 'all' ? {
-              label: "Create Invoice",
-              onClick: () => console.log('Create invoice'),
-              icon: Plus
-            } : undefined
-          }
-        />
+          {filteredInvoices.length === 0 && (
+            <EmptyState
+              icon={FileText}
+              title="No invoices found"
+              description={
+                filterStatus !== 'all' 
+                  ? `No ${filterStatus} invoices at the moment.`
+                  : 'Get started by creating your first invoice.'
+              }
+              action={
+                filterStatus === 'all' ? {
+                  label: "Create Invoice",
+                  onClick: () => console.log('Create invoice'),
+                  icon: Plus
+                } : undefined
+              }
+            />
+          )}
+        </>
+      ) : (
+        <AutomatedBillingQueue />
       )}
     </div>
   );

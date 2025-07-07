@@ -24,6 +24,11 @@ export interface Client {
   email: string;
   phone?: string;
   type: 'project' | 'retainer';
+  retainerAmount?: number;
+  retainerBillingDay?: number; // Day of month for billing
+  retainerStartDate?: Date;
+  retainerEndDate?: Date;
+  retainerActive?: boolean;
   brandAssets: string[];
   brandGuidelines?: string;
   brandToneOfVoice?: string;
@@ -57,6 +62,8 @@ export interface Brief {
   template: string;
   stage: BriefStage;
   status: BriefStatus;
+  billingStage: BillingStage;
+  lastBillingDate?: Date;
   isRecurring: boolean;
   recurrencePattern?: 'weekly' | 'bi-weekly' | 'monthly';
   assignedStaff?: string[];
@@ -82,6 +89,13 @@ export type BriefStatus =
   | 'waiting-for-client'
   | 'shoot-booked'
   | 'sent-for-client-feedback';
+
+export type BillingStage = 
+  | 'not-started'
+  | '50-percent'
+  | '30-percent'
+  | '20-percent'
+  | 'completed';
 
 export interface Deliverable {
   id: string;
@@ -136,12 +150,15 @@ export interface ChatMessage {
 export interface Invoice {
   id: string;
   clientId: string;
-  briefId: string;
-  number: string;
+  briefId?: string;
+  invoiceNumber: string;
   amount: number;
   vatAmount: number;
   totalAmount: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
+  billingType: 'manual' | 'retainer' | 'project-stage';
+  billingStage?: string;
+  billingPercentage?: number;
   dueDate: Date;
   paidDate?: Date;
   items: InvoiceItem[];
@@ -152,8 +169,37 @@ export interface InvoiceItem {
   id: string;
   description: string;
   quantity: number;
-  rate: number;
+  unitPrice: number;
   amount: number;
+}
+
+export interface BillingQueueItem {
+  id: string;
+  clientId: string;
+  briefId?: string;
+  billingType: 'retainer' | 'project-stage';
+  billingStage?: string;
+  billingPercentage?: number;
+  amount: number;
+  dueDate: Date;
+  status: 'pending' | 'processed' | 'cancelled';
+  processedAt?: Date;
+  processedBy?: string;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface BillingSchedule {
+  id: string;
+  clientId: string;
+  billingDay: number;
+  amount: number;
+  active: boolean;
+  lastBilledDate?: Date;
+  nextBillingDate?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Notification {
@@ -174,4 +220,12 @@ export interface DashboardStats {
   staffUtilization: number;
   overdueInvoices: number;
   pendingReviews: number;
+}
+
+export interface BillingDashboardStats {
+  totalPendingAmount: number;
+  totalOverdueAmount: number;
+  pendingRetainerCount: number;
+  pendingProjectCount: number;
+  overdueInvoicesCount: number;
 }
