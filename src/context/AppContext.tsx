@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Client, Brief, Staff, Invoice, ChatChannel, Notification, DashboardStats } from '../types';
 import { useSupabase } from './SupabaseContext';
+import { ChatService } from '../lib/chatService';
 
 interface AppContextType {
   // Data
@@ -26,7 +27,10 @@ interface AppContextType {
   deleteStaff: (id: string) => Promise<void>;
   addNotification: (notification: Omit<Notification, 'id' | 'createdAt'>) => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
+  deleteInvoice: (id: string) => Promise<void>;
   clearError: () => void;
+  refreshInvoices: () => Promise<void>;
+  addChatChannel: (channel: ChatChannel) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -58,7 +62,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const monthlyRevenue = invoices
       .filter(i => i.status === 'paid' && i.paidDate && new Date(i.paidDate) >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
       .reduce((sum, i) => sum + Number(i.totalAmount), 0);
-    const staffUtilization = staff.length > 0 ? Math.round((staff.length / Math.max(staff.length, 1)) * 100) : 0;
+
+    // Staff Utilization Calculation
+    let totalAssignedHours = 0;
+    let totalAvailableHours = staff.reduce((sum, s) => sum + (s.monthlyAvailableHours || 0), 0);
+    if (totalAvailableHours > 0) {
+      briefs.forEach(brief => {
+        if (brief.assignedStaff && brief.assignedStaff.length > 0 && brief.estimatedHours) {
+          const hoursPerStaff = (brief.estimatedHours.shoot + brief.estimatedHours.edit) / brief.assignedStaff.length;
+          totalAssignedHours += hoursPerStaff * brief.assignedStaff.length;
+        }
+      });
+    }
+    const staffUtilization = totalAvailableHours > 0 ? Math.round((totalAssignedHours / totalAvailableHours) * 100) : 0;
 
     setDashboardStats({
       totalClients,
@@ -214,17 +230,74 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
 
         if (invoicesRes.status === 'fulfilled' && !invoicesRes.value.error) {
-          setInvoices(invoicesRes.value.data || []);
+          // Convert database column names to TypeScript interface names
+          const convertedInvoices = (invoicesRes.value.data || []).map(dbInvoice => ({
+            id: dbInvoice.id,
+            clientId: dbInvoice.client_id,
+            briefId: dbInvoice.brief_id,
+            invoiceNumber: dbInvoice.invoice_number || '',
+            amount: Number(dbInvoice.amount) || 0,
+            vatAmount: Number(dbInvoice.vat_amount) || 0,
+            totalAmount: Number(dbInvoice.total_amount) || 0,
+            status: dbInvoice.status || 'draft',
+            billingType: dbInvoice.billing_type || 'manual',
+            billingStage: dbInvoice.billing_stage,
+            billingPercentage: dbInvoice.billing_percentage,
+            dueDate: new Date(dbInvoice.due_date),
+            paidDate: dbInvoice.paid_date ? new Date(dbInvoice.paid_date) : undefined,
+            items: dbInvoice.items || [],
+            createdAt: new Date(dbInvoice.created_at)
+          }));
+          setInvoices(convertedInvoices);
         } else {
           console.warn('Failed to fetch invoices:', invoicesRes.status === 'rejected' ? invoicesRes.reason : invoicesRes.value?.error);
           setInvoices([]);
         }
 
         if (chatChannelsRes.status === 'fulfilled' && !chatChannelsRes.value.error) {
-          setChatChannels(chatChannelsRes.value.data || []);
+          const channels = (chatChannelsRes.value.data || []).map(channel => ({
+            id: channel.id,
+            clientId: channel.client_id,
+            name: channel.name,
+            participants: channel.participants || [],
+            messages: [],
+            createdAt: new Date(channel.created_at)
+          }));
+          setChatChannels(channels);
+          
+          // Ensure staff and general channels exist
+          const staffChannelExists = channels.some(channel => channel.name === 'staff');
+          const generalChannelExists = channels.some(channel => channel.name === 'general');
+          
+          if (!staffChannelExists) {
+            try {
+              const staffChannel = await ChatService.getOrCreateStaffChannel();
+              setChatChannels(prev => [staffChannel, ...prev]);
+            } catch (error) {
+              console.warn('Failed to create staff channel:', error);
+            }
+          }
+          
+          if (!generalChannelExists) {
+            try {
+              const generalChannel = await ChatService.getOrCreateGeneralChannel();
+              setChatChannels(prev => [generalChannel, ...prev]);
+            } catch (error) {
+              console.warn('Failed to create general channel:', error);
+            }
+          }
         } else {
           console.warn('Failed to fetch chat channels:', chatChannelsRes.status === 'rejected' ? chatChannelsRes.reason : chatChannelsRes.value?.error);
           setChatChannels([]);
+          
+          // Try to create staff and general channels if no channels exist
+          try {
+            const staffChannel = await ChatService.getOrCreateStaffChannel();
+            const generalChannel = await ChatService.getOrCreateGeneralChannel();
+            setChatChannels([staffChannel, generalChannel]);
+          } catch (error) {
+            console.warn('Failed to create default channels:', error);
+          }
         }
 
         if (notificationsRes.status === 'fulfilled' && !notificationsRes.value.error) {
@@ -293,58 +366,78 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLoading(true);
     setError(null);
     
-    // Convert TypeScript interface names to database column names
-    const dbClient = {
-      name: client.name,
-      company_name: client.companyName,
-      email: client.email,
-      phone: client.phone,
-      type: client.type,
-      brand_assets: client.brandAssets,
-      brand_guidelines: client.brandGuidelines,
-      brand_tone_of_voice: client.brandToneOfVoice,
-      brand_colors: client.brandColors,
-      brand_fonts: client.brandFonts,
-      social_media: client.socialMedia,
-      contract_template: client.contractTemplate,
-      chat_channel_id: client.chatChannelId || null
-    };
-    
-    const { data, error } = await supabase
-      .from('clients')
-      .insert([dbClient])
-      .select();
-    if (error) {
-      setError(error.message);
-      throw error;
-    } else {
-      // Convert database column names back to TypeScript interface names
-      const convertedData = (data || []).map(dbClient => ({
-        id: dbClient.id,
-        name: dbClient.name,
-        companyName: dbClient.company_name,
-        email: dbClient.email,
-        phone: dbClient.phone,
-        type: dbClient.type,
-        retainerAmount: dbClient.retainer_amount,
-        retainerBillingDay: dbClient.retainer_billing_day,
-        retainerStartDate: dbClient.retainer_start_date ? new Date(dbClient.retainer_start_date) : undefined,
-        retainerEndDate: dbClient.retainer_end_date ? new Date(dbClient.retainer_end_date) : undefined,
-        retainerActive: dbClient.retainer_active || false,
-        brandAssets: dbClient.brand_assets || [],
-        brandGuidelines: dbClient.brand_guidelines,
-        brandToneOfVoice: dbClient.brand_tone_of_voice,
-        brandColors: dbClient.brand_colors || [],
-        brandFonts: dbClient.brand_fonts || [],
-        socialMedia: dbClient.social_media || [],
-        contractTemplate: dbClient.contract_template,
-        chatChannelId: dbClient.chat_channel_id,
-        createdAt: new Date(dbClient.created_at),
-        updatedAt: new Date(dbClient.updated_at)
-      }));
-      setClients(prev => [...prev, ...convertedData]);
+    try {
+      // Convert TypeScript interface names to database column names
+      const dbClient = {
+        name: client.name,
+        company_name: client.companyName,
+        email: client.email,
+        phone: client.phone,
+        type: client.type,
+        brand_assets: client.brandAssets,
+        brand_guidelines: client.brandGuidelines,
+        brand_tone_of_voice: client.brandToneOfVoice,
+        brand_colors: client.brandColors,
+        brand_fonts: client.brandFonts,
+        social_media: client.socialMedia,
+        contract_template: client.contractTemplate,
+        chat_channel_id: null // Will be set after client creation
+      };
+      
+      const { data, error } = await supabase
+        .from('clients')
+        .insert([dbClient])
+        .select();
+      if (error) {
+        setError(error.message);
+        throw error;
+      } else {
+        // Convert database column names back to TypeScript interface names
+        const convertedData = (data || []).map(dbClient => ({
+          id: dbClient.id,
+          name: dbClient.name,
+          companyName: dbClient.company_name,
+          email: dbClient.email,
+          phone: dbClient.phone,
+          type: dbClient.type,
+          retainerAmount: dbClient.retainer_amount,
+          retainerBillingDay: dbClient.retainer_billing_day,
+          retainerStartDate: dbClient.retainer_start_date ? new Date(dbClient.retainer_start_date) : undefined,
+          retainerEndDate: dbClient.retainer_end_date ? new Date(dbClient.retainer_end_date) : undefined,
+          retainerActive: dbClient.retainer_active || false,
+          brandAssets: dbClient.brand_assets || [],
+          brandGuidelines: dbClient.brand_guidelines,
+          brandToneOfVoice: dbClient.brand_tone_of_voice,
+          brandColors: dbClient.brand_colors || [],
+          brandFonts: dbClient.brand_fonts || [],
+          socialMedia: dbClient.social_media || [],
+          contractTemplate: dbClient.contract_template,
+          chatChannelId: dbClient.chat_channel_id,
+          createdAt: new Date(dbClient.created_at),
+          updatedAt: new Date(dbClient.updated_at)
+        }));
+        const newClient = convertedData[0];
+        setClients(prev => [...prev, newClient]);
+        
+        // Create chat channel for the client after client creation
+        try {
+          const chatChannel = await ChatService.createChannelForClient(newClient.id, newClient.name);
+          
+          // Update the client with the chat channel ID
+          await updateClient(newClient.id, { chatChannelId: chatChannel.id });
+          
+          // Add the new channel to chatChannels state
+          setChatChannels(prev => [...prev, chatChannel]);
+        } catch (error) {
+          console.warn('Failed to create chat channel for client:', error);
+        }
+        
+        setLoading(false);
+        return newClient;
+      }
+    } catch (error) {
       setLoading(false);
-      return convertedData[0];
+      throw error;
     }
   };
 
@@ -449,6 +542,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       template: brief.template,
       stage: brief.stage,
       status: brief.status || 'in-progress',
+      billing_stage: brief.billingStage,
       is_recurring: brief.isRecurring,
       recurrence_pattern: brief.recurrencePattern,
       assigned_staff: brief.assignedStaff,
@@ -740,7 +834,77 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLoading(false);
   };
 
+  const deleteInvoice = async (id: string) => {
+    if (!supabase) return;
+    setLoading(true);
+    setError(null);
+    
+    // First delete related invoice items
+    const { error: itemsError } = await supabase
+      .from('invoice_items')
+      .delete()
+      .eq('invoice_id', id);
+    
+    if (itemsError) {
+      setError(itemsError.message);
+      setLoading(false);
+      return;
+    }
+    
+    // Then delete the invoice
+    const { error } = await supabase
+      .from('invoices')
+      .delete()
+      .eq('id', id);
+    
+    if (error) {
+      setError(error.message);
+    } else {
+      setInvoices(prev => prev.filter(inv => inv.id !== id));
+    }
+    setLoading(false);
+  };
+
   const clearError = () => setError(null);
+
+  // Function to refresh invoices
+  const refreshInvoices = async () => {
+    if (!supabase) return;
+    
+    try {
+      const { data, error } = await supabase.from('invoices').select('*');
+      if (error) {
+        console.error('Failed to refresh invoices:', error);
+        return;
+      }
+      
+      // Convert database column names to TypeScript interface names
+      const convertedInvoices = (data || []).map(dbInvoice => ({
+        id: dbInvoice.id,
+        clientId: dbInvoice.client_id,
+        briefId: dbInvoice.brief_id,
+        invoiceNumber: dbInvoice.invoice_number || '',
+        amount: Number(dbInvoice.amount) || 0,
+        vatAmount: Number(dbInvoice.vat_amount) || 0,
+        totalAmount: Number(dbInvoice.total_amount) || 0,
+        status: dbInvoice.status || 'draft',
+        billingType: dbInvoice.billing_type || 'manual',
+        billingStage: dbInvoice.billing_stage,
+        billingPercentage: dbInvoice.billing_percentage,
+        dueDate: new Date(dbInvoice.due_date),
+        paidDate: dbInvoice.paid_date ? new Date(dbInvoice.paid_date) : undefined,
+        items: dbInvoice.items || [],
+        createdAt: new Date(dbInvoice.created_at)
+      }));
+      setInvoices(convertedInvoices);
+    } catch (error) {
+      console.error('Error refreshing invoices:', error);
+    }
+  };
+
+  const addChatChannel = (channel: ChatChannel) => {
+    setChatChannels(prev => [channel, ...prev]);
+  };
 
   return (
     <AppContext.Provider value={{
@@ -748,7 +912,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addClient, updateClient, deleteClient,
       addBrief, updateBrief, deleteBrief,
       addStaff, updateStaff, deleteStaff,
-      addNotification, markNotificationRead, clearError
+      addNotification, markNotificationRead, deleteInvoice, clearError, refreshInvoices, addChatChannel
     }}>
       {children}
     </AppContext.Provider>

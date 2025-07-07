@@ -1,20 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { BillingService } from '../../lib/billingService';
 import { BillingQueueItem, BillingDashboardStats } from '../../types';
+import { useApp } from '../../context/AppContext';
 import LoadingSpinner from '../LoadingSpinner';
 import { 
   Clock, Calendar, DollarSign, AlertTriangle, 
   CheckCircle, Play, X, RefreshCw, Filter,
-  Users, FileText, TrendingUp
+  Users, FileText, TrendingUp, Trash2
 } from 'lucide-react';
 
 const AutomatedBillingQueue: React.FC = () => {
+  const { refreshInvoices } = useApp();
   const [billingQueue, setBillingQueue] = useState<BillingQueueItem[]>([]);
   const [stats, setStats] = useState<BillingDashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'retainer' | 'project-stage'>('all');
   const [filterStatus, setFilterStatus] = useState<'pending' | 'processed' | 'cancelled'>('pending');
+  const [deletingQueueItem, setDeletingQueueItem] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
     loadBillingQueue();
@@ -27,6 +31,18 @@ const AutomatedBillingQueue: React.FC = () => {
       // Load all billing queue items instead of filtering by status
       const queue = await BillingService.getBillingQueue();
       console.log('Loaded billing queue:', queue);
+      
+      // Debug: Check brief data
+      queue.forEach(item => {
+        if (item.billingType === 'project-stage') {
+          console.log(`Queue item ${item.id}:`, {
+            briefId: item.briefId,
+            briefs: item.briefs,
+            billingStage: item.billingStage
+          });
+        }
+      });
+      
       setBillingQueue(queue);
     } catch (error) {
       console.error('Failed to load billing queue:', error);
@@ -64,6 +80,7 @@ const AutomatedBillingQueue: React.FC = () => {
       await BillingService.createInvoiceFromQueue(queueItemId);
       await loadBillingQueue();
       await loadStats();
+      await refreshInvoices(); // Refresh the invoices list
       alert('Invoice created successfully');
     } catch (error) {
       console.error('Failed to create invoice:', error);
@@ -83,6 +100,22 @@ const AutomatedBillingQueue: React.FC = () => {
         console.error('Failed to cancel queue item:', error);
         alert('Failed to cancel queue item');
       }
+    }
+  };
+
+  const deleteQueueItem = async (queueItemId: string) => {
+    try {
+      setDeletingQueueItem(queueItemId);
+      await BillingService.deleteBillingQueueItem(queueItemId);
+      await loadBillingQueue();
+      await loadStats();
+      alert('Queue item deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete queue item:', error);
+      alert('Failed to delete queue item');
+    } finally {
+      setDeletingQueueItem(null);
+      setShowDeleteConfirm(null);
     }
   };
 
@@ -316,10 +349,16 @@ const AutomatedBillingQueue: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      {item.briefs?.title || 'N/A'}
+                      {item.billingType === 'retainer' 
+                        ? 'Monthly Retainer' 
+                        : item.briefs?.title || 'N/A'
+                      }
                     </div>
                     <div className="text-sm text-gray-500">
-                      {item.billingStage}
+                      {item.billingType === 'retainer' 
+                        ? 'Recurring' 
+                        : item.billingStage
+                      }
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -365,6 +404,22 @@ const AutomatedBillingQueue: React.FC = () => {
                       {item.status === 'cancelled' && (
                         <span className="text-red-600">Cancelled</span>
                       )}
+                      <button
+                        onClick={() => setShowDeleteConfirm(item.id)}
+                        disabled={deletingQueueItem === item.id}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        {deletingQueueItem === item.id ? (
+                          <span className="flex items-center">
+                            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                            </svg>
+                          </span>
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -388,6 +443,47 @@ const AutomatedBillingQueue: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <Trash2 className="h-5 w-5 text-red-600" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">Delete Queue Item</h3>
+                <p className="text-sm text-gray-600">This action cannot be undone.</p>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-sm text-gray-700">
+                Are you sure you want to delete this billing queue item? This will permanently remove the item and all associated data.
+              </p>
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteQueueItem(showDeleteConfirm)}
+                disabled={deletingQueueItem === showDeleteConfirm}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {deletingQueueItem === showDeleteConfirm ? 'Deleting...' : 'Delete Queue Item'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

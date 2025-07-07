@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Invoice } from '../../types';
 import { BillingService } from '../../lib/billingService';
@@ -8,21 +8,93 @@ import AutomatedBillingQueue from './AutomatedBillingQueue';
 import { 
   DollarSign, FileText, Calendar, AlertTriangle, 
   CheckCircle, Clock, Download, Send, Plus, Filter,
-  Zap, Users, FileText as FileTextIcon, Bug
+  Zap, Users, FileText as FileTextIcon, Bug, Trash2,
+  TrendingUp, CreditCard
 } from 'lucide-react';
 
+interface MonthlyStats {
+  month: string;
+  totalRevenue: number;
+  totalPending: number;
+  totalOverdue: number;
+  vatLiability: number;
+  invoiceCount: number;
+  invoices: Invoice[];
+}
+
 const BillingPage: React.FC = () => {
-  const { invoices, clients, briefs, loading, error, clearError } = useApp();
+  const { invoices, clients, briefs, loading, error, clearError, deleteInvoice, refreshInvoices } = useApp();
   const [filterStatus, setFilterStatus] = useState<'all' | 'draft' | 'sent' | 'paid' | 'overdue'>('all');
-  const [activeTab, setActiveTab] = useState<'invoices' | 'automated'>('invoices');
+  const [activeTab, setActiveTab] = useState<'automated' | 'invoices'>('automated');
   const [showDebug, setShowDebug] = useState(false);
   const [debugData, setDebugData] = useState<any[]>([]);
   const [debugLoading, setDebugLoading] = useState(false);
+  const [deletingInvoice, setDeletingInvoice] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [monthlyStats, setMonthlyStats] = useState<MonthlyStats[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
 
-  const filteredInvoices = invoices.filter(invoice => 
+  // Group invoices by month
+  useEffect(() => {
+    const grouped = invoices.reduce((acc, invoice) => {
+      const date = new Date(invoice.createdAt);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthName = date.toLocaleDateString('en-GB', { year: 'numeric', month: 'long' });
+      
+      if (!acc[monthKey]) {
+        acc[monthKey] = {
+          month: monthName,
+          totalRevenue: 0,
+          totalPending: 0,
+          totalOverdue: 0,
+          vatLiability: 0,
+          invoiceCount: 0,
+          invoices: []
+        };
+      }
+      
+      acc[monthKey].invoices.push(invoice);
+      acc[monthKey].invoiceCount++;
+      
+      if (invoice.status === 'paid') {
+        acc[monthKey].totalRevenue += invoice.totalAmount;
+        acc[monthKey].vatLiability += invoice.vatAmount;
+      } else if (invoice.status === 'sent') {
+        acc[monthKey].totalPending += invoice.totalAmount;
+      } else if (invoice.status === 'overdue') {
+        acc[monthKey].totalOverdue += invoice.totalAmount;
+      }
+      
+      return acc;
+    }, {} as Record<string, MonthlyStats>);
+    
+    const sortedMonths = Object.values(grouped).sort((a, b) => {
+      const [yearA, monthA] = a.month.split(' ');
+      const [yearB, monthB] = b.month.split(' ');
+      return new Date(`${monthA} 1, ${yearA}`).getTime() - new Date(`${monthB} 1, ${yearB}`).getTime();
+    }).reverse();
+    
+    setMonthlyStats(sortedMonths);
+    if (sortedMonths.length > 0 && !selectedMonth) {
+      setSelectedMonth(sortedMonths[0].month);
+    }
+  }, [invoices, selectedMonth]);
+
+  const currentMonthStats = monthlyStats.find(stat => stat.month === selectedMonth) || {
+    month: '',
+    totalRevenue: 0,
+    totalPending: 0,
+    totalOverdue: 0,
+    vatLiability: 0,
+    invoiceCount: 0,
+    invoices: []
+  };
+
+  const filteredInvoices = currentMonthStats.invoices.filter(invoice => 
     filterStatus === 'all' || invoice.status === filterStatus
   );
 
+  // Overall stats (all time)
   const totalRevenue = invoices
     .filter(inv => inv.status === 'paid')
     .reduce((sum, inv) => sum + inv.totalAmount, 0);
@@ -64,6 +136,21 @@ const BillingPage: React.FC = () => {
     } catch (error) {
       console.error('Failed to add test retainer billing:', error);
       alert('Failed to add test retainer billing');
+    }
+  };
+
+  const handleDeleteInvoice = async (invoiceId: string) => {
+    try {
+      setDeletingInvoice(invoiceId);
+      await deleteInvoice(invoiceId);
+      await refreshInvoices(); // Refresh invoices after deletion
+      alert('Invoice deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete invoice:', error);
+      alert('Failed to delete invoice');
+    } finally {
+      setDeletingInvoice(null);
+      setShowDeleteConfirm(null);
     }
   };
 
@@ -152,6 +239,26 @@ const BillingPage: React.FC = () => {
                 Send
               </button>
             )}
+            <button
+              onClick={() => setShowDeleteConfirm(invoice.id)}
+              disabled={deletingInvoice === invoice.id}
+              className="btn-ghost text-sm text-red-600 hover:text-red-700"
+            >
+              {deletingInvoice === invoice.id ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                  </svg>
+                  Deleting...
+                </span>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete
+                </>
+              )}
+            </button>
           </div>
           
           {invoice.status === 'overdue' && (
@@ -167,129 +274,80 @@ const BillingPage: React.FC = () => {
     );
   };
 
-  // Loading state
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Billing</h1>
-            <p className="text-gray-600">Manage invoices and track payments</p>
-          </div>
-          <button className="btn-primary" disabled>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Invoice
-          </button>
-        </div>
-        <LoadingSpinner size="xl" text="Loading billing data..." className="py-12" />
-      </div>
-    );
-  }
+  if (loading) return <LoadingSpinner />;
 
   return (
     <div className="space-y-6">
-      {/* Error Display */}
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-          <div className="flex items-center justify-between">
-            <span>{error}</span>
-            <button
-              onClick={clearError}
-              className="text-red-700 hover:text-red-900"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Billing</h1>
-          <p className="text-gray-600">Manage invoices and track payments</p>
+          <h1 className="text-2xl font-bold text-gray-900">Billing</h1>
+          <p className="text-gray-600">Manage invoices and automated billing</p>
         </div>
-        <div className="flex space-x-2">
-          <button 
+        <div className="flex items-center space-x-2">
+          <button
             onClick={() => setShowDebug(!showDebug)}
-            className="btn-secondary"
+            className="btn-ghost text-sm"
           >
-            <Bug className="h-4 w-4 mr-2" />
+            <Bug className="h-4 w-4 mr-1" />
             Debug
-          </button>
-          <button className="btn-primary">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Invoice
           </button>
         </div>
       </div>
 
-      {/* Debug Section */}
-      {showDebug && (
-        <div className="card p-6 bg-yellow-50 border-yellow-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Debug Billing Queue</h3>
-          <div className="flex space-x-4 mb-4">
-            <button 
-              onClick={loadDebugData}
-              disabled={debugLoading}
-              className="btn-secondary"
-            >
-              {debugLoading ? 'Loading...' : 'Load Queue Data'}
-            </button>
-            <button 
-              onClick={addTestRetainerBilling}
-              className="btn-secondary"
-            >
-              Add Test Retainer Billing
-            </button>
-          </div>
-          
-          {debugData.length > 0 && (
-            <div className="mt-4">
-              <h4 className="font-medium text-gray-900 mb-2">Billing Queue Items ({debugData.length})</h4>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {debugData.map((item, index) => (
-                  <div key={index} className="p-3 bg-white rounded border text-sm">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <strong>{item.clients?.name || 'Unknown Client'}</strong>
-                        <br />
-                        <span className="text-gray-600">
-                          Type: {item.billing_type} | 
-                          Amount: £{item.amount} | 
-                          Due: {new Date(item.due_date).toLocaleDateString()} |
-                          Status: {item.status}
-                        </span>
-                        {item.briefs && (
-                          <>
-                            <br />
-                            <span className="text-gray-500">Brief: {item.briefs.title}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+      {/* Overall Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="card p-4">
+          <div className="flex items-center">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <DollarSign className="h-6 w-6 text-green-600" />
             </div>
-          )}
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+              <p className="text-2xl font-bold text-gray-900">£{totalRevenue.toLocaleString()}</p>
+            </div>
+          </div>
         </div>
-      )}
+        <div className="card p-4">
+          <div className="flex items-center">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Clock className="h-6 w-6 text-blue-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Pending</p>
+              <p className="text-2xl font-bold text-gray-900">£{pendingAmount.toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+        <div className="card p-4">
+          <div className="flex items-center">
+            <div className="p-2 bg-red-100 rounded-lg">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Overdue</p>
+              <p className="text-2xl font-bold text-gray-900">£{overdueAmount.toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+        <div className="card p-4">
+          <div className="flex items-center">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <CreditCard className="h-6 w-6 text-purple-600" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-600">Total VAT Liability</p>
+              <p className="text-2xl font-bold text-gray-900">
+                £{(invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.vatAmount, 0)).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      {/* Tab Navigation */}
+      {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab('invoices')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'invoices'
-                ? 'border-indigo-500 text-indigo-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            <FileText className="h-4 w-4 inline mr-2" />
-            Invoices
-          </button>
           <button
             onClick={() => setActiveTab('automated')}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
@@ -301,120 +359,210 @@ const BillingPage: React.FC = () => {
             <Zap className="h-4 w-4 inline mr-2" />
             Automated Billing
           </button>
+          <button
+            onClick={() => setActiveTab('invoices')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'invoices'
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <FileText className="h-4 w-4 inline mr-2" />
+            Invoices
+          </button>
         </nav>
       </div>
 
-      {activeTab === 'invoices' ? (
-        <>
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="card p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-green-50 rounded-lg">
-                  <DollarSign className="h-6 w-6 text-green-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-2xl font-semibold text-gray-900">
-                    £{totalRevenue.toLocaleString()}
-                  </p>
-                  <p className="text-sm text-gray-600">Total Revenue</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="card p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <Clock className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-2xl font-semibold text-gray-900">
-                    £{pendingAmount.toLocaleString()}
-                  </p>
-                  <p className="text-sm text-gray-600">Pending</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="card p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-red-50 rounded-lg">
-                  <AlertTriangle className="h-6 w-6 text-red-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-2xl font-semibold text-gray-900">
-                    £{overdueAmount.toLocaleString()}
-                  </p>
-                  <p className="text-sm text-gray-600">Overdue</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="card p-6">
-              <div className="flex items-center">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <FileText className="h-6 w-6 text-gray-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {invoices.length}
-                  </p>
-                  <p className="text-sm text-gray-600">Total Invoices</p>
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* Tab Content */}
+      {activeTab === 'automated' && (
+        <AutomatedBillingQueue key="automated-billing" />
+      )}
 
-          {/* Filters */}
-          <div className="card p-4">
-            <div className="flex items-center space-x-4">
-              <Filter className="h-4 w-4 text-gray-400" />
-              <div className="flex space-x-2">
-                {(['all', 'draft', 'sent', 'paid', 'overdue'] as const).map(status => (
-                  <button
-                    key={status}
-                    onClick={() => setFilterStatus(status)}
-                    className={`px-3 py-1 text-sm font-medium rounded-lg transition-colors ${
-                      filterStatus === status
-                        ? 'bg-gray-100 text-gray-900'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    {status === 'all' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
-                  </button>
+      {activeTab === 'invoices' && (
+        <div className="space-y-6">
+          {/* Monthly Breakdown */}
+          <div className="card p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Monthly Breakdown</h2>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {monthlyStats.map((stat) => (
+                  <option key={stat.month} value={stat.month}>
+                    {stat.month}
+                  </option>
                 ))}
+              </select>
+            </div>
+
+            {/* Monthly Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-green-50 p-4 rounded-lg">
+                <div className="flex items-center">
+                  <TrendingUp className="h-5 w-5 text-green-600 mr-2" />
+                  <div>
+                    <p className="text-sm font-medium text-green-600">Revenue</p>
+                    <p className="text-lg font-bold text-green-900">£{currentMonthStats.totalRevenue.toLocaleString()}</p>
+                  </div>
+                </div>
               </div>
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="flex items-center">
+                  <Clock className="h-5 w-5 text-blue-600 mr-2" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-600">Pending</p>
+                    <p className="text-lg font-bold text-blue-900">£{currentMonthStats.totalPending.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-red-50 p-4 rounded-lg">
+                <div className="flex items-center">
+                  <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />
+                  <div>
+                    <p className="text-sm font-medium text-red-600">Overdue</p>
+                    <p className="text-lg font-bold text-red-900">£{currentMonthStats.totalOverdue.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <div className="flex items-center">
+                  <CreditCard className="h-5 w-5 text-purple-600 mr-2" />
+                  <div>
+                    <p className="text-sm font-medium text-purple-600">VAT Liability</p>
+                    <p className="text-lg font-bold text-purple-900">£{currentMonthStats.vatLiability.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Invoice Filters */}
+            <div className="flex items-center space-x-4 mb-4">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as any)}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="all">All Status</option>
+                <option value="draft">Draft</option>
+                <option value="sent">Sent</option>
+                <option value="paid">Paid</option>
+                <option value="overdue">Overdue</option>
+              </select>
+              <span className="text-sm text-gray-500">
+                {filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? 's' : ''} in {selectedMonth}
+              </span>
             </div>
           </div>
 
           {/* Invoices Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {filteredInvoices.map(invoice => (
-              <InvoiceCard key={invoice.id} invoice={invoice} />
-            ))}
-          </div>
-
-          {filteredInvoices.length === 0 && (
+          {filteredInvoices.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredInvoices.map((invoice) => (
+                <InvoiceCard key={invoice.id} invoice={invoice} />
+              ))}
+            </div>
+          ) : (
             <EmptyState
-              icon={FileText}
+              icon={<FileText className="h-12 w-12" />}
               title="No invoices found"
-              description={
-                filterStatus !== 'all' 
-                  ? `No ${filterStatus} invoices at the moment.`
-                  : 'Get started by creating your first invoice.'
-              }
-              action={
-                filterStatus === 'all' ? {
-                  label: "Create Invoice",
-                  onClick: () => console.log('Create invoice'),
-                  icon: Plus
-                } : undefined
-              }
+              description={`No ${filterStatus === 'all' ? '' : filterStatus + ' '}invoices for ${selectedMonth}`}
             />
           )}
-        </>
-      ) : (
-        <AutomatedBillingQueue key={activeTab} />
+        </div>
+      )}
+
+      {/* Debug Section */}
+      {showDebug && (
+        <div className="card p-6 bg-gray-50">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Debug Tools</h3>
+          <div className="space-y-4">
+            <div className="flex space-x-2">
+              <button
+                onClick={loadDebugData}
+                disabled={debugLoading}
+                className="btn-secondary text-sm"
+              >
+                {debugLoading ? 'Loading...' : 'Load Debug Data'}
+              </button>
+              <button
+                onClick={addTestRetainerBilling}
+                className="btn-secondary text-sm"
+              >
+                Add Test Retainer Billing
+              </button>
+            </div>
+            
+            {debugData.length > 0 && (
+              <div className="bg-white p-4 rounded-lg border">
+                <h4 className="font-medium text-gray-900 mb-2">Billing Queue Debug Data:</h4>
+                <pre className="text-xs text-gray-600 overflow-auto max-h-40">
+                  {JSON.stringify(debugData, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <Trash2 className="h-5 w-5 text-red-600" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">Delete Invoice</h3>
+                <p className="text-sm text-gray-600">This action cannot be undone.</p>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-sm text-gray-700">
+                Are you sure you want to delete this invoice? This will permanently remove the invoice and all associated data.
+              </p>
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteInvoice(showDeleteConfirm)}
+                disabled={deletingInvoice === showDeleteConfirm}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {deletingInvoice === showDeleteConfirm ? 'Deleting...' : 'Delete Invoice'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Display */}
+      {error && (
+        <div className="card p-4 bg-red-50 border border-red-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />
+              <span className="text-red-800">{error}</span>
+            </div>
+            <button
+              onClick={clearError}
+              className="text-red-600 hover:text-red-800"
+            >
+              ×
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

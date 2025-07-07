@@ -23,7 +23,15 @@ export class BillingService {
       .order('due_date', { ascending: true });
 
     if (error) throw error;
-    return data || [];
+    
+    // Convert date strings to Date objects
+    return (data || []).map(item => ({
+      ...item,
+      dueDate: new Date(item.due_date),
+      createdAt: new Date(item.created_at),
+      updatedAt: new Date(item.updated_at),
+      processedAt: item.processed_at ? new Date(item.processed_at) : undefined
+    }));
   }
 
   // Get billing queue items by status
@@ -41,7 +49,15 @@ export class BillingService {
       .order('due_date', { ascending: true });
 
     if (error) throw error;
-    return data || [];
+    
+    // Convert date strings to Date objects
+    return (data || []).map(item => ({
+      ...item,
+      dueDate: new Date(item.due_date),
+      createdAt: new Date(item.created_at),
+      updatedAt: new Date(item.updated_at),
+      processedAt: item.processed_at ? new Date(item.processed_at) : undefined
+    }));
   }
 
   // Get billing schedules
@@ -89,6 +105,16 @@ export class BillingService {
   ): Promise<void> {
     if (!supabase) throw new Error('Supabase client not initialized');
     
+    // Calculate due date based on billing stage
+    let dueDate: Date;
+    if (percentage === 50) {
+      // First stage (50%) - due immediately
+      dueDate = new Date();
+    } else {
+      // Subsequent stages (30%, 20%) - due 30 days from now
+      dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    }
+    
     const { error } = await supabase
       .from('billing_queue')
       .insert({
@@ -98,7 +124,7 @@ export class BillingService {
         billing_stage: stage,
         billing_percentage: percentage,
         amount: amount,
-        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
+        due_date: dueDate.toISOString().split('T')[0],
         notes: `Project stage billing: ${stage} for ${briefTitle}`
       });
 
@@ -119,15 +145,22 @@ export class BillingService {
   static async createInvoiceFromQueue(queueItemId: string): Promise<Invoice> {
     if (!supabase) throw new Error('Supabase client not initialized');
     
-    // Get the queue item
+    // Get the queue item with related data
     const { data: queueItem, error: queueError } = await supabase
       .from('billing_queue')
-      .select('*')
+      .select(`
+        *,
+        briefs(title)
+      `)
       .eq('id', queueItemId)
       .single();
 
     if (queueError) throw queueError;
     if (!queueItem) throw new Error('Queue item not found');
+
+    // Generate invoice number
+    const { data: invoiceNumber, error: numberError } = await supabase.rpc('generate_invoice_number');
+    if (numberError) throw numberError;
 
     // Create invoice
     const { data: invoice, error: invoiceError } = await supabase
@@ -135,13 +168,14 @@ export class BillingService {
       .insert({
         client_id: queueItem.client_id,
         brief_id: queueItem.brief_id,
+        invoice_number: invoiceNumber,
         amount: queueItem.amount,
         vat_amount: queueItem.amount * 0.20, // 20% VAT
         billing_type: queueItem.billing_type,
         billing_stage: queueItem.billing_stage,
         billing_percentage: queueItem.billing_percentage,
         status: 'draft',
-        due_date: queueItem.due_date,
+        due_date: queueItem.due_date, // Use the due date from the billing queue
         notes: queueItem.notes
       })
       .select()
@@ -149,14 +183,21 @@ export class BillingService {
 
     if (invoiceError) throw invoiceError;
 
+    // Create invoice description based on billing type
+    let description: string;
+    if (queueItem.billing_type === 'retainer') {
+      description = 'Monthly Retainer';
+    } else {
+      const briefTitle = queueItem.briefs?.title || 'Unknown Project';
+      description = `${briefTitle} - ${queueItem.billing_stage || 'Project Stage'}`;
+    }
+
     // Add invoice item
     await supabase
       .from('invoice_items')
       .insert({
         invoice_id: invoice.id,
-        description: queueItem.billing_type === 'retainer' 
-          ? 'Monthly Retainer' 
-          : `Project Stage: ${queueItem.billing_stage || 'Unknown'}`,
+        description: description,
         quantity: 1,
         unit_price: queueItem.amount
       });
@@ -224,7 +265,8 @@ export class BillingService {
 
     // Add the first retainer billing to the queue
     const nextBillingDate = this.calculateNextBillingDate(billingDay, startDate);
-    await this.addRetainerToBillingQueue(clientId, amount, nextBillingDate);
+    const dueDate = this.calculateRetainerDueDate(nextBillingDate);
+    await this.addRetainerToBillingQueue(clientId, amount, dueDate);
   }
 
   // Calculate next billing date for retainer
@@ -237,6 +279,11 @@ export class BillingService {
     } else {
       return new Date(now.getFullYear(), now.getMonth() + 1, billingDay);
     }
+  }
+
+  // Calculate due date for retainer (30 days from billing date)
+  static calculateRetainerDueDate(billingDate: Date): Date {
+    return new Date(billingDate.getTime() + 30 * 24 * 60 * 60 * 1000);
   }
 
   // Cancel retainer billing for a client
@@ -366,13 +413,26 @@ export class BillingService {
     if (error) throw error;
   }
 
+  // Delete billing queue item permanently
+  static async deleteBillingQueueItem(queueItemId: string): Promise<void> {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    
+    const { error } = await supabase
+      .from('billing_queue')
+      .delete()
+      .eq('id', queueItemId);
+
+    if (error) throw error;
+  }
+
   // Add retainer billing to queue for testing (manual trigger)
   static async addRetainerBillingToQueue(clientId: string, amount: number, dueDate?: Date): Promise<void> {
     if (!supabase) throw new Error('Supabase client not initialized');
     
     const billingDate = dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // Default to 7 days from now
+    const finalDueDate = dueDate || this.calculateRetainerDueDate(billingDate);
     
-    await this.addRetainerToBillingQueue(clientId, amount, billingDate);
+    await this.addRetainerToBillingQueue(clientId, amount, finalDueDate);
   }
 
   // Debug: Get all billing queue items with details

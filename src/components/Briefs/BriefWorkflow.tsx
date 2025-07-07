@@ -7,12 +7,12 @@ import BriefCreationModal from './BriefCreationModal';
 import CalendarBookingModal from './CalendarBookingModal';
 import { 
   ChevronRight, ChevronLeft, ChevronDown, Clock, User, DollarSign, Calendar, 
-  CheckCircle, AlertTriangle, ExternalLink, Upload, Plus 
+  CheckCircle, AlertTriangle, ExternalLink, Upload, Plus, Trash2 
 } from 'lucide-react';
 import { capitalizeWords } from '../../lib/capitalizeWords';
 
 const BriefWorkflow: React.FC = () => {
-  const { briefs, clients, staff, updateBrief, updateStaff, addNotification, loading, error, clearError } = useApp();
+  const { briefs, clients, staff, updateBrief, updateStaff, addNotification, deleteBrief, loading, error, clearError } = useApp();
   
   // Debug loading state
   console.log('BriefWorkflow render - loading:', loading, 'briefs count:', briefs.length);
@@ -34,6 +34,8 @@ const BriefWorkflow: React.FC = () => {
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [bookingBrief, setBookingBrief] = useState<Brief | null>(null);
+  const [deletingBrief, setDeletingBrief] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   const stages: { key: BriefStage; name: string; color: string; description: string }[] = [
     { key: 'incoming', name: 'Incoming', color: 'bg-gray-50 text-gray-700', description: 'New briefs awaiting setup' },
@@ -104,8 +106,6 @@ const BriefWorkflow: React.FC = () => {
   const needsReviewUrl = (stage: BriefStage) => {
     return ['amend-1', 'amend-2', 'client-submission'].includes(stage);
   };
-
-
 
   const handleContractSigned = async (brief: Brief) => {
     await updateBrief(brief.id, { contractSigned: true }, true); // Use optimistic update
@@ -260,77 +260,77 @@ const BriefWorkflow: React.FC = () => {
         const reviewUrl = prompt(`Please provide a review URL for ${nextStage.name} stage:`);
         if (!reviewUrl) {
           alert('Review URL is required for this stage.');
-        return;
-      }
+          return;
+        }
 
-      setIsAdvancing(true);
-      try {
-        const updates: Partial<Brief> = {
-          stage: nextStage.key,
+        setIsAdvancing(true);
+        try {
+          const updates: Partial<Brief> = {
+            stage: nextStage.key,
             reviewUrls: { ...brief.reviewUrls, [nextStage.key]: reviewUrl }
-        };
+          };
 
-        await updateBrief(brief.id, updates);
-        
-        // Generate billing for project clients
-        const client = clients.find(c => c.id === brief.clientId);
-        if (client?.type === 'project' && brief.projectValue > 0) {
-          const billingStages = ['pre-production', 'amend-1', 'final-delivery'];
-          const billingPercentages = [50, 30, 20];
-          const stageIndex = billingStages.indexOf(nextStage.key);
+          await updateBrief(brief.id, updates);
           
-          if (stageIndex !== -1) {
-            const amount = (brief.projectValue * billingPercentages[stageIndex]) / 100;
-            const billingStage = `${billingPercentages[stageIndex]}-percent`;
+          // Generate billing for project clients
+          const client = clients.find(c => c.id === brief.clientId);
+          if (client?.type === 'project' && brief.projectValue > 0) {
+            const billingStages = ['pre-production', 'amend-1', 'final-delivery'];
+            const billingPercentages = [50, 30, 20];
+            const stageIndex = billingStages.indexOf(nextStage.key);
             
-            try {
-              await BillingService.addProjectStageToBillingQueue(
-                brief.clientId,
-                brief.id,
-                billingStage,
-                billingPercentages[stageIndex],
-                amount,
-                brief.title
-              );
+            if (stageIndex !== -1) {
+              const amount = (brief.projectValue * billingPercentages[stageIndex]) / 100;
+              const billingStage = `${billingPercentages[stageIndex]}-percent`;
               
-              // Update the brief's billing stage
-              await updateBrief(brief.id, { billingStage: billingStage as any }, true);
-              
-              if (user) {
-                addNotification({
-                  userId: user.id,
-                  title: 'Billing Queue Updated',
-                  message: `Billing item for ${brief.title} (${billingPercentages[stageIndex]}% - £${amount.toLocaleString()}) has been added to the billing queue.`,
-                  type: 'info',
-                  read: false
-                });
-              }
-            } catch (error) {
-              console.error('Failed to add billing to queue:', error);
-              if (user) {
-                addNotification({
-                  userId: user.id,
-                  title: 'Billing Error',
-                  message: `Failed to add billing for ${brief.title} to the queue.`,
-                  type: 'error',
-                  read: false
-                });
+              try {
+                await BillingService.addProjectStageToBillingQueue(
+                  brief.clientId,
+                  brief.id,
+                  billingStage,
+                  billingPercentages[stageIndex],
+                  amount,
+                  brief.title
+                );
+                
+                // Update the brief's billing stage
+                await updateBrief(brief.id, { billingStage: billingStage as any }, true);
+                
+                if (user) {
+                  addNotification({
+                    userId: user.id,
+                    title: 'Billing Queue Updated',
+                    message: `Billing item for ${brief.title} (${billingPercentages[stageIndex]}% - £${amount.toLocaleString()}) has been added to the billing queue.`,
+                    type: 'info',
+                    read: false
+                  });
+                }
+              } catch (error) {
+                console.error('Failed to add billing to queue:', error);
+                if (user) {
+                  addNotification({
+                    userId: user.id,
+                    title: 'Billing Error',
+                    message: `Failed to add billing for ${brief.title} to the queue.`,
+                    type: 'error',
+                    read: false
+                  });
+                }
               }
             }
           }
-        }
 
           // Add review notification
           if (user) {
-          addNotification({
+            addNotification({
               userId: user.id,
-            title: 'Review Required',
-            message: `${brief.title} needs review at ${nextStage.name} stage`,
-            type: 'warning',
-            read: false,
-            actionUrl: `/briefs/${brief.id}`
-          });
-        }
+              title: 'Review Required',
+              message: `${brief.title} needs review at ${nextStage.name} stage`,
+              type: 'warning',
+              read: false,
+              actionUrl: `/briefs/${brief.id}`
+            });
+          }
         } catch (error) {
           console.error('Failed to advance brief:', error);
         } finally {
@@ -443,6 +443,70 @@ const BriefWorkflow: React.FC = () => {
     setShowCalendarModal(true);
   };
 
+  const handleDeleteBrief = async (briefId: string) => {
+    try {
+      setDeletingBrief(briefId);
+      
+      // Get the brief details before deletion to know which staff members were assigned
+      const briefToDelete = briefs.find(b => b.id === briefId);
+      if (!briefToDelete) {
+        throw new Error('Brief not found');
+      }
+      
+      // Calculate the total hours that will be freed up
+      const totalHours = (briefToDelete.estimatedHours?.shoot || 0) + (briefToDelete.estimatedHours?.edit || 0);
+      const assignedStaffIds = briefToDelete.assignedStaff || [];
+      
+      console.log(`Deleting brief "${briefToDelete.title}" with ${totalHours}h, assigned to ${assignedStaffIds.length} staff members`);
+      
+      // Update staff members' calendars first (remove entries related to this brief)
+      if (assignedStaffIds.length > 0) {
+        for (const staffId of assignedStaffIds) {
+          const staffMember = staff.find(s => s.id === staffId);
+          if (staffMember) {
+            // Remove calendar entries related to this brief
+            const updatedCalendar = staffMember.calendar.filter(entry => entry.briefId !== briefId);
+            
+            // Update the staff member's calendar in the database
+            await updateStaff(staffId, { calendar: updatedCalendar });
+            
+            console.log(`Updated staff member ${staffMember.name}, removed ${staffMember.calendar.length - updatedCalendar.length} calendar entries`);
+          }
+        }
+      }
+      
+      // Delete the brief after updating staff calendars
+      await deleteBrief(briefId);
+      
+      // Add a small delay to ensure all state updates are processed
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log('Brief deleted successfully, staff availability should now be recalculated');
+      
+      addNotification({
+        userId: user?.id || '',
+        title: 'Brief Deleted',
+        message: `The brief has been successfully deleted. ${assignedStaffIds.length > 0 ? `${totalHours}h freed up for ${assignedStaffIds.length} staff member(s).` : ''}`,
+        type: 'success',
+        read: false,
+        actionUrl: ''
+      });
+    } catch (error) {
+      console.error('Failed to delete brief:', error);
+      addNotification({
+        userId: user?.id || '',
+        title: 'Delete Failed',
+        message: 'Failed to delete the brief. Please try again.',
+        type: 'error',
+        read: false,
+        actionUrl: ''
+      });
+    } finally {
+      setDeletingBrief(null);
+      setShowDeleteConfirm(null);
+    }
+  };
+
   const handleCalendarBookings = async (bookings: any[]) => {
     try {
       console.log('Creating calendar entries:', bookings);
@@ -549,6 +613,21 @@ const BriefWorkflow: React.FC = () => {
       }, 0);
     
     const weeklyAvailableHours = staffMember.monthlyAvailableHours;
+    
+    // Debug logging for staff availability
+    if (staffMember.name.toLowerCase().includes('dan')) {
+      console.log(`Staff ${staffMember.name} availability calculation:`, {
+        weeklyBookedHours,
+        upcomingCommitments,
+        weeklyAvailableHours,
+        available: Math.max(0, weeklyAvailableHours - weeklyBookedHours),
+        assignedBriefs: briefs.filter(b => b.assignedStaff?.includes(staffMember.id)).map(b => ({
+          id: b.id,
+          title: b.title,
+          hours: (b.estimatedHours?.shoot || 0) + (b.estimatedHours?.edit || 0)
+        }))
+      });
+    }
     
     return {
       available: Math.max(0, weeklyAvailableHours - weeklyBookedHours),
@@ -733,314 +812,337 @@ const BriefWorkflow: React.FC = () => {
         {/* Expanded content */}
         {expandedBriefCards.has(brief.id) && (
           <>
-
-        {/* Expandable Description */}
-        {brief.description && (
-          <div className="mb-3">
-            <button
-              onClick={() => toggleBriefExpansion(brief.id)}
-              className="flex items-center space-x-1 text-xs text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              {expandedBriefs.has(brief.id) ? (
-                <ChevronDown className="h-3 w-3" />
-              ) : (
-                <ChevronRight className="h-3 w-3" />
-              )}
-              <span>Description</span>
-            </button>
-            {expandedBriefs.has(brief.id) && (
-              <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-700 whitespace-pre-wrap">{brief.description}</p>
-                {!brief.tasks?.length && (
-                  <button
-                    onClick={() => handleConvertDescriptionToTasks(brief)}
-                    className="mt-3 text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
-                  >
-                    Convert to Task List
-                  </button>
+            {/* Expandable Description */}
+            {brief.description && (
+              <div className="mb-3">
+                <button
+                  onClick={() => toggleBriefExpansion(brief.id)}
+                  className="flex items-center space-x-1 text-xs text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  {expandedBriefs.has(brief.id) ? (
+                    <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" />
+                  )}
+                  <span>Description</span>
+                </button>
+                {expandedBriefs.has(brief.id) && (
+                  <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-700 whitespace-pre-wrap">{brief.description}</p>
+                    {!brief.tasks?.length && (
+                      <button
+                        onClick={() => handleConvertDescriptionToTasks(brief)}
+                        className="mt-3 text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+                      >
+                        Convert to Task List
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* Tasks Section */}
-        {brief.tasks && brief.tasks.length > 0 && (
-          <div className="mb-3">
-            <button
-              onClick={() => toggleTaskExpansion(brief.id)}
-              className="flex items-center space-x-1 text-xs text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              {expandedTasks.has(brief.id) ? (
-                <ChevronDown className="h-3 w-3" />
-              ) : (
-                <ChevronRight className="h-3 w-3" />
-              )}
-              <span>Tasks ({brief.tasks.filter(t => t.completed).length}/{brief.tasks.length})</span>
-            </button>
-            {expandedTasks.has(brief.id) && (
-              <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-xs font-medium text-gray-700">Task List</div>
-                  <button
-                    onClick={() => setAddingTaskBriefId(brief.id)}
-                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
-                  >
-                    + Add Task
-                  </button>
-                </div>
-                <ul className="space-y-2">
-                  {brief.tasks.map(task => (
-                    <li key={task.id} className="flex items-center justify-between group">
-                      <div className="flex items-center space-x-2 flex-1">
-                        <input
-                          type="checkbox"
-                          checked={task.completed}
-                          onChange={() => handleToggleTask(brief, task.id)}
-                          disabled={updatingTasks.has(task.id)}
-                          className={`rounded border-gray-300 text-gray-900 focus:ring-gray-900 transition-opacity ${
-                            updatingTasks.has(task.id) ? 'opacity-50' : ''
-                          }`}
-                        />
-                        <span className={`text-xs ${task.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-                          {task.title}
-                        </span>
-                      </div>
+            {/* Tasks Section */}
+            {brief.tasks && brief.tasks.length > 0 && (
+              <div className="mb-3">
+                <button
+                  onClick={() => toggleTaskExpansion(brief.id)}
+                  className="flex items-center space-x-1 text-xs text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  {expandedTasks.has(brief.id) ? (
+                    <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" />
+                  )}
+                  <span>Tasks ({brief.tasks.filter(t => t.completed).length}/{brief.tasks.length})</span>
+                </button>
+                {expandedTasks.has(brief.id) && (
+                  <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-xs font-medium text-gray-700">Task List</div>
                       <button
-                        onClick={() => handleDeleteTask(brief, task.id)}
-                        disabled={updatingTasks.has(task.id)}
-                        className={`opacity-0 group-hover:opacity-100 text-xs text-red-500 hover:text-red-700 transition-all duration-200 ${
-                          updatingTasks.has(task.id) ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
+                        onClick={() => setAddingTaskBriefId(brief.id)}
+                        className="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
                       >
-                        {updatingTasks.has(task.id) ? '⋯' : '×'}
+                        + Add Task
                       </button>
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                    <ul className="space-y-2">
+                      {brief.tasks.map(task => (
+                        <li key={task.id} className="flex items-center justify-between group">
+                          <div className="flex items-center space-x-2 flex-1">
+                            <input
+                              type="checkbox"
+                              checked={task.completed}
+                              onChange={() => handleToggleTask(brief, task.id)}
+                              disabled={updatingTasks.has(task.id)}
+                              className={`rounded border-gray-300 text-gray-900 focus:ring-gray-900 transition-opacity ${
+                                updatingTasks.has(task.id) ? 'opacity-50' : ''
+                              }`}
+                            />
+                            <span className={`text-xs ${task.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                              {task.title}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteTask(brief, task.id)}
+                            disabled={updatingTasks.has(task.id)}
+                            className={`opacity-0 group-hover:opacity-100 text-xs text-red-500 hover:text-red-700 transition-all duration-200 ${
+                              updatingTasks.has(task.id) ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                          >
+                            {updatingTasks.has(task.id) ? '⋯' : '×'}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* Add Task Input */}
-        {addingTaskBriefId === brief.id && (
-          <div className="mb-3 p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <input
-                type="text"
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                placeholder="Enter new task..."
-                className="flex-1 text-xs px-2 py-1 border border-gray-200 rounded focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
-                onKeyPress={(e) => e.key === 'Enter' && handleAddTask(brief)}
-                autoFocus
-              />
-              <button
-                onClick={() => handleAddTask(brief)}
-                disabled={!newTaskTitle.trim()}
-                className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Add
-              </button>
-              <button
-                onClick={() => {
-                  setAddingTaskBriefId(null);
-                  setNewTaskTitle('');
-                }}
-                className="text-xs px-2 py-1 text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Show Add Task button when no tasks exist */}
-        {(!brief.tasks || brief.tasks.length === 0) && (
-          <div className="mb-3">
-            <button
-              onClick={() => toggleTaskExpansion(brief.id)}
-              className="flex items-center space-x-1 text-xs text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              {expandedTasks.has(brief.id) ? (
-                <ChevronDown className="h-3 w-3" />
-              ) : (
-                <ChevronRight className="h-3 w-3" />
-              )}
-              <span>Tasks (0/0)</span>
-            </button>
-            {expandedTasks.has(brief.id) && (
-              <div className="mt-2 p-3 bg-gray-50 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-xs font-medium text-gray-700">Task List</div>
+            {/* Add Task Input */}
+            {addingTaskBriefId === brief.id && (
+              <div className="mb-3 p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    placeholder="Enter new task..."
+                    className="flex-1 text-xs px-2 py-1 border border-gray-200 rounded focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddTask(brief)}
+                    autoFocus
+                  />
                   <button
-                    onClick={() => setAddingTaskBriefId(brief.id)}
-                    className="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+                    onClick={() => handleAddTask(brief)}
+                    disabled={!newTaskTitle.trim()}
+                    className="text-xs px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    + Add First Task
+                    Add
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAddingTaskBriefId(null);
+                      setNewTaskTitle('');
+                    }}
+                    className="text-xs px-2 py-1 text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    Cancel
                   </button>
                 </div>
-                <div className="text-xs text-gray-500 italic">No tasks yet. Add your first task to get started.</div>
               </div>
             )}
-          </div>
-        )}
 
-        <div className="space-y-2 mb-4">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-500">Progress</span>
-            <span className="font-medium">{completedTasks}/{totalTasks} tasks</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-green-600 h-2 rounded-full transition-all duration-300" 
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-2">
-            <Calendar className="h-4 w-4 text-gray-400" />
-            <span className="text-xs text-gray-500">
-              Due: {brief.dueDate.toLocaleDateString()}
-            </span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Clock className="h-4 w-4 text-gray-400" />
-            <span className="text-xs text-gray-500">
-              {brief.estimatedHours.shoot + brief.estimatedHours.edit}h
-            </span>
-          </div>
-        </div>
-
-        {/* PO Number - moved under due date */}
-        <div className="mb-3">
-            {brief.poNumber && (
-              <div className="flex items-center space-x-1">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span className="text-xs text-gray-500">PO: {brief.poNumber}</span>
+            {/* Show Add Task button when no tasks exist */}
+            {(!brief.tasks || brief.tasks.length === 0) && (
+              <div className="mb-3">
+                <button
+                  onClick={() => toggleTaskExpansion(brief.id)}
+                  className="flex items-center space-x-1 text-xs text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  {expandedTasks.has(brief.id) ? (
+                    <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" />
+                  )}
+                  <span>Tasks (0/0)</span>
+                </button>
+                {expandedTasks.has(brief.id) && (
+                  <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-xs font-medium text-gray-700">Task List</div>
+                      <button
+                        onClick={() => setAddingTaskBriefId(brief.id)}
+                        className="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+                      >
+                        + Add First Task
+                      </button>
+                    </div>
+                    <div className="text-xs text-gray-500 italic">No tasks yet. Add your first task to get started.</div>
+                  </div>
+                )}
               </div>
             )}
-            {!brief.poNumber && brief.stage === 'incoming' && (
-              <div className="flex items-center space-x-1">
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
-                <span className="text-xs text-amber-600">No PO</span>
+
+            <div className="space-y-2 mb-4">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-500">Progress</span>
+                <span className="font-medium">{completedTasks}/{totalTasks} tasks</span>
               </div>
-            )}
-          </div>
-
-        <div className="flex items-center justify-between mb-2">
-          <button
-            className={`text-xs px-3 py-1 rounded border transition-colors
-              ${brief.contractSigned
-                ? 'bg-green-100 text-green-700 border-green-300 cursor-default'
-                : 'btn-secondary'}
-            `}
-            disabled={brief.contractSigned}
-            onClick={() => handleContractSigned(brief)}
-          >
-            {brief.contractSigned ? 'Contract Signed' : 'Mark Contract Signed'}
-          </button>
-          <button
-            className={`text-xs px-3 py-1 rounded border transition-colors
-              ${assignedStaffMembers.length > 0
-                ? 'bg-green-100 text-green-700 border-green-300'
-                : 'btn-ghost'
-              }
-            `}
-            onClick={() => {
-              setAssigningBrief(brief);
-              setAssignStaffIds(brief.assignedStaff || []);
-            }}
-          >
-            {assignedStaffMembers.length > 0 ? 'Staff Assigned' : 'Assign Staff'}
-          </button>
-        </div>
-
-        {/* Calendar Booking Status */}
-        {brief.stage === 'incoming' && (
-          <div className="mb-2">
-            <div className={`flex items-center space-x-2 text-xs px-3 py-1 rounded border ${
-              hasCalendarBookings
-                ? 'bg-green-100 text-green-700 border-green-300'
-                : 'bg-amber-100 text-amber-700 border-amber-300'
-            }`}>
-              <Calendar className="h-3 w-3" />
-              <span>
-                {hasCalendarBookings 
-                  ? 'Calendar Booked' 
-                  : 'Calendar Not Booked'
-                }
-              </span>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-green-600 h-2 rounded-full transition-all duration-300" 
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
             </div>
-          </div>
-        )}
-        
+
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <Calendar className="h-4 w-4 text-gray-400" />
+                <span className="text-xs text-gray-500">
+                  Due: {brief.dueDate.toLocaleDateString()}
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Clock className="h-4 w-4 text-gray-400" />
+                <span className="text-xs text-gray-500">
+                  {brief.estimatedHours.shoot + brief.estimatedHours.edit}h
+                </span>
+              </div>
+            </div>
+
+            {/* PO Number - moved under due date */}
+            <div className="mb-3">
+                {brief.poNumber && (
+                  <div className="flex items-center space-x-1">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span className="text-xs text-gray-500">PO: {brief.poNumber}</span>
+                  </div>
+                )}
+                {!brief.poNumber && brief.stage === 'incoming' && (
+                  <div className="flex items-center space-x-1">
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    <span className="text-xs text-amber-600">No PO</span>
+                  </div>
+                )}
+              </div>
+
+            <div className="flex items-center justify-between mb-2">
+              <button
+                className={`text-xs px-3 py-1 rounded border transition-colors
+                  ${brief.contractSigned
+                    ? 'bg-green-100 text-green-700 border-green-300 cursor-default'
+                    : 'btn-secondary'}
+                `}
+                disabled={brief.contractSigned}
+                onClick={() => handleContractSigned(brief)}
+              >
+                {brief.contractSigned ? 'Contract Signed' : 'Mark Contract Signed'}
+              </button>
+              <button
+                className={`text-xs px-3 py-1 rounded border transition-colors
+                  ${assignedStaffMembers.length > 0
+                    ? 'bg-green-100 text-green-700 border-green-300'
+                    : 'btn-ghost'
+                  }
+                `}
+                onClick={() => {
+                  setAssigningBrief(brief);
+                  setAssignStaffIds(brief.assignedStaff || []);
+                }}
+              >
+                {assignedStaffMembers.length > 0 ? 'Staff Assigned' : 'Assign Staff'}
+              </button>
+            </div>
+
+            {/* Calendar Booking Status */}
+            {brief.stage === 'incoming' && (
+              <div className="mb-2">
+                <div className={`flex items-center space-x-2 text-xs px-3 py-1 rounded border ${
+                  hasCalendarBookings
+                    ? 'bg-green-100 text-green-700 border-green-300'
+                    : 'bg-amber-100 text-amber-700 border-amber-300'
+                }`}>
+                  <Calendar className="h-3 w-3" />
+                  <span>
+                    {hasCalendarBookings 
+                      ? 'Calendar Booked' 
+                      : 'Calendar Not Booked'
+                    }
+                  </span>
+                </div>
+              </div>
+            )}
           </>
         )}
 
         {/* Navigation buttons - always visible */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          <button
-            onClick={() => handleMoveBack(brief)}
-            disabled={!canMoveBack(brief) || isAdvancing}
-            className="flex items-center space-x-1 px-2 py-1 bg-gray-50 text-gray-700 rounded text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isAdvancing ? (
-              <span className="flex items-center">
-                <svg className="animate-spin h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                </svg>
-                Moving...
-              </span>
-            ) : (
-              <>
-                <ChevronLeft className="h-3 w-3" />
-                <span>Move Back</span>
-              </>
-            )}
-          </button>
-          
-          {brief.stage === 'incoming' && (
+          <div className="flex items-center space-x-2">
             <button
-              onClick={() => handleBookCalendar(brief)}
-              disabled={!brief.assignedStaff || brief.assignedStaff.length === 0}
-              className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                hasCalendarBookings
-                  ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                  : 'bg-green-50 text-green-700 hover:bg-green-100'
-              }`}
+              onClick={() => handleMoveBack(brief)}
+              disabled={!canMoveBack(brief) || isAdvancing}
+              className="flex items-center space-x-1 px-2 py-1 bg-gray-50 text-gray-700 rounded text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Calendar className="h-3 w-3" />
-              <span>
-                {hasCalendarBookings ? 'Calendar Booked' : 'Book Calendar'}
-              </span>
+              {isAdvancing ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                  </svg>
+                  Moving...
+                </span>
+              ) : (
+                <>
+                  <ChevronLeft className="h-3 w-3" />
+                  <span>Move Back</span>
+                </>
+              )}
             </button>
-          )}
+            
+            <button
+              onClick={() => setShowDeleteConfirm(brief.id)}
+              disabled={deletingBrief === brief.id}
+              className="flex items-center space-x-1 px-2 py-1 bg-red-50 text-red-700 rounded text-xs font-medium hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {deletingBrief === brief.id ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                  </svg>
+                  Deleting...
+                </span>
+              ) : (
+                <>
+                  <Trash2 className="h-3 w-3" />
+                  <span>Delete</span>
+                </>
+              )}
+            </button>
+          </div>
           
-          <button
-            onClick={() => handleMoveForward(brief)}
-            disabled={!canAdvanceBrief(brief) || isAdvancing}
-            className="flex items-center space-x-1 px-2 py-1 bg-gray-50 text-gray-700 rounded text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isAdvancing ? (
-              <span className="flex items-center">
-                <svg className="animate-spin h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                </svg>
-                Moving...
-              </span>
-            ) : (
-              <>
-                <span>Move Forward</span>
-            <ChevronRight className="h-3 w-3" />
-              </>
+          <div className="flex items-center space-x-2">
+            {brief.stage === 'incoming' && (
+              <button
+                onClick={() => handleBookCalendar(brief)}
+                disabled={!brief.assignedStaff || brief.assignedStaff.length === 0}
+                className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  hasCalendarBookings
+                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                    : 'bg-green-50 text-green-700 hover:bg-green-100'
+                }`}
+              >
+                <Calendar className="h-3 w-3" />
+                <span>
+                  {hasCalendarBookings ? 'Calendar Booked' : 'Book Calendar'}
+                </span>
+              </button>
             )}
-          </button>
+            
+            <button
+              onClick={() => handleMoveForward(brief)}
+              disabled={!canAdvanceBrief(brief) || isAdvancing}
+              className="flex items-center space-x-1 px-2 py-1 bg-gray-50 text-gray-700 rounded text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isAdvancing ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                  </svg>
+                  Moving...
+                </span>
+              ) : (
+                <>
+                  <span>Move Forward</span>
+                  <ChevronRight className="h-3 w-3" />
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1082,7 +1184,7 @@ const BriefWorkflow: React.FC = () => {
       </div>
 
       {/* Weekly Staff Hours Stats */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div key={`staff-availability-${briefs.length}`} className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">This Week's Staff Availability</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {staff.map(member => {
@@ -1228,8 +1330,6 @@ const BriefWorkflow: React.FC = () => {
         </div>
       )}
 
-
-
       {/* Brief Creation Modal */}
       <BriefCreationModal 
         isOpen={showCreateModal}
@@ -1268,7 +1368,7 @@ const BriefWorkflow: React.FC = () => {
                       <div key={member.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
                         <div className="flex items-center space-x-3">
                           <img src={member.avatar} alt={capitalizeWords(member.name)} className="h-8 w-8 rounded-full" />
-                <div>
+                          <div>
                             <p className="text-sm font-medium text-gray-900">{capitalizeWords(member.name)}</p>
                             <p className="text-xs text-gray-500">{member.skills.join(', ')}</p>
                           </div>
@@ -1310,7 +1410,6 @@ const BriefWorkflow: React.FC = () => {
                       }}
                       className="rounded border-gray-300 text-gray-900 focus:ring-gray-900"
                       disabled={!canAssign}
-
                     />
                     <img src={member.avatar} alt={capitalizeWords(member.name)} className="h-8 w-8 rounded-full" />
                     <div>
@@ -1321,8 +1420,8 @@ const BriefWorkflow: React.FC = () => {
                           ? `Available: ${availableHours.toFixed(1)}h` 
                           : `Insufficient hours (${availableHours.toFixed(1)}h available, ${requiredHours.toFixed(1)}h required)`
                         }
-                    </p>
-                  </div>
+                      </p>
+                    </div>
                   </label>
                 );
               })}
@@ -1342,6 +1441,47 @@ const BriefWorkflow: React.FC = () => {
               >
                 {assignStaffIds.length === 0 ? 'Remove All Staff' : 'Save'}
                 </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <Trash2 className="h-5 w-5 text-red-600" />
+                </div>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">Delete Brief</h3>
+                <p className="text-sm text-gray-600">This action cannot be undone.</p>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-sm text-gray-700">
+                Are you sure you want to delete this brief? This will permanently remove the brief and all associated data.
+              </p>
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteBrief(showDeleteConfirm)}
+                disabled={deletingBrief === showDeleteConfirm}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {deletingBrief === showDeleteConfirm ? 'Deleting...' : 'Delete Brief'}
+              </button>
             </div>
           </div>
         </div>

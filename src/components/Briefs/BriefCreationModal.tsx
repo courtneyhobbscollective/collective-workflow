@@ -161,10 +161,14 @@ const BriefCreationModal: React.FC<BriefCreationModalProps> = ({ isOpen, onClose
         estimatedHours: formData.estimatedHours,
         template: formData.template,
         stage: 'incoming' as BriefStage,
+        status: 'in-progress',
+        billingStage: 'not-started',
         isRecurring: formData.isRecurring,
         recurrencePattern: formData.isRecurring ? formData.recurrencePattern : undefined,
         assignedStaff: formData.assignedStaff,
-        reviewUrls: {}
+        reviewUrls: {},
+        contractSigned: false,
+        tasks: []
       };
 
       await addBrief(briefData);

@@ -19,28 +19,20 @@ const Dashboard: React.FC = () => {
   const [showCreateBrief, setShowCreateBrief] = React.useState(false);
   const [showUserManagement, setShowUserManagement] = React.useState(false);
 
-  const StatCard = ({ title, value, icon: Icon, change }: {
+  const StatCard = ({ title, value, change }: {
     title: string;
     value: string | number;
-    icon: React.ElementType;
     change?: string;
   }) => (
-    <div className="card p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-2xl font-semibold text-gray-900">{value}</p>
-          <p className="text-sm text-gray-600 mt-1">{title}</p>
-          {change && (
-            <span className="inline-flex items-center text-xs text-green-600 mt-1">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              {change}
-            </span>
-          )}
-        </div>
-        <div className="p-3 bg-gray-50 rounded-lg">
-          <Icon className="h-6 w-6 text-gray-600" />
-        </div>
-      </div>
+    <div className="card p-6 flex flex-col justify-center">
+      <p className="text-2xl font-semibold text-gray-900">{value}</p>
+      <p className="text-sm text-gray-600 mt-1">{title}</p>
+      {change && (
+        <span className="inline-flex items-center text-xs text-green-600 mt-1">
+          <TrendingUp className="h-3 w-3 mr-1" />
+          {change}
+        </span>
+      )}
     </div>
   );
 
@@ -92,25 +84,21 @@ const Dashboard: React.FC = () => {
         <StatCard
           title="Total Clients"
           value={dashboardStats?.totalClients || 0}
-          icon={Users}
           change="+12%"
         />
         <StatCard
           title="Active Briefs"
           value={dashboardStats?.activeBriefs || 0}
-          icon={Briefcase}
           change="+8%"
         />
         <StatCard
           title="Monthly Revenue"
           value={`£${(dashboardStats?.monthlyRevenue || 0).toLocaleString()}`}
-          icon={DollarSign}
           change="+23%"
         />
         <StatCard
           title="Staff Utilization"
           value={`${dashboardStats?.staffUtilization || 0}%`}
-          icon={Clock}
           change="+5%"
         />
       </div>

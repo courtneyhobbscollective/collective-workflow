@@ -1,64 +1,86 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { ChatChannel, ChatMessage } from '../../types';
+import { ChatService } from '../../lib/chatService';
 import { 
   Send, Paperclip, Smile, Search, Hash, 
-  Users, MessageCircle, Image, File 
+  Users, MessageCircle, Image, File, Plus 
 } from 'lucide-react';
 import { capitalizeWords } from '../../lib/capitalizeWords';
 
 const ChatPage: React.FC = () => {
-  const { chatChannels, clients, staff } = useApp();
+  const { chatChannels, clients, staff, addChatChannel } = useApp();
+  const { user } = useAuth();
   const [selectedChannel, setSelectedChannel] = useState<ChatChannel | null>(
     chatChannels.length > 0 ? chatChannels[0] : null
   );
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageText, setMessageText] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [newChannelName, setNewChannelName] = useState('');
+  const [creatingChannel, setCreatingChannel] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const subscriptionRef = useRef<any>(null);
 
-  // Mock additional messages for demonstration
-  const mockMessages: ChatMessage[] = [
-    {
-      id: 'm1',
-      channelId: 'ch-1',
-      senderId: '1',
-      content: 'Looking forward to working with you on this project!',
-      type: 'text',
-      mentions: [],
-      timestamp: new Date('2024-01-15T10:00:00')
-    },
-    {
-      id: 'm2',
-      channelId: 'ch-1',
-      senderId: 's1',
-      content: 'Thanks! I\'ve reviewed the brief and have some initial ideas. When would be a good time to discuss the creative direction?',
-      type: 'text',
-      mentions: ['1'],
-      timestamp: new Date('2024-01-15T10:15:00')
-    },
-    {
-      id: 'm3',
-      channelId: 'ch-1',
-      senderId: '1',
-      content: 'How about tomorrow at 2 PM? We can go over the brand guidelines and discuss the shot list.',
-      type: 'text',
-      mentions: [],
-      timestamp: new Date('2024-01-15T10:30:00')
-    },
-    {
-      id: 'm4',
-      channelId: 'ch-1',
-      senderId: 's2',
-      content: 'Perfect! I\'ll prepare some reference materials for the video editing style.',
-      type: 'text',
-      mentions: [],
-      timestamp: new Date('2024-01-15T11:00:00')
-    }
-  ];
-
-  const getChannelMessages = (channelId: string) => {
-    return mockMessages.filter(msg => msg.channelId === channelId)
-      .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  // Scroll to bottom when new messages arrive
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Load messages for selected channel
+  useEffect(() => {
+    if (!selectedChannel) return;
+
+    const loadMessages = async () => {
+      setLoading(true);
+      try {
+        const channelMessages = await ChatService.getChannelMessages(selectedChannel.id);
+        setMessages(channelMessages);
+      } catch (error) {
+        console.error('Failed to load messages:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMessages();
+  }, [selectedChannel]);
+
+  // Subscribe to real-time messages
+  useEffect(() => {
+    if (!selectedChannel) return;
+
+    // Unsubscribe from previous channel
+    if (subscriptionRef.current) {
+      ChatService.unsubscribeFromChannelMessages(selectedChannel.id);
+    }
+
+    // Subscribe to new channel
+    subscriptionRef.current = ChatService.subscribeToChannelMessages(
+      selectedChannel.id,
+      (newMessage) => {
+        setMessages(prev => [...prev, newMessage]);
+      },
+      (error) => {
+        console.error('Chat subscription error:', error);
+      }
+    );
+
+    // Cleanup on unmount or channel change
+    return () => {
+      if (subscriptionRef.current) {
+        ChatService.unsubscribeFromChannelMessages(selectedChannel.id);
+      }
+    };
+  }, [selectedChannel]);
 
   const getSenderInfo = (senderId: string) => {
     const client = clients.find(c => c.id === senderId);
@@ -67,16 +89,49 @@ const ChatPage: React.FC = () => {
     const staffMember = staff.find(s => s.id === senderId);
     if (staffMember) return { name: capitalizeWords(staffMember.name), avatar: staffMember.avatar, type: 'staff' };
     
+    // Check if it's the current user
+    if (user && user.id === senderId) {
+      return { name: user.name, avatar: user.avatar, type: 'current-user' };
+    }
+    
     return { name: 'Unknown User', avatar: null, type: 'unknown' };
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageText.trim() || !selectedChannel) return;
+    if (!messageText.trim() || !selectedChannel || !user || sending) return;
 
-    // In a real app, this would send the message to the backend
-    console.log('Sending message:', messageText);
-    setMessageText('');
+    setSending(true);
+    try {
+      await ChatService.sendMessage(
+        selectedChannel.id,
+        user.id,
+        messageText.trim()
+      );
+      setMessageText('');
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleCreateChannel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newChannelName.trim() || !user || creatingChannel) return;
+
+    setCreatingChannel(true);
+    try {
+      const newChannel = await ChatService.createCustomChannel(newChannelName.trim());
+      addChatChannel(newChannel);
+      setSelectedChannel(newChannel);
+      setNewChannelName('');
+      setShowCreateChannel(false);
+    } catch (error) {
+      console.error('Failed to create channel:', error);
+    } finally {
+      setCreatingChannel(false);
+    }
   };
 
   const ChannelList: React.FC = () => (
@@ -97,31 +152,80 @@ const ChatPage: React.FC = () => {
       <div className="flex-1 overflow-y-auto">
         <div className="p-2">
           <h3 className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            General Channels
+          </h3>
+          {chatChannels
+            .filter(channel => ['general', 'staff'].includes(channel.name))
+            .map(channel => {
+              const isSelected = selectedChannel?.id === channel.id;
+              const displayName = channel.name === 'staff' ? 'Staff' : 'General';
+              const description = channel.name === 'staff' ? 'Internal team chat' : 'General discussion';
+              
+              return (
+                <button
+                  key={channel.id}
+                  onClick={() => setSelectedChannel(channel)}
+                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                    isSelected 
+                      ? 'bg-indigo-100 text-indigo-700' 
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Hash className="h-4 w-4" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{displayName}</p>
+                    <p className="text-xs text-gray-500 truncate">{description}</p>
+                  </div>
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                </button>
+              );
+            })}
+          
+          {/* Create Channel Button for Staff */}
+          <div className="mt-4 px-3">
+            <button
+              onClick={() => setShowCreateChannel(true)}
+              className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Create Channel</span>
+            </button>
+          </div>
+
+          <h3 className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mt-4">
             Client Channels
           </h3>
-          {chatChannels.map(channel => {
-            const client = clients.find(c => c.id === channel.clientId);
-            const isSelected = selectedChannel?.id === channel.id;
-            
-            return (
-              <button
-                key={channel.id}
-                onClick={() => setSelectedChannel(channel)}
-                className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
-                  isSelected 
-                    ? 'bg-indigo-100 text-indigo-700' 
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <Hash className="h-4 w-4" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{channel.name}</p>
-                  <p className="text-xs text-gray-500 truncate">{client?.name}</p>
-                </div>
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              </button>
-            );
-          })}
+          {chatChannels
+            .filter(channel => channel.name !== 'staff')
+            .filter(channel => {
+              if (!searchTerm) return true;
+              const client = clients.find(c => c.id === channel.clientId);
+              return client?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                     channel.name.toLowerCase().includes(searchTerm.toLowerCase());
+            })
+            .map(channel => {
+              const client = clients.find(c => c.id === channel.clientId);
+              const isSelected = selectedChannel?.id === channel.id;
+              
+              return (
+                <button
+                  key={channel.id}
+                  onClick={() => setSelectedChannel(channel)}
+                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                    isSelected 
+                      ? 'bg-indigo-100 text-indigo-700' 
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Hash className="h-4 w-4" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{channel.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{client?.name || 'Unknown Client'}</p>
+                  </div>
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                </button>
+              );
+            })}
         </div>
       </div>
     </div>
@@ -129,7 +233,7 @@ const ChatPage: React.FC = () => {
 
   const MessageBubble: React.FC<{ message: ChatMessage }> = ({ message }) => {
     const sender = getSenderInfo(message.senderId);
-    const isCurrentUser = message.senderId === 's1'; // Mock current user
+    const isCurrentUser = user && message.senderId === user.id;
 
     return (
       <div className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'} mb-4`}>
@@ -171,6 +275,48 @@ const ChatPage: React.FC = () => {
     <div className="h-[calc(100vh-8rem)] flex bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       <ChannelList />
       
+      {/* Create Channel Modal */}
+      {showCreateChannel && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Create New Channel</h3>
+            <form onSubmit={handleCreateChannel}>
+              <div className="mb-4">
+                <label htmlFor="channelName" className="block text-sm font-medium text-gray-700 mb-2">
+                  Channel Name
+                </label>
+                <input
+                  type="text"
+                  id="channelName"
+                  value={newChannelName}
+                  onChange={(e) => setNewChannelName(e.target.value)}
+                  placeholder="Enter channel name..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  disabled={creatingChannel}
+                />
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateChannel(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                  disabled={creatingChannel}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newChannelName.trim() || creatingChannel}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {creatingChannel ? 'Creating...' : 'Create Channel'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
       {selectedChannel ? (
         <div className="flex-1 flex flex-col">
           {/* Chat Header */}
@@ -179,7 +325,9 @@ const ChatPage: React.FC = () => {
               <div className="flex items-center space-x-3">
                 <Hash className="h-5 w-5 text-gray-400" />
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">{selectedChannel.name}</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {selectedChannel.name === 'staff' ? 'Staff' : selectedChannel.name}
+                  </h2>
                   <p className="text-sm text-gray-500">
                     {selectedChannel.participants.length} participants
                   </p>
@@ -199,9 +347,26 @@ const ChatPage: React.FC = () => {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-            {getChannelMessages(selectedChannel.id).map(message => (
-              <MessageBubble key={message.id} message={message} />
-            ))}
+            {loading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-gray-500">Loading messages...</div>
+              </div>
+            ) : messages.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <MessageCircle className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No messages yet</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Start the conversation by sending a message.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              messages.map(message => (
+                <MessageBubble key={message.id} message={message} />
+              ))
+            )}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Message Input */}
@@ -219,8 +384,9 @@ const ChatPage: React.FC = () => {
                   type="text"
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
-                  placeholder={`Message ${selectedChannel.name}...`}
+                  placeholder={`Message ${selectedChannel.name === 'staff' ? 'staff' : selectedChannel.name}...`}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  disabled={sending}
                 />
               </div>
               
@@ -233,7 +399,7 @@ const ChatPage: React.FC = () => {
               
               <button
                 type="submit"
-                disabled={!messageText.trim()}
+                disabled={!messageText.trim() || sending}
                 className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Send className="h-5 w-5" />

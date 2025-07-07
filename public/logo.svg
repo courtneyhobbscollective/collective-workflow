@@ -1,4 +1,41 @@
-<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="48" stroke="black" stroke-width="4" fill="#fff"/>
-  <text x="50%" y="54%" text-anchor="middle" fill="black" font-size="36" font-family="Arial" dy=".3em">C</text>
-</svg> 
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 503.8 78.3">
+  <!-- Generator: Adobe Illustrator 29.6.1, SVG Export Plug-In . SVG Version: 2.1.1 Build 9)  -->
+  <defs>
+    <style>
+      .st0 {
+        font-family: Graphik-BoldItalic, Graphik;
+        font-style: italic;
+      }
+
+      .st1 {
+        font-size: 91px;
+      }
+
+      .st1, .st2 {
+        font-weight: 700;
+      }
+
+      .st3 {
+        font-size: 47px;
+        letter-spacing: 0em;
+      }
+
+      .st4 {
+        font-family: Graphik-Bold, Graphik;
+      }
+
+      .st5 {
+        font-size: 76.9px;
+        letter-spacing: 0em;
+      }
+
+      .st2 {
+        font-family: Bastia-Bold, Bastia;
+      }
+    </style>
+  </defs>
+  <text class="st2" transform="translate(-2 74.1)"><tspan class="st5" x="0" y="0">C</tspan><tspan class="st3" x="48.2" y="0">.</tspan></text>
+  <text class="st1" transform="translate(84.5 71)"><tspan class="st4" x="0" y="0">work</tspan><tspan class="st0" x="224.9" y="0">flow</tspan></text>
+  <rect x="69.6" y="19.1" width=".8" height="55"/>
+</svg>

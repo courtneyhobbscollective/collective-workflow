@@ -6,6 +6,7 @@ import {
   Home, Users, Briefcase, Calendar, MessageCircle, 
   Receipt, Settings, Bell, Search, Menu, X, LogOut 
 } from 'lucide-react';
+import Logo from '../Logo';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -77,7 +78,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="flex justify-between items-center h-16">
               <div className="flex items-center">
                 <div className="flex-shrink-0 lg:hidden">
-                  <img src="/logo.svg" alt="Logo" className="h-8 w-auto" />
+                  <Logo size="md" />
                 </div>
                 <div className="hidden lg:block">
                   <div className="ml-4 flex items-center space-x-4">
@@ -142,7 +143,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({ navigation, user, logou
       <div className="flex items-center h-16 flex-shrink-0 px-6 bg-white border-b border-gray-100">
         <div className="flex items-center">
           <div className="flex-shrink-0">
-            <img src="/logo.svg" alt="Logo" className="h-8 w-auto" />
+            <Logo size="md" />
           </div>
         </div>
       </div>
