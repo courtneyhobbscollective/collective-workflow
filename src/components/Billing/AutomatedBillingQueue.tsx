@@ -24,7 +24,9 @@ const AutomatedBillingQueue: React.FC = () => {
   const loadBillingQueue = async () => {
     try {
       setLoading(true);
-      const queue = await BillingService.getBillingQueueByStatus(filterStatus);
+      // Load all billing queue items instead of filtering by status
+      const queue = await BillingService.getBillingQueue();
+      console.log('Loaded billing queue:', queue);
       setBillingQueue(queue);
     } catch (error) {
       console.error('Failed to load billing queue:', error);

@@ -188,6 +188,16 @@ export interface BillingQueueItem {
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
+  // Related data from joins
+  clients?: {
+    name: string;
+    company_name?: string;
+    email: string;
+  };
+  briefs?: {
+    title: string;
+    project_value: number;
+  };
 }
 
 export interface BillingSchedule {

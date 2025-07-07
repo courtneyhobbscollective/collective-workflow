@@ -414,7 +414,7 @@ const BillingPage: React.FC = () => {
           )}
         </>
       ) : (
-        <AutomatedBillingQueue />
+        <AutomatedBillingQueue key={activeTab} />
       )}
     </div>
   );
