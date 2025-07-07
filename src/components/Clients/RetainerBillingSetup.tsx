@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { BillingService } from '../../lib/billingService';
+import { useApp } from '../../context/AppContext';
 import { Calendar, DollarSign, AlertCircle } from 'lucide-react';
 
 interface RetainerBillingSetupProps {
@@ -17,6 +18,7 @@ const RetainerBillingSetup: React.FC<RetainerBillingSetupProps> = ({
   initialAmount = 0,
   initialBillingDay = 1
 }) => {
+  const { updateClient } = useApp();
   const [formData, setFormData] = useState({
     amount: initialAmount,
     billingDay: initialBillingDay,
@@ -48,6 +50,14 @@ const RetainerBillingSetup: React.FC<RetainerBillingSetupProps> = ({
         formData.billingDay,
         new Date(formData.startDate)
       );
+
+      // Update the client in the local state to reflect the retainer setup
+      await updateClient(clientId, {
+        retainerAmount: formData.amount,
+        retainerBillingDay: formData.billingDay,
+        retainerStartDate: new Date(formData.startDate),
+        retainerActive: true
+      });
 
       onSetupComplete();
     } catch (err) {

@@ -293,6 +293,9 @@ const BriefWorkflow: React.FC = () => {
                 brief.title
               );
               
+              // Update the brief's billing stage
+              await updateBrief(brief.id, { billingStage: billingStage as any }, true);
+              
               if (user) {
                 addNotification({
                   userId: user.id,
@@ -363,6 +366,9 @@ const BriefWorkflow: React.FC = () => {
                   amount,
                   brief.title
                 );
+                
+                // Update the brief's billing stage
+                await updateBrief(brief.id, { billingStage: billingStage as any }, true);
                 
                 if (user) {
                   addNotification({

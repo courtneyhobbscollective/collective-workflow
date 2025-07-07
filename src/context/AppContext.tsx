@@ -87,6 +87,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         template: dbBrief.template,
         stage: dbBrief.stage,
         status: dbBrief.status || 'in-progress',
+        billingStage: dbBrief.billing_stage || 'not-started',
         isRecurring: dbBrief.is_recurring || false,
         recurrencePattern: dbBrief.recurrence_pattern,
         assignedStaff: dbBrief.assigned_staff || [],
@@ -113,6 +114,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         template: dbBrief.template || 'standard',
         stage: dbBrief.stage || 'incoming',
         status: 'in-progress',
+        billingStage: dbBrief.billing_stage || 'not-started',
         isRecurring: dbBrief.is_recurring || false,
         recurrencePattern: dbBrief.recurrence_pattern,
         assignedStaff: dbBrief.assigned_staff || [],
@@ -153,25 +155,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         // Set data for successful requests, empty array for failed ones
         if (clientsRes.status === 'fulfilled' && !clientsRes.value.error) {
-          // Convert database column names to TypeScript interface names
-          const convertedClients = (clientsRes.value.data || []).map(dbClient => ({
-            id: dbClient.id,
-            name: dbClient.name,
-            companyName: dbClient.company_name,
-            email: dbClient.email,
-            phone: dbClient.phone,
-            type: dbClient.type,
-            brandAssets: dbClient.brand_assets || [],
-            brandGuidelines: dbClient.brand_guidelines,
-            brandToneOfVoice: dbClient.brand_tone_of_voice,
-            brandColors: dbClient.brand_colors || [],
-            brandFonts: dbClient.brand_fonts || [],
-            socialMedia: dbClient.social_media || [],
-            contractTemplate: dbClient.contract_template,
-            chatChannelId: dbClient.chat_channel_id,
-            createdAt: new Date(dbClient.created_at),
-            updatedAt: new Date(dbClient.updated_at)
-          }));
+                  // Convert database column names to TypeScript interface names
+        const convertedClients = (clientsRes.value.data || []).map(dbClient => ({
+          id: dbClient.id,
+          name: dbClient.name,
+          companyName: dbClient.company_name,
+          email: dbClient.email,
+          phone: dbClient.phone,
+          type: dbClient.type,
+          retainerAmount: dbClient.retainer_amount,
+          retainerBillingDay: dbClient.retainer_billing_day,
+          retainerStartDate: dbClient.retainer_start_date ? new Date(dbClient.retainer_start_date) : undefined,
+          retainerEndDate: dbClient.retainer_end_date ? new Date(dbClient.retainer_end_date) : undefined,
+          retainerActive: dbClient.retainer_active || false,
+          brandAssets: dbClient.brand_assets || [],
+          brandGuidelines: dbClient.brand_guidelines,
+          brandToneOfVoice: dbClient.brand_tone_of_voice,
+          brandColors: dbClient.brand_colors || [],
+          brandFonts: dbClient.brand_fonts || [],
+          socialMedia: dbClient.social_media || [],
+          contractTemplate: dbClient.contract_template,
+          chatChannelId: dbClient.chat_channel_id,
+          createdAt: new Date(dbClient.created_at),
+          updatedAt: new Date(dbClient.updated_at)
+        }));
           setClients(convertedClients);
         } else {
           console.warn('Failed to fetch clients:', clientsRes.status === 'rejected' ? clientsRes.reason : clientsRes.value?.error);
@@ -347,6 +354,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updates.email !== undefined) dbUpdates.email = updates.email;
     if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
     if (updates.type !== undefined) dbUpdates.type = updates.type;
+    if (updates.retainerAmount !== undefined) dbUpdates.retainer_amount = updates.retainerAmount;
+    if (updates.retainerBillingDay !== undefined) dbUpdates.retainer_billing_day = updates.retainerBillingDay;
+    if (updates.retainerStartDate !== undefined) dbUpdates.retainer_start_date = updates.retainerStartDate?.toISOString().split('T')[0];
+    if (updates.retainerEndDate !== undefined) dbUpdates.retainer_end_date = updates.retainerEndDate?.toISOString().split('T')[0];
+    if (updates.retainerActive !== undefined) dbUpdates.retainer_active = updates.retainerActive;
     if (updates.brandAssets !== undefined) dbUpdates.brand_assets = updates.brandAssets;
     if (updates.brandGuidelines !== undefined) dbUpdates.brand_guidelines = updates.brandGuidelines;
     if (updates.brandToneOfVoice !== undefined) dbUpdates.brand_tone_of_voice = updates.brandToneOfVoice;
@@ -372,6 +384,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         email: dbClient.email,
         phone: dbClient.phone,
         type: dbClient.type,
+        retainerAmount: dbClient.retainer_amount,
+        retainerBillingDay: dbClient.retainer_billing_day,
+        retainerStartDate: dbClient.retainer_start_date ? new Date(dbClient.retainer_start_date) : undefined,
+        retainerEndDate: dbClient.retainer_end_date ? new Date(dbClient.retainer_end_date) : undefined,
+        retainerActive: dbClient.retainer_active || false,
         brandAssets: dbClient.brand_assets || [],
         brandGuidelines: dbClient.brand_guidelines,
         brandToneOfVoice: dbClient.brand_tone_of_voice,
@@ -483,6 +500,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (updates.assignedStaff !== undefined) dbUpdates.assigned_staff = updates.assignedStaff;
     if (updates.reviewUrls !== undefined) dbUpdates.review_urls = updates.reviewUrls;
     if (updates.contractSigned !== undefined) dbUpdates.contract_signed = updates.contractSigned;
+    if (updates.billingStage !== undefined) dbUpdates.billing_stage = updates.billingStage;
     if (updates.tasks !== undefined) dbUpdates.tasks = updates.tasks;
     
     console.log('Updating brief:', { id, dbUpdates, optimisticUpdate });
