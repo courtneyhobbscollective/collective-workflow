@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Client } from '../../types';
+import RetainerBillingSetup from './RetainerBillingSetup';
 import { 
   Plus, Search, Filter, Edit, Trash2, MessageCircle, 
   Building, Mail, Phone, Calendar, DollarSign, AlertTriangle, Repeat, FileText, Download, Eye, EyeOff
@@ -10,6 +11,8 @@ const ClientsPage: React.FC = () => {
   const { clients, addClient, updateClient, deleteClient, loading, error, clearError } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'project' | 'retainer'>('all');
+  const [showRetainerSetup, setShowRetainerSetup] = useState(false);
+  const [newClientId, setNewClientId] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deletingClient, setDeletingClient] = useState<Client | null>(null);
@@ -81,6 +84,19 @@ const ClientsPage: React.FC = () => {
             >
               <Edit className="h-4 w-4" />
             </button>
+            {client.type === 'retainer' && !client.retainerActive && (
+              <button
+                onClick={() => {
+                  setNewClientId(client.id);
+                  setShowRetainerSetup(true);
+                }}
+                className="p-2 text-gray-400 hover:text-green-600 rounded-lg hover:bg-green-50 transition-colors"
+                disabled={loading}
+                title="Setup Retainer Billing"
+              >
+                <DollarSign className="h-4 w-4" />
+              </button>
+            )}
             <button 
               onClick={() => setDeletingClient(client)}
               className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
@@ -319,10 +335,12 @@ const ClientsPage: React.FC = () => {
 
         if (client) {
           await updateClient(client.id, clientData);
+          onClose();
         } else {
           await addClient(clientData);
+          // For now, just close the modal. We'll add retainer setup later
+          onClose();
         }
-        onClose();
       } catch (error) {
         console.error('Failed to save client:', error);
       } finally {
@@ -921,6 +939,20 @@ const ClientsPage: React.FC = () => {
         <DeleteConfirmationModal
           client={deletingClient}
           onClose={() => setDeletingClient(null)}
+        />
+      )}
+
+      {showRetainerSetup && newClientId && (
+        <RetainerBillingSetup
+          clientId={newClientId}
+          onSetupComplete={() => {
+            setShowRetainerSetup(false);
+            setNewClientId(null);
+          }}
+          onCancel={() => {
+            setShowRetainerSetup(false);
+            setNewClientId(null);
+          }}
         />
       )}
     </div>

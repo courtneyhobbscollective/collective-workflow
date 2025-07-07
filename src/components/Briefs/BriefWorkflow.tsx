@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { Brief, BriefStage, BriefStatus } from '../../types';
+import { BillingService } from '../../lib/billingService';
 import BriefCreationModal from './BriefCreationModal';
 import CalendarBookingModal from './CalendarBookingModal';
 import { 
@@ -273,22 +274,46 @@ const BriefWorkflow: React.FC = () => {
         
         // Generate billing for project clients
         const client = clients.find(c => c.id === brief.clientId);
-        if (client?.type === 'project') {
+        if (client?.type === 'project' && brief.projectValue > 0) {
           const billingStages = ['pre-production', 'amend-1', 'final-delivery'];
           const billingPercentages = [50, 30, 20];
           const stageIndex = billingStages.indexOf(nextStage.key);
           
           if (stageIndex !== -1) {
             const amount = (brief.projectValue * billingPercentages[stageIndex]) / 100;
+            const billingStage = `${billingPercentages[stageIndex]}-percent`;
+            
+            try {
+              await BillingService.addProjectStageToBillingQueue(
+                brief.clientId,
+                brief.id,
+                billingStage,
+                billingPercentages[stageIndex],
+                amount,
+                brief.title
+              );
+              
               if (user) {
-            addNotification({
+                addNotification({
                   userId: user.id,
-              title: 'Invoice Generated',
-              message: `Invoice for ${brief.title} (${billingPercentages[stageIndex]}% - £${amount.toLocaleString()}) has been generated.`,
-              type: 'info',
-              read: false
-            });
+                  title: 'Billing Queue Updated',
+                  message: `Billing item for ${brief.title} (${billingPercentages[stageIndex]}% - £${amount.toLocaleString()}) has been added to the billing queue.`,
+                  type: 'info',
+                  read: false
+                });
               }
+            } catch (error) {
+              console.error('Failed to add billing to queue:', error);
+              if (user) {
+                addNotification({
+                  userId: user.id,
+                  title: 'Billing Error',
+                  message: `Failed to add billing for ${brief.title} to the queue.`,
+                  type: 'error',
+                  read: false
+                });
+              }
+            }
           }
         }
 
@@ -320,21 +345,45 @@ const BriefWorkflow: React.FC = () => {
           
           // Generate billing for project clients
           const client = clients.find(c => c.id === brief.clientId);
-          if (client?.type === 'project') {
+          if (client?.type === 'project' && brief.projectValue > 0) {
             const billingStages = ['pre-production', 'amend-1', 'final-delivery'];
             const billingPercentages = [50, 30, 20];
             const stageIndex = billingStages.indexOf(nextStage.key);
             
             if (stageIndex !== -1) {
               const amount = (brief.projectValue * billingPercentages[stageIndex]) / 100;
-              if (user) {
-                addNotification({
-                  userId: user.id,
-                  title: 'Invoice Generated',
-                  message: `Invoice for ${brief.title} (${billingPercentages[stageIndex]}% - £${amount.toLocaleString()}) has been generated.`,
-                  type: 'info',
-                  read: false
-                });
+              const billingStage = `${billingPercentages[stageIndex]}-percent`;
+              
+              try {
+                await BillingService.addProjectStageToBillingQueue(
+                  brief.clientId,
+                  brief.id,
+                  billingStage,
+                  billingPercentages[stageIndex],
+                  amount,
+                  brief.title
+                );
+                
+                if (user) {
+                  addNotification({
+                    userId: user.id,
+                    title: 'Billing Queue Updated',
+                    message: `Billing item for ${brief.title} (${billingPercentages[stageIndex]}% - £${amount.toLocaleString()}) has been added to the billing queue.`,
+                    type: 'info',
+                    read: false
+                  });
+                }
+              } catch (error) {
+                console.error('Failed to add billing to queue:', error);
+                if (user) {
+                  addNotification({
+                    userId: user.id,
+                    title: 'Billing Error',
+                    message: `Failed to add billing for ${brief.title} to the queue.`,
+                    type: 'error',
+                    read: false
+                  });
+                }
               }
             }
           }
