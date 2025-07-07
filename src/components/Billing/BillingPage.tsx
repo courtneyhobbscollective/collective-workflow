@@ -261,8 +261,10 @@ const BillingPage: React.FC = () => {
                           Status: {item.status}
                         </span>
                         {item.briefs && (
-                          <br />
-                          <span className="text-gray-500">Brief: {item.briefs.title}</span>
+                          <>
+                            <br />
+                            <span className="text-gray-500">Brief: {item.briefs.title}</span>
+                          </>
                         )}
                       </div>
                     </div>
