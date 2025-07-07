@@ -29,6 +29,9 @@ const ClientsPage: React.FC = () => {
     return matchesSearch && matchesFilter;
   });
 
+  // Debug: Log client types
+  console.log('All clients:', clients.map(c => ({ id: c.id, name: c.name, type: c.type, retainerActive: c.retainerActive })));
+
   const handleDeleteClient = async (client: Client) => {
     try {
       await deleteClient(client.id);
@@ -96,6 +99,12 @@ const ClientsPage: React.FC = () => {
               >
                 <DollarSign className="h-4 w-4" />
               </button>
+            )}
+            {client.type === 'retainer' && client.retainerActive && (
+              <div className="flex items-center space-x-1 text-green-600">
+                <DollarSign className="h-4 w-4" />
+                <span className="text-xs font-medium">Active Retainer</span>
+              </div>
             )}
             <button 
               onClick={() => setDeletingClient(client)}
@@ -337,9 +346,18 @@ const ClientsPage: React.FC = () => {
           await updateClient(client.id, clientData);
           onClose();
         } else {
-          await addClient(clientData);
-          // For now, just close the modal. We'll add retainer setup later
-          onClose();
+          try {
+            const newClient = await addClient(clientData);
+            // If this is a new retainer client, offer to setup retainer billing
+            if (formData.type === 'retainer') {
+              setNewClientId(newClient.id);
+              setShowRetainerSetup(true);
+            }
+            onClose();
+          } catch (error) {
+            console.error('Failed to create client:', error);
+            // Don't close modal on error
+          }
         }
       } catch (error) {
         console.error('Failed to save client:', error);

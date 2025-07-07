@@ -15,7 +15,7 @@ interface AppContextType {
   error: string | null;
   
   // Actions
-  addClient: (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  addClient: (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Client>;
   updateClient: (id: string, updates: Partial<Client>) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
   addBrief: (brief: Omit<Brief, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
@@ -288,8 +288,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [loading, clients.length, briefs.length, staff.length]);
 
   // Example: Add client
-  const addClient = async (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!supabase) return;
+  const addClient = async (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>): Promise<Client> => {
+    if (!supabase) throw new Error('Supabase client not initialized');
     setLoading(true);
     setError(null);
     
@@ -316,6 +316,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .select();
     if (error) {
       setError(error.message);
+      throw error;
     } else {
       // Convert database column names back to TypeScript interface names
       const convertedData = (data || []).map(dbClient => ({
@@ -325,6 +326,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         email: dbClient.email,
         phone: dbClient.phone,
         type: dbClient.type,
+        retainerAmount: dbClient.retainer_amount,
+        retainerBillingDay: dbClient.retainer_billing_day,
+        retainerStartDate: dbClient.retainer_start_date ? new Date(dbClient.retainer_start_date) : undefined,
+        retainerEndDate: dbClient.retainer_end_date ? new Date(dbClient.retainer_end_date) : undefined,
+        retainerActive: dbClient.retainer_active || false,
         brandAssets: dbClient.brand_assets || [],
         brandGuidelines: dbClient.brand_guidelines,
         brandToneOfVoice: dbClient.brand_tone_of_voice,
@@ -337,8 +343,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updatedAt: new Date(dbClient.updated_at)
       }));
       setClients(prev => [...prev, ...convertedData]);
+      setLoading(false);
+      return convertedData[0];
     }
-    setLoading(false);
   };
 
   // Example: Update client
