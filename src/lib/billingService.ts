@@ -221,6 +221,10 @@ export class BillingService {
         active: true,
         next_billing_date: this.calculateNextBillingDate(billingDay, startDate)
       });
+
+    // Add the first retainer billing to the queue
+    const nextBillingDate = this.calculateNextBillingDate(billingDay, startDate);
+    await this.addRetainerToBillingQueue(clientId, amount, nextBillingDate);
   }
 
   // Calculate next billing date for retainer
@@ -360,5 +364,31 @@ export class BillingService {
       .eq('id', queueItemId);
 
     if (error) throw error;
+  }
+
+  // Add retainer billing to queue for testing (manual trigger)
+  static async addRetainerBillingToQueue(clientId: string, amount: number, dueDate?: Date): Promise<void> {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    
+    const billingDate = dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // Default to 7 days from now
+    
+    await this.addRetainerToBillingQueue(clientId, amount, billingDate);
+  }
+
+  // Debug: Get all billing queue items with details
+  static async debugBillingQueue(): Promise<any[]> {
+    if (!supabase) throw new Error('Supabase client not initialized');
+    
+    const { data, error } = await supabase
+      .from('billing_queue')
+      .select(`
+        *,
+        clients(name, company_name, email, type),
+        briefs(title, project_value)
+      `)
+      .order('due_date', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
   }
 } 

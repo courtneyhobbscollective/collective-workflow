@@ -1,19 +1,23 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Invoice } from '../../types';
+import { BillingService } from '../../lib/billingService';
 import LoadingSpinner from '../LoadingSpinner';
 import EmptyState from '../EmptyState';
 import AutomatedBillingQueue from './AutomatedBillingQueue';
 import { 
   DollarSign, FileText, Calendar, AlertTriangle, 
   CheckCircle, Clock, Download, Send, Plus, Filter,
-  Zap, Users, FileText as FileTextIcon
+  Zap, Users, FileText as FileTextIcon, Bug
 } from 'lucide-react';
 
 const BillingPage: React.FC = () => {
   const { invoices, clients, briefs, loading, error, clearError } = useApp();
   const [filterStatus, setFilterStatus] = useState<'all' | 'draft' | 'sent' | 'paid' | 'overdue'>('all');
   const [activeTab, setActiveTab] = useState<'invoices' | 'automated'>('invoices');
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugData, setDebugData] = useState<any[]>([]);
+  const [debugLoading, setDebugLoading] = useState(false);
 
   const filteredInvoices = invoices.filter(invoice => 
     filterStatus === 'all' || invoice.status === filterStatus
@@ -30,6 +34,38 @@ const BillingPage: React.FC = () => {
   const overdueAmount = invoices
     .filter(inv => inv.status === 'overdue')
     .reduce((sum, inv) => sum + inv.totalAmount, 0);
+
+  // Debug functions
+  const loadDebugData = async () => {
+    setDebugLoading(true);
+    try {
+      const data = await BillingService.debugBillingQueue();
+      setDebugData(data);
+      console.log('Billing Queue Debug Data:', data);
+    } catch (error) {
+      console.error('Failed to load debug data:', error);
+    } finally {
+      setDebugLoading(false);
+    }
+  };
+
+  const addTestRetainerBilling = async () => {
+    const retainerClients = clients.filter(c => c.type === 'retainer' && c.retainerActive);
+    if (retainerClients.length === 0) {
+      alert('No active retainer clients found. Please create a retainer client first.');
+      return;
+    }
+    
+    const client = retainerClients[0];
+    try {
+      await BillingService.addRetainerBillingToQueue(client.id, client.retainerAmount || 1000);
+      alert(`Added test retainer billing for ${client.name}`);
+      loadDebugData(); // Refresh debug data
+    } catch (error) {
+      console.error('Failed to add test retainer billing:', error);
+      alert('Failed to add test retainer billing');
+    }
+  };
 
   const getStatusColor = (status: Invoice['status']) => {
     switch (status) {
@@ -173,11 +209,70 @@ const BillingPage: React.FC = () => {
           <h1 className="text-2xl font-semibold text-gray-900">Billing</h1>
           <p className="text-gray-600">Manage invoices and track payments</p>
         </div>
-        <button className="btn-primary">
-          <Plus className="h-4 w-4 mr-2" />
-          Create Invoice
-        </button>
+        <div className="flex space-x-2">
+          <button 
+            onClick={() => setShowDebug(!showDebug)}
+            className="btn-secondary"
+          >
+            <Bug className="h-4 w-4 mr-2" />
+            Debug
+          </button>
+          <button className="btn-primary">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Invoice
+          </button>
+        </div>
       </div>
+
+      {/* Debug Section */}
+      {showDebug && (
+        <div className="card p-6 bg-yellow-50 border-yellow-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Debug Billing Queue</h3>
+          <div className="flex space-x-4 mb-4">
+            <button 
+              onClick={loadDebugData}
+              disabled={debugLoading}
+              className="btn-secondary"
+            >
+              {debugLoading ? 'Loading...' : 'Load Queue Data'}
+            </button>
+            <button 
+              onClick={addTestRetainerBilling}
+              className="btn-secondary"
+            >
+              Add Test Retainer Billing
+            </button>
+          </div>
+          
+          {debugData.length > 0 && (
+            <div className="mt-4">
+              <h4 className="font-medium text-gray-900 mb-2">Billing Queue Items ({debugData.length})</h4>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {debugData.map((item, index) => (
+                  <div key={index} className="p-3 bg-white rounded border text-sm">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <strong>{item.clients?.name || 'Unknown Client'}</strong>
+                        <br />
+                        <span className="text-gray-600">
+                          Type: {item.billing_type} | 
+                          Amount: £{item.amount} | 
+                          Due: {new Date(item.due_date).toLocaleDateString()} |
+                          Status: {item.status}
+                        </span>
+                        {item.briefs && (
+                          <br />
+                          <span className="text-gray-500">Brief: {item.briefs.title}</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tab Navigation */}
       <div className="border-b border-gray-200">
