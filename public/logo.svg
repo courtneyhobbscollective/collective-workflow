@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 503.8 78.3">
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 249.5 59.1">
   <!-- Generator: Adobe Illustrator 29.6.1, SVG Export Plug-In . SVG Version: 2.1.1 Build 9)  -->
   <defs>
     <style>
@@ -8,34 +8,30 @@
         font-style: italic;
       }
 
-      .st1 {
-        font-size: 91px;
+      .st0, .st1, .st2 {
+        isolation: isolate;
       }
 
-      .st1, .st2 {
+      .st0, .st2 {
+        font-size: 52.7px;
         font-weight: 700;
       }
 
-      .st3 {
-        font-size: 47px;
-        letter-spacing: 0em;
-      }
-
-      .st4 {
-        font-family: Graphik-Bold, Graphik;
-      }
-
-      .st5 {
-        font-size: 76.9px;
-        letter-spacing: 0em;
-      }
-
       .st2 {
-        font-family: Bastia-Bold, Bastia;
+        font-family: Graphik-Bold, Graphik;
       }
     </style>
   </defs>
-  <text class="st2" transform="translate(-2 74.1)"><tspan class="st5" x="0" y="0">C</tspan><tspan class="st3" x="48.2" y="0">.</tspan></text>
-  <text class="st1" transform="translate(84.5 71)"><tspan class="st4" x="0" y="0">work</tspan><tspan class="st0" x="224.9" y="0">flow</tspan></text>
-  <rect x="69.6" y="19.1" width=".8" height="55"/>
+  <g class="st1">
+    <g class="st1">
+      <g class="st1">
+        <text class="st2" transform="translate(3.7 46.1)"><tspan x="0" y="0">work</tspan></text>
+      </g>
+    </g>
+    <g class="st1">
+      <g class="st1">
+        <text class="st0" transform="translate(134 46.1)"><tspan x="0" y="0">flow</tspan></text>
+      </g>
+    </g>
+  </g>
 </svg>

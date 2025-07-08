@@ -83,9 +83,7 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ onSwitchToLogin }) 
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center">
-            <div className="h-16 w-16 rounded-xl flex items-center justify-center bg-white shadow">
-              <img src="/logo.svg" alt="CreativeFlow Logo" className="h-16 w-16 object-contain" />
-            </div>
+            <img src="/logo.svg" alt="CreativeFlow Logo" className="h-16 w-16 object-contain" />
           </div>
           <h2 className="mt-6 text-center text-3xl font-semibold text-gray-900">
             Create your account
