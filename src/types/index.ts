@@ -227,7 +227,7 @@ export interface DashboardStats {
   totalClients: number;
   activeBriefs: number;
   monthlyRevenue: number;
-  staffUtilization: number;
+  staffUtilisation: number;
   overdueInvoices: number;
   pendingReviews: number;
 }

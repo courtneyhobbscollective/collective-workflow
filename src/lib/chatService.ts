@@ -6,7 +6,9 @@ export class ChatService {
   static async createChannelForClient(clientId: string, clientName: string): Promise<ChatChannel> {
     if (!supabase) throw new Error('Supabase client not initialized');
     
-    const channelName = `client-${clientName.toLowerCase().replace(/\s+/g, '-')}`;
+    // Create a unique channel name that won't conflict with system channels
+    const sanitizedName = clientName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const channelName = `client-${sanitizedName}-${Date.now()}`;
     
     console.log('Creating channel for client:', { clientId, clientName, channelName });
     

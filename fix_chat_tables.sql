@@ -160,37 +160,9 @@ BEGIN
     END;
 END $$;
 
--- Create default channels if they don't exist
-DO $$
-BEGIN
-    -- Create general channel
-    IF NOT EXISTS (SELECT 1 FROM chat_channels WHERE name = 'general') THEN
-        INSERT INTO chat_channels (client_id, name, participants)
-        SELECT 
-            NULL,
-            'general',
-            array_agg(id::text)
-        FROM profiles 
-        WHERE role IN ('admin', 'staff');
-        RAISE NOTICE 'Created general channel';
-    ELSE
-        RAISE NOTICE 'General channel already exists';
-    END IF;
-    
-    -- Create staff channel
-    IF NOT EXISTS (SELECT 1 FROM chat_channels WHERE name = 'staff') THEN
-        INSERT INTO chat_channels (client_id, name, participants)
-        SELECT 
-            NULL,
-            'staff',
-            array_agg(id::text)
-        FROM profiles 
-        WHERE role IN ('admin', 'staff');
-        RAISE NOTICE 'Created staff channel';
-    ELSE
-        RAISE NOTICE 'Staff channel already exists';
-    END IF;
-END $$;
+-- Note: Default channels (general, staff) are no longer created automatically
+-- Channels are now created only for clients when they are onboarded
+-- Staff can create custom channels manually through the UI
 
 -- Show current table structure
 SELECT 'chat_channels table structure:' as info;

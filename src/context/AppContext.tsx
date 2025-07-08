@@ -27,6 +27,8 @@ interface AppContextType {
   deleteStaff: (id: string) => Promise<void>;
   addNotification: (notification: Omit<Notification, 'id' | 'createdAt'>) => Promise<void>;
   markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
+  clearAllNotifications: () => Promise<void>;
   deleteInvoice: (id: string) => Promise<void>;
   clearError: () => void;
   refreshInvoices: () => Promise<void>;
@@ -63,7 +65,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .filter(i => i.status === 'paid' && i.paidDate && new Date(i.paidDate) >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
       .reduce((sum, i) => sum + Number(i.totalAmount), 0);
 
-    // Staff Utilization Calculation
+    // Staff Utilisation Calculation
     let totalAssignedHours = 0;
     let totalAvailableHours = staff.reduce((sum, s) => sum + (s.monthlyAvailableHours || 0), 0);
     if (totalAvailableHours > 0) {
@@ -74,13 +76,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       });
     }
-    const staffUtilization = totalAvailableHours > 0 ? Math.round((totalAssignedHours / totalAvailableHours) * 100) : 0;
+    const staffUtilisation = totalAvailableHours > 0 ? Math.round((totalAssignedHours / totalAvailableHours) * 100) : 0;
 
     setDashboardStats({
       totalClients,
       activeBriefs,
       monthlyRevenue,
-      staffUtilization,
+      staffUtilisation,
       overdueInvoices: invoices.filter(i => i.status === 'overdue').length,
       pendingReviews: briefs.filter(b => b.stage === 'final-delivery').length
     });
@@ -265,39 +267,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }));
           setChatChannels(channels);
           
-          // Ensure staff and general channels exist
-          const staffChannelExists = channels.some(channel => channel.name === 'staff');
-          const generalChannelExists = channels.some(channel => channel.name === 'general');
-          
-          if (!staffChannelExists) {
-            try {
-              const staffChannel = await ChatService.getOrCreateStaffChannel();
-              setChatChannels(prev => [staffChannel, ...prev]);
-            } catch (error) {
-              console.warn('Failed to create staff channel:', error);
-            }
-          }
-          
-          if (!generalChannelExists) {
-            try {
-              const generalChannel = await ChatService.getOrCreateGeneralChannel();
-              setChatChannels(prev => [generalChannel, ...prev]);
-            } catch (error) {
-              console.warn('Failed to create general channel:', error);
-            }
-          }
+          // Ensure all clients have chat channels
+          await ensureClientChannels();
         } else {
           console.warn('Failed to fetch chat channels:', chatChannelsRes.status === 'rejected' ? chatChannelsRes.reason : chatChannelsRes.value?.error);
           setChatChannels([]);
-          
-          // Try to create staff and general channels if no channels exist
-          try {
-            const staffChannel = await ChatService.getOrCreateStaffChannel();
-            const generalChannel = await ChatService.getOrCreateGeneralChannel();
-            setChatChannels([staffChannel, generalChannel]);
-          } catch (error) {
-            console.warn('Failed to create default channels:', error);
-          }
         }
 
         if (notificationsRes.status === 'fulfilled' && !notificationsRes.value.error) {
@@ -359,6 +333,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setLoading(false);
     }
   }, [loading, clients.length, briefs.length, staff.length]);
+
+  // Ensure all clients have chat channels
+  const ensureClientChannels = async () => {
+    if (!supabase) return;
+    
+    try {
+      // Get all clients that don't have a chat channel
+      const { data: clientsWithoutChannels, error } = await supabase
+        .from('clients')
+        .select('id, name, company_name, chat_channel_id')
+        .or('chat_channel_id.is.null,chat_channel_id.eq.');
+      
+      if (error) {
+        console.warn('Failed to fetch clients without channels:', error);
+        return;
+      }
+      
+      // Create channels for clients that don't have them
+      for (const client of clientsWithoutChannels || []) {
+        try {
+          const chatChannel = await ChatService.createChannelForClient(
+            client.id, 
+            client.company_name || client.name
+          );
+          
+          // Update the client with the chat channel ID
+          await updateClient(client.id, { chatChannelId: chatChannel.id });
+          
+          // Add the new channel to chatChannels state
+          setChatChannels(prev => [...prev, chatChannel]);
+          
+          console.log(`Created chat channel for client: ${client.name}`);
+        } catch (error) {
+          console.warn(`Failed to create chat channel for client ${client.name}:`, error);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to ensure client channels:', error);
+    }
+  };
 
   // Example: Add client
   const addClient = async (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>): Promise<Client> => {
@@ -834,6 +848,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLoading(false);
   };
 
+  const markAllNotificationsRead = async () => {
+    if (!supabase) return;
+    setLoading(true);
+    setError(null);
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('read', false);
+    if (error) {
+      setError(error.message);
+    } else {
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    }
+    setLoading(false);
+  };
+
+  const clearAllNotifications = async () => {
+    if (!supabase) return;
+    setLoading(true);
+    setError(null);
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all notifications
+    if (error) {
+      setError(error.message);
+    } else {
+      setNotifications([]);
+    }
+    setLoading(false);
+  };
+
   const deleteInvoice = async (id: string) => {
     if (!supabase) return;
     setLoading(true);
@@ -912,7 +958,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       addClient, updateClient, deleteClient,
       addBrief, updateBrief, deleteBrief,
       addStaff, updateStaff, deleteStaff,
-      addNotification, markNotificationRead, deleteInvoice, clearError, refreshInvoices, addChatChannel
+      addNotification, markNotificationRead, markAllNotificationsRead, clearAllNotifications, deleteInvoice, clearError, refreshInvoices, addChatChannel
     }}>
       {children}
     </AppContext.Provider>

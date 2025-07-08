@@ -688,10 +688,12 @@ const BriefWorkflow: React.FC = () => {
                   </span>
                 )}
                 
-                {/* Status Badge with Hover Dropdown */}
+                {/* Status Badge with Hover Dropdown - Admin Only */}
                 <div className="relative group">
                   <button
-                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors ${
+                      user?.role === 'admin' ? 'cursor-pointer' : 'cursor-default'
+                    } ${
                       brief.status === 'in-progress' ? 'bg-green-100 text-green-800' :
                       brief.status === 'on-hold' ? 'bg-yellow-100 text-yellow-800' :
                       brief.status === 'waiting-for-client' ? 'bg-blue-100 text-blue-800' :
@@ -701,12 +703,14 @@ const BriefWorkflow: React.FC = () => {
                     }`}
                     onClick={(e) => e.stopPropagation()}
                     onMouseEnter={() => {
-                      if (hoverTimeout) clearTimeout(hoverTimeout);
-                      setHoveredStatusBadge(brief.id);
+                      if (user?.role === 'admin' && hoverTimeout) clearTimeout(hoverTimeout);
+                      if (user?.role === 'admin') setHoveredStatusBadge(brief.id);
                     }}
                     onMouseLeave={() => {
-                      const timeout = setTimeout(() => setHoveredStatusBadge(null), 300);
-                      setHoverTimeout(timeout);
+                      if (user?.role === 'admin') {
+                        const timeout = setTimeout(() => setHoveredStatusBadge(null), 300);
+                        setHoverTimeout(timeout);
+                      }
                     }}
                   >
                     {brief.status === 'in-progress' ? 'In Progress' :
@@ -716,7 +720,7 @@ const BriefWorkflow: React.FC = () => {
                      brief.status === 'sent-for-client-feedback' ? 'Sent for Feedback' :
                      brief.status}
                   </button>
-                  {hoveredStatusBadge === brief.id && (
+                  {user?.role === 'admin' && hoveredStatusBadge === brief.id && (
                     <div 
                       className="absolute top-8 left-0 z-20 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-[180px]"
                       onMouseEnter={() => {
@@ -733,7 +737,7 @@ const BriefWorkflow: React.FC = () => {
                           key={status}
                           onClick={() => handleUpdateStatus(brief, status)}
                           disabled={updatingStatus === brief.id}
-                          className={`block w-full text-left text-xs py-1 px-2 rounded hover:bg-gray-50 transition-colors ${
+                          className={`block w-full text-left text-xs py-1 px-2 rounded hover:bg-gray-50 transition-colors whitespace-nowrap ${
                             brief.status === status ? 'bg-gray-100 font-medium' : ''
                           } ${updatingStatus === brief.id ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
@@ -786,15 +790,17 @@ const BriefWorkflow: React.FC = () => {
                         }}
                       >
                         <div className="text-xs font-medium text-gray-900 mb-1">{capitalizeWords(member.name)}</div>
-                        <button
-                          onClick={() => handleUnassignStaff(brief, member.id)}
-                          disabled={unassigningStaff.has(member.id)}
-                          className={`text-xs text-red-600 hover:text-red-700 font-medium transition-colors w-full text-left py-1 px-1 rounded hover:bg-red-50 ${
-                            unassigningStaff.has(member.id) ? 'opacity-50 cursor-not-allowed' : ''
-                          }`}
-                        >
-                          {unassigningStaff.has(member.id) ? 'Unassigning...' : 'Unassign'}
-                        </button>
+                        {user?.role === 'admin' && (
+                          <button
+                            onClick={() => handleUnassignStaff(brief, member.id)}
+                            disabled={unassigningStaff.has(member.id)}
+                            className={`text-xs text-red-600 hover:text-red-700 font-medium transition-colors w-full text-left py-1 px-1 rounded hover:bg-red-50 whitespace-nowrap ${
+                              unassigningStaff.has(member.id) ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                          >
+                            {unassigningStaff.has(member.id) ? 'Unassigning...' : 'Unassign'}
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -832,7 +838,7 @@ const BriefWorkflow: React.FC = () => {
                     {!brief.tasks?.length && (
                       <button
                         onClick={() => handleConvertDescriptionToTasks(brief)}
-                        className="mt-3 text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+                        className="mt-3 text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors whitespace-nowrap"
                       >
                         Convert to Task List
                       </button>
@@ -862,7 +868,7 @@ const BriefWorkflow: React.FC = () => {
                       <div className="text-xs font-medium text-gray-700">Task List</div>
                       <button
                         onClick={() => setAddingTaskBriefId(brief.id)}
-                        className="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+                        className="text-xs text-indigo-600 hover:text-indigo-700 font-medium transition-colors whitespace-nowrap"
                       >
                         + Add Task
                       </button>
@@ -1010,31 +1016,35 @@ const BriefWorkflow: React.FC = () => {
               </div>
 
             <div className="flex items-center justify-between mb-2">
-              <button
-                className={`text-xs px-3 py-1 rounded border transition-colors
-                  ${brief.contractSigned
-                    ? 'bg-green-100 text-green-700 border-green-300 cursor-default'
-                    : 'btn-secondary'}
-                `}
-                disabled={brief.contractSigned}
-                onClick={() => handleContractSigned(brief)}
-              >
-                {brief.contractSigned ? 'Contract Signed' : 'Mark Contract Signed'}
-              </button>
-              <button
-                className={`text-xs px-3 py-1 rounded border transition-colors
-                  ${assignedStaffMembers.length > 0
-                    ? 'bg-green-100 text-green-700 border-green-300'
-                    : 'btn-ghost'
-                  }
-                `}
-                onClick={() => {
-                  setAssigningBrief(brief);
-                  setAssignStaffIds(brief.assignedStaff || []);
-                }}
-              >
-                {assignedStaffMembers.length > 0 ? 'Staff Assigned' : 'Assign Staff'}
-              </button>
+              {user?.role === 'admin' && (
+                <button
+                  className={`text-xs px-3 py-1 rounded border transition-colors
+                    ${brief.contractSigned
+                      ? 'bg-green-100 text-green-700 border-green-300 cursor-default'
+                      : 'btn-secondary'}
+                  `}
+                  disabled={brief.contractSigned}
+                  onClick={() => handleContractSigned(brief)}
+                >
+                  {brief.contractSigned ? 'Contract Signed' : 'Mark Contract Signed'}
+                </button>
+              )}
+              {user?.role === 'admin' && (
+                <button
+                  className={`text-xs px-3 py-1 rounded border transition-colors
+                    ${assignedStaffMembers.length > 0
+                      ? 'bg-green-100 text-green-700 border-green-300'
+                      : 'btn-ghost'
+                    }
+                  `}
+                  onClick={() => {
+                    setAssigningBrief(brief);
+                    setAssignStaffIds(brief.assignedStaff || []);
+                  }}
+                >
+                  {assignedStaffMembers.length > 0 ? 'Staff Assigned' : 'Assign Staff'}
+                </button>
+              )}
             </div>
 
             {/* Calendar Booking Status */}
@@ -1061,47 +1071,51 @@ const BriefWorkflow: React.FC = () => {
         {/* Navigation buttons - always visible */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
           <div className="flex items-center space-x-2">
-            <button
-              onClick={() => handleMoveBack(brief)}
-              disabled={!canMoveBack(brief) || isAdvancing}
-              className="flex items-center space-x-1 px-2 py-1 bg-gray-50 text-gray-700 rounded text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isAdvancing ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                  </svg>
-                  Moving...
-                </span>
-              ) : (
-                <>
-                  <ChevronLeft className="h-3 w-3" />
-                  <span>Move Back</span>
-                </>
-              )}
-            </button>
+            {user?.role === 'admin' && (
+              <button
+                onClick={() => handleMoveBack(brief)}
+                disabled={!canMoveBack(brief) || isAdvancing}
+                className="flex items-center space-x-1 px-2 py-1 bg-gray-50 text-gray-700 rounded text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isAdvancing ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                    Moving...
+                  </span>
+                ) : (
+                  <>
+                    <ChevronLeft className="h-3 w-3" />
+                    <span>Move Back</span>
+                  </>
+                )}
+              </button>
+            )}
             
-            <button
-              onClick={() => setShowDeleteConfirm(brief.id)}
-              disabled={deletingBrief === brief.id}
-              className="flex items-center space-x-1 px-2 py-1 bg-red-50 text-red-700 rounded text-xs font-medium hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {deletingBrief === brief.id ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                  </svg>
-                  Deleting...
-                </span>
-              ) : (
-                <>
-                  <Trash2 className="h-3 w-3" />
-                  <span>Delete</span>
-                </>
-              )}
-            </button>
+            {user?.role === 'admin' && (
+              <button
+                onClick={() => setShowDeleteConfirm(brief.id)}
+                disabled={deletingBrief === brief.id}
+                className="flex items-center space-x-1 px-2 py-1 bg-red-50 text-red-700 rounded text-xs font-medium hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deletingBrief === brief.id ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                    Deleting...
+                  </span>
+                ) : (
+                  <>
+                    <Trash2 className="h-3 w-3" />
+                    <span>Delete</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
           
           <div className="flex items-center space-x-2">
@@ -1122,26 +1136,28 @@ const BriefWorkflow: React.FC = () => {
               </button>
             )}
             
-            <button
-              onClick={() => handleMoveForward(brief)}
-              disabled={!canAdvanceBrief(brief) || isAdvancing}
-              className="flex items-center space-x-1 px-2 py-1 bg-gray-50 text-gray-700 rounded text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isAdvancing ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                  </svg>
-                  Moving...
-                </span>
-              ) : (
-                <>
-                  <span>Move Forward</span>
-                  <ChevronRight className="h-3 w-3" />
-                </>
-              )}
-            </button>
+            {user?.role === 'admin' && (
+              <button
+                onClick={() => handleMoveForward(brief)}
+                disabled={!canAdvanceBrief(brief) || isAdvancing}
+                className="flex items-center space-x-1 px-2 py-1 bg-gray-50 text-gray-700 rounded text-xs font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isAdvancing ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin h-3 w-3 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                    Moving...
+                  </span>
+                ) : (
+                  <>
+                    <span>Move Forward</span>
+                    <ChevronRight className="h-3 w-3" />
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1171,14 +1187,16 @@ const BriefWorkflow: React.FC = () => {
           <p className="text-gray-600">Manage briefs through their lifecycle stages</p>
         </div>
         <div className="flex items-center space-x-4">
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="btn-primary"
-            disabled={loading}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create Brief
-          </button>
+          {user?.role === 'admin' && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="btn-primary"
+              disabled={loading}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create Brief
+            </button>
+          )}
           <div className="text-sm text-gray-500">Total briefs: {briefs.length}</div>
         </div>
       </div>
@@ -1330,11 +1348,13 @@ const BriefWorkflow: React.FC = () => {
         </div>
       )}
 
-      {/* Brief Creation Modal */}
-      <BriefCreationModal 
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-      />
+      {/* Brief Creation Modal - Only for admins */}
+      {user?.role === 'admin' && (
+        <BriefCreationModal 
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+        />
+      )}
 
       {/* Calendar Booking Modal */}
       <CalendarBookingModal

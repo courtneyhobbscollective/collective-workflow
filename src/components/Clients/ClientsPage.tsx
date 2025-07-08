@@ -4,7 +4,7 @@ import { Client } from '../../types';
 import RetainerBillingSetup from './RetainerBillingSetup';
 import { 
   Plus, Search, Filter, Edit, Trash2, MessageCircle, 
-  Building, Mail, Phone, Calendar, DollarSign, AlertTriangle, Repeat, FileText, Download, Eye, EyeOff
+  Building, Mail, Phone, Calendar, DollarSign, AlertTriangle, Repeat, FileText, Download, Eye, EyeOff, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 const ClientsPage: React.FC = () => {
@@ -53,6 +53,7 @@ const ClientsPage: React.FC = () => {
 
   const ClientCard: React.FC<{ client: Client }> = ({ client }) => {
     const [visiblePasswords, setVisiblePasswords] = useState<{ [key: number]: boolean }>({});
+    const [isExpanded, setIsExpanded] = useState(false);
 
     const togglePasswordVisibility = (index: number) => {
       setVisiblePasswords(prev => ({
@@ -62,171 +63,185 @@ const ClientsPage: React.FC = () => {
     };
 
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow overflow-hidden">
         <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center space-x-3">
-            <div className="h-12 w-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <Building className="h-6 w-6 text-indigo-600" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">{client.name}</h3>
-              <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                client.type === 'retainer' 
-                  ? 'bg-green-100 text-green-800' 
-                  : 'bg-blue-100 text-blue-800'
-              }`}>
-                {client.type}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setEditingClient(client)}
-              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
-              disabled={loading}
-            >
-              <Edit className="h-4 w-4" />
-            </button>
-            {client.type === 'retainer' && !client.retainerActive && (
-              <button
-                onClick={() => {
-                  setNewClientId(client.id);
-                  setShowRetainerSetup(true);
-                }}
-                className="p-2 text-gray-400 hover:text-green-600 rounded-lg hover:bg-green-50 transition-colors"
-                disabled={loading}
-                title="Setup Retainer Billing"
-              >
-                <DollarSign className="h-4 w-4" />
-              </button>
-            )}
-            {client.type === 'retainer' && client.retainerActive && (
-              <div className="flex items-center space-x-1 text-green-600">
-                <DollarSign className="h-4 w-4" />
-                <span className="text-xs font-medium">Active Retainer</span>
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">{client.companyName || client.name}</h3>
+              <div className="flex-shrink-0 ml-4">
+                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                  client.type === 'retainer' 
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {client.type}
+                </span>
               </div>
-            )}
-            <button 
-              onClick={() => setDeletingClient(client)}
-              className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-              disabled={loading}
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
+            </div>
           </div>
+          {client.type === 'retainer' && !client.retainerActive && (
+            <button
+              onClick={() => {
+                setNewClientId(client.id);
+                setShowRetainerSetup(true);
+              }}
+              className="p-2 text-gray-400 hover:text-green-600 rounded-lg hover:bg-green-50 transition-colors flex-shrink-0"
+              disabled={loading}
+              title="Setup Retainer Billing"
+            >
+              <DollarSign className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         <div className="space-y-3">
-          {client.companyName && (
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <Building className="h-4 w-4" />
-              <span>{client.companyName}</span>
-            </div>
-          )}
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <Mail className="h-4 w-4" />
-            <span>{client.email}</span>
+          <div className="flex items-center space-x-2 text-xs text-gray-600">
+            <span>{client.name}</span>
+          </div>
+          <div className="flex items-center space-x-2 text-xs text-gray-600">
+            <Mail className="h-3 w-3 flex-shrink-0" />
+            <span className="truncate">{client.email}</span>
           </div>
           {client.phone && (
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <Phone className="h-4 w-4" />
+            <div className="flex items-center space-x-2 text-xs text-gray-600">
+              <Phone className="h-3 w-3" />
               <span>{client.phone}</span>
             </div>
           )}
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <Calendar className="h-4 w-4" />
+          <div className="flex items-center space-x-2 text-xs text-gray-600">
+            <Calendar className="h-3 w-3" />
             <span>Created {new Date(client.createdAt).toLocaleDateString()}</span>
           </div>
-          {((client.brandColors && client.brandColors.length > 0) || (client.brandFonts && client.brandFonts.length > 0) || (client.socialMedia && client.socialMedia.length > 0)) && (
-            <div className="pt-2 border-t border-gray-100">
-              <div className="flex flex-wrap gap-1">
-                {client.brandColors?.slice(0, 3).map((color, index) => (
-                  <span key={index} className="inline-block w-3 h-3 rounded-full border border-gray-300" 
-                        style={{ backgroundColor: color.startsWith('#') ? color : undefined }}
-                        title={color}></span>
-                ))}
-                {client.brandFonts?.slice(0, 2).map((font, index) => (
-                  <span key={index} className="text-xs bg-gray-100 px-2 py-1 rounded" title={font}>
-                    {font.split(' ')[0]}
-                  </span>
-                ))}
-                {client.socialMedia?.slice(0, 2).map((account, index) => (
-                  <span key={index} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                    {account.platform}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+          <div className="flex items-center justify-start">
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="flex items-center space-x-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <span>{isExpanded ? 'Show less' : 'Show more'}</span>
+              {isExpanded ? (
+                <ChevronUp className="h-3 w-3" />
+              ) : (
+                <ChevronDown className="h-3 w-3" />
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* Social Media Accounts */}
-        {client.socialMedia && client.socialMedia.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <h4 className="text-sm font-medium text-gray-900 mb-2">Social Media Accounts</h4>
-            <div className="space-y-2">
-              {client.socialMedia.map((account, index) => (
-                <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-sm font-medium">{account.platform}</span>
-                    <span className="text-sm text-gray-600">@{account.username}</span>
-                    {account.password && (
-                      <div className="flex items-center space-x-1">
-                        <span className="text-sm text-gray-500">
-                          {visiblePasswords[index] ? account.password : '••••••••'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => togglePasswordVisibility(index)}
-                          className="text-gray-500 hover:text-gray-700"
-                        >
-                          {visiblePasswords[index] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                        </button>
-                      </div>
-                    )}
-                  </div>
+        {/* Collapsible Content */}
+        {isExpanded && (
+          <div className="mt-4 space-y-4 overflow-hidden">
+            {((client.brandColors && client.brandColors.length > 0) || (client.brandFonts && client.brandFonts.length > 0) || (client.socialMedia && client.socialMedia.length > 0)) && (
+              <div className="pt-2 border-t border-gray-100">
+                <div className="flex flex-wrap gap-1">
+                  {client.brandColors?.slice(0, 3).map((color, index) => (
+                    <span key={index} className="inline-block w-3 h-3 rounded-full border border-gray-300" 
+                          style={{ backgroundColor: color.startsWith('#') ? color : undefined }}
+                          title={color}></span>
+                  ))}
+                  {client.brandFonts?.slice(0, 2).map((font, index) => (
+                    <span key={index} className="text-xs bg-gray-100 px-2 py-1 rounded" title={font}>
+                      {font.split(' ')[0]}
+                    </span>
+                  ))}
+                  {client.socialMedia?.slice(0, 2).map((account, index) => (
+                    <span key={index} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                      {account.platform}
+                    </span>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+
+            {/* Social Media Accounts */}
+            {client.socialMedia && client.socialMedia.length > 0 && (
+              <div className="pt-4 border-t border-gray-100">
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Social Media Accounts</h4>
+                <div className="space-y-2">
+                  {client.socialMedia.map((account, index) => (
+                    <div key={index} className="bg-gray-50 p-2 rounded-md">
+                      <div className="flex flex-col space-y-1">
+                        <div className="flex items-center space-x-3">
+                          <span className="text-sm font-medium">{account.platform}</span>
+                          <span className="text-sm text-gray-600">@{account.username}</span>
+                        </div>
+                        {account.password && (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-gray-500">Password:</span>
+                            <span className="text-sm text-gray-500 font-mono">
+                              {visiblePasswords[index] ? account.password : '••••••••'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => togglePasswordVisibility(index)}
+                              className="text-gray-500 hover:text-gray-700"
+                            >
+                              {visiblePasswords[index] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Brand Documents */}
+            {(client.brandGuidelines || client.brandToneOfVoice) && (
+              <div className="pt-4 border-t border-gray-100">
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Brand Documents</h4>
+                <div className="space-y-2">
+                  {client.brandGuidelines && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <FileText className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-600">Brand Guidelines</span>
+                      </div>
+                      <button
+                        onClick={() => downloadFile(client.brandGuidelines!, 'brand-guidelines')}
+                        className="text-sm text-indigo-600 hover:text-indigo-700 transition-colors"
+                      >
+                        <Download className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                  {client.brandToneOfVoice && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <FileText className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm text-gray-600">Tone of Voice</span>
+                      </div>
+                      <button
+                        onClick={() => downloadFile(client.brandToneOfVoice!, 'tone-of-voice')}
+                        className="text-sm text-indigo-600 hover:text-indigo-700 transition-colors"
+                      >
+                        <Download className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Brand Documents */}
-        {(client.brandGuidelines || client.brandToneOfVoice) && (
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <h4 className="text-sm font-medium text-gray-900 mb-2">Brand Documents</h4>
-            <div className="space-y-2">
-              {client.brandGuidelines && (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <FileText className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm text-gray-600">Brand Guidelines</span>
-                  </div>
-                  <button
-                    onClick={() => downloadFile(client.brandGuidelines!, 'brand-guidelines')}
-                    className="text-sm text-indigo-600 hover:text-indigo-700 transition-colors"
-                  >
-                    <Download className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-              {client.brandToneOfVoice && (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <FileText className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm text-gray-600">Tone of Voice</span>
-                  </div>
-                  <button
-                    onClick={() => downloadFile(client.brandToneOfVoice!, 'tone-of-voice')}
-                    className="text-sm text-indigo-600 hover:text-indigo-700 transition-colors"
-                  >
-                    <Download className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Action Buttons at Bottom */}
+        <div className="flex items-center justify-start space-x-2 pt-4 border-t border-gray-100 mt-4">
+          <button
+            onClick={() => setEditingClient(client)}
+            className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+            disabled={loading}
+          >
+            <Edit className="h-4 w-4" />
+          </button>
+          <button 
+            onClick={() => setDeletingClient(client)}
+            className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+            disabled={loading}
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     );
   };

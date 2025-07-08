@@ -250,9 +250,9 @@ const CalendarPage: React.FC = () => {
           <p className="text-gray-600">Manage staff schedules and bookings</p>
         </div>
         <div className="flex items-center space-x-2">
-          <button className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-800 rounded-lg hover:bg-gray-200 border border-gray-300 transition-colors"
+          <button className="btn-primary"
             onClick={() => setShowOtherEventModal(true)}>
-            <CalendarIcon className="h-4 w-4" />
+            <CalendarIcon className="h-4 w-4 mr-2" />
             <span>Book Other Event</span>
           </button>
         </div>
@@ -480,7 +480,7 @@ const CalendarPage: React.FC = () => {
                 {(user && (user.role === 'admin' || user.id === selectedEntry.staffId)) && (
                   <div className="px-6 pb-5 pt-2 flex justify-end">
                     <button
-                      className="px-3 py-1.5 text-xs rounded-md bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 hover:text-red-900 transition-colors font-medium shadow-sm"
+                      className="px-3 py-1.5 text-xs rounded-md bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 hover:text-red-900 transition-colors font-medium shadow-sm whitespace-nowrap"
                       style={{ minWidth: 0 }}
                       onClick={async () => {
                         const staffIdx = staff.findIndex(s => s.id === selectedEntry.staffId);
@@ -599,8 +599,8 @@ const CalendarPage: React.FC = () => {
                 </div>
               </div>
               <div className="flex justify-end">
-                <button type="button" className="mr-2 px-4 py-2 rounded bg-gray-100 text-gray-700 hover:bg-gray-200" onClick={() => setShowOtherEventModal(false)}>Cancel</button>
-                <button type="submit" className="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700" disabled={otherEventLoading}>
+                <button type="button" className="mr-2 px-4 py-2 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 whitespace-nowrap" onClick={() => setShowOtherEventModal(false)}>Cancel</button>
+                <button type="submit" className="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 whitespace-nowrap" disabled={otherEventLoading}>
                   {otherEventLoading ? 'Booking...' : 'Book Event'}
                 </button>
               </div>

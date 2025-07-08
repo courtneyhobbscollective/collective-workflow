@@ -19,22 +19,42 @@ const Dashboard: React.FC = () => {
   const [showCreateBrief, setShowCreateBrief] = React.useState(false);
   const [showUserManagement, setShowUserManagement] = React.useState(false);
 
-  const StatCard = ({ title, value, change }: {
+  const StatCard = ({ title, value }: {
     title: string;
     value: string | number;
-    change?: string;
   }) => (
     <div className="card p-6 flex flex-col justify-center">
       <p className="text-2xl font-semibold text-gray-900">{value}</p>
       <p className="text-sm text-gray-600 mt-1">{title}</p>
-      {change && (
-        <span className="inline-flex items-center text-xs text-green-600 mt-1">
-          <TrendingUp className="h-3 w-3 mr-1" />
-          {change}
-        </span>
-      )}
     </div>
   );
+
+  // Calculate individual staff utilisation
+  const calculateStaffUtilisation = (staffId: string) => {
+    const staffMember = staff.find(s => s.id === staffId);
+    if (!staffMember) return 0;
+
+    const availableHours = staffMember.monthlyAvailableHours || 160;
+    if (availableHours === 0) return 0;
+
+    // Find all briefs assigned to this staff member
+    const assignedBriefs = briefs.filter(brief => 
+      brief.assignedStaff && brief.assignedStaff.includes(staffId)
+    );
+
+    // Calculate total assigned hours for this staff member
+    let totalAssignedHours = 0;
+    assignedBriefs.forEach(brief => {
+      if (brief.estimatedHours) {
+        const totalBriefHours = brief.estimatedHours.shoot + brief.estimatedHours.edit;
+        const staffCount = brief.assignedStaff?.length || 1;
+        const hoursPerStaff = totalBriefHours / staffCount;
+        totalAssignedHours += hoursPerStaff;
+      }
+    });
+
+    return Math.round((totalAssignedHours / availableHours) * 100);
+  };
 
   const recentBriefs = briefs.slice(0, 5);
   const recentNotifications = notifications.slice(0, 5);
@@ -84,22 +104,18 @@ const Dashboard: React.FC = () => {
         <StatCard
           title="Total Clients"
           value={dashboardStats?.totalClients || 0}
-          change="+12%"
         />
         <StatCard
           title="Active Briefs"
           value={dashboardStats?.activeBriefs || 0}
-          change="+8%"
         />
         <StatCard
           title="Monthly Revenue"
           value={`£${(dashboardStats?.monthlyRevenue || 0).toLocaleString()}`}
-          change="+23%"
         />
         <StatCard
-          title="Staff Utilization"
-          value={`${dashboardStats?.staffUtilization || 0}%`}
-          change="+5%"
+          title="Staff Utilisation"
+          value={`${dashboardStats?.staffUtilisation || 0}%`}
         />
       </div>
 
@@ -111,33 +127,35 @@ const Dashboard: React.FC = () => {
             <>
               <button 
                 onClick={() => navigate('/clients')}
-                className="flex items-center justify-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center justify-center p-4 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
               >
-                <Users className="h-5 w-5 text-gray-600 mr-2" />
-                <span className="text-sm font-medium text-gray-700">Add New Client</span>
+                <Users className="h-5 w-5 text-gray-700 mr-2" />
+                <span className="text-sm font-medium text-gray-800">Add New Client</span>
               </button>
               <button 
                 onClick={() => setShowUserManagement(true)}
-                className="flex items-center justify-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex items-center justify-center p-4 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
               >
-                <UserPlus className="h-5 w-5 text-gray-600 mr-2" />
-                <span className="text-sm font-medium text-gray-700">Add New User</span>
+                <UserPlus className="h-5 w-5 text-gray-700 mr-2" />
+                <span className="text-sm font-medium text-gray-800">Add New User</span>
               </button>
             </>
           )}
-          <button 
-            onClick={() => setShowCreateBrief(true)}
-            className="flex items-center justify-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <Plus className="h-5 w-5 text-gray-600 mr-2" />
-            <span className="text-sm font-medium text-gray-700">Create Brief</span>
-          </button>
+          {user?.role === 'admin' && (
+            <button 
+              onClick={() => setShowCreateBrief(true)}
+              className="flex items-center justify-center p-4 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
+            >
+              <Plus className="h-5 w-5 text-gray-700 mr-2" />
+              <span className="text-sm font-medium text-gray-800">Create Brief</span>
+            </button>
+          )}
           <button 
             onClick={() => navigate('/calendar')}
-            className="flex items-center justify-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            className="flex items-center justify-center p-4 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
           >
-            <Calendar className="h-5 w-5 text-gray-600 mr-2" />
-            <span className="text-sm font-medium text-gray-700">Schedule Shoot</span>
+            <Calendar className="h-5 w-5 text-gray-700 mr-2" />
+            <span className="text-sm font-medium text-gray-800">Book a Meeting</span>
           </button>
         </div>
       </div>
@@ -185,12 +203,12 @@ const Dashboard: React.FC = () => {
               <EmptyState
                 icon={Briefcase}
                 title="No briefs yet"
-                description="Get started by creating your first brief."
-                action={{
+                description={user?.role === 'admin' ? "Get started by creating your first brief." : "No briefs have been created yet."}
+                action={user?.role === 'admin' ? {
                   label: "Create Brief",
                   onClick: () => setShowCreateBrief(true),
                   icon: Plus
-                }}
+                } : undefined}
                 className="py-8"
               />
             )}
@@ -255,28 +273,33 @@ const Dashboard: React.FC = () => {
           <div className="p-6">
             {staff.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {staff.map((member) => (
-                  <div key={member.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                    <img
-                      src={member.avatar}
-                      alt={member.name}
-                      className="h-12 w-12 rounded-full"
-                    />
-                    <div className="flex-1">
-                      <h3 className="text-sm font-medium text-gray-900">{capitalizeWords(member.name)}</h3>
-                      <p className="text-sm text-gray-500">{member.skills.join(', ')}</p>
-                      <div className="mt-2">
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <span>Utilization</span>
-                          <span>87%</span>
-                        </div>
-                        <div className="mt-1 bg-gray-200 rounded-full h-2">
-                          <div className="bg-gray-900 h-2 rounded-full" style={{ width: '87%' }}></div>
+                {staff.map((member) => {
+                  const utilisation = calculateStaffUtilisation(member.id);
+                  return (
+                    <div key={member.id} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                      <img
+                        src={member.avatar}
+                        alt={member.name}
+                        className="h-12 w-12 rounded-full"
+                      />
+                      <div className="flex-1">
+                        <h3 className="text-sm font-medium text-gray-900">{capitalizeWords(member.name)}</h3>
+                        <div className="mt-2">
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <span>Utilisation</span>
+                            <span>{utilisation}%</span>
+                          </div>
+                          <div className="mt-1 bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-gray-900 h-2 rounded-full" 
+                              style={{ width: `${Math.min(utilisation, 100)}%` }}
+                            ></div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <EmptyState
@@ -290,11 +313,13 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Brief Creation Modal */}
-      <BriefCreationModal 
-        isOpen={showCreateBrief}
-        onClose={() => setShowCreateBrief(false)}
-      />
+      {/* Brief Creation Modal - Only for admins */}
+      {user?.role === 'admin' && (
+        <BriefCreationModal 
+          isOpen={showCreateBrief}
+          onClose={() => setShowCreateBrief(false)}
+        />
+      )}
 
       {/* User Management Modal */}
       <UserManagement

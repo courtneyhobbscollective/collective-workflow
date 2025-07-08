@@ -5,7 +5,7 @@ import { ChatChannel, ChatMessage } from '../../types';
 import { ChatService } from '../../lib/chatService';
 import { 
   Send, Paperclip, Smile, Search, Hash, 
-  Users, MessageCircle, Image, File, Plus 
+  Users, MessageCircle, Image, File, Plus, Zap 
 } from 'lucide-react';
 import { capitalizeWords } from '../../lib/capitalizeWords';
 
@@ -20,11 +20,33 @@ const ChatPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [newChannelName, setNewChannelName] = useState('');
   const [creatingChannel, setCreatingChannel] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const subscriptionRef = useRef<any>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const gifPickerRef = useRef<HTMLDivElement>(null);
+
+  // Close pickers when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+      if (gifPickerRef.current && !gifPickerRef.current.contains(event.target as Node)) {
+        setShowGifPicker(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -116,6 +138,16 @@ const ChatPage: React.FC = () => {
     }
   };
 
+  const handleEmojiSelect = (emoji: string) => {
+    setMessageText(prev => prev + emoji);
+    setShowEmojiPicker(false);
+  };
+
+  const handleGifSelect = (gifUrl: string) => {
+    setMessageText(prev => prev + ` ![GIF](${gifUrl}) `);
+    setShowGifPicker(false);
+  };
+
   const handleCreateChannel = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newChannelName.trim() || !user || creatingChannel) return;
@@ -134,6 +166,8 @@ const ChatPage: React.FC = () => {
     }
   };
 
+
+
   const ChannelList: React.FC = () => (
     <div className="w-64 bg-gray-50 border-r border-gray-200 flex flex-col">
       <div className="p-4 border-b border-gray-200">
@@ -151,38 +185,8 @@ const ChatPage: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto">
         <div className="p-2">
-          <h3 className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            General Channels
-          </h3>
-          {chatChannels
-            .filter(channel => ['general', 'staff'].includes(channel.name))
-            .map(channel => {
-              const isSelected = selectedChannel?.id === channel.id;
-              const displayName = channel.name === 'staff' ? 'Staff' : 'General';
-              const description = channel.name === 'staff' ? 'Internal team chat' : 'General discussion';
-              
-              return (
-                <button
-                  key={channel.id}
-                  onClick={() => setSelectedChannel(channel)}
-                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
-                    isSelected 
-                      ? 'bg-indigo-100 text-indigo-700' 
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <Hash className="h-4 w-4" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{displayName}</p>
-                    <p className="text-xs text-gray-500 truncate">{description}</p>
-                  </div>
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                </button>
-              );
-            })}
-          
           {/* Create Channel Button for Staff */}
-          <div className="mt-4 px-3">
+          <div className="mb-4 px-3">
             <button
               onClick={() => setShowCreateChannel(true)}
               className="w-full flex items-center justify-center space-x-2 px-3 py-2 text-sm text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors"
@@ -192,40 +196,74 @@ const ChatPage: React.FC = () => {
             </button>
           </div>
 
-          <h3 className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mt-4">
-            Client Channels
-          </h3>
-          {chatChannels
-            .filter(channel => channel.name !== 'staff')
-            .filter(channel => {
-              if (!searchTerm) return true;
-              const client = clients.find(c => c.id === channel.clientId);
-              return client?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                     channel.name.toLowerCase().includes(searchTerm.toLowerCase());
-            })
-            .map(channel => {
-              const client = clients.find(c => c.id === channel.clientId);
-              const isSelected = selectedChannel?.id === channel.id;
-              
-              return (
-                <button
-                  key={channel.id}
-                  onClick={() => setSelectedChannel(channel)}
-                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
-                    isSelected 
-                      ? 'bg-indigo-100 text-indigo-700' 
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <Hash className="h-4 w-4" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{channel.name}</p>
-                    <p className="text-xs text-gray-500 truncate">{client?.name || 'Unknown Client'}</p>
-                  </div>
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                </button>
-              );
-            })}
+          {/* All Channels */}
+          {chatChannels.length === 0 ? (
+            <div className="px-3 py-8 text-center">
+              <MessageCircle className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">No channels yet</p>
+              <p className="text-xs text-gray-400 mt-1">Channels will be created automatically for clients</p>
+            </div>
+          ) : (
+            chatChannels
+              .filter(channel => {
+                if (!searchTerm) return true;
+                const client = clients.find(c => c.id === channel.clientId);
+                return client?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                       channel.name.toLowerCase().includes(searchTerm.toLowerCase());
+              })
+              .map(channel => {
+                const client = clients.find(c => c.id === channel.clientId);
+                const isSelected = selectedChannel?.id === channel.id;
+                
+                // Determine display name and description based on channel type
+                let displayName = channel.name;
+                let description = '';
+                
+                if (channel.name === 'staff') {
+                  displayName = 'Staff';
+                  description = 'Internal team chat';
+                } else if (channel.name === 'general') {
+                  displayName = 'General';
+                  description = 'General discussion';
+                } else if (channel.name.startsWith('client-')) {
+                  // This is a client channel
+                  if (client) {
+                    displayName = client.companyName || client.name;
+                    description = `Client: ${client.name}`;
+                  } else {
+                    displayName = channel.name.replace('client-', '').replace(/-/g, ' ');
+                    description = 'Client channel';
+                  }
+                } else if (client) {
+                  // Fallback for any client channels
+                  displayName = client.companyName || client.name;
+                  description = `Client: ${client.name}`;
+                } else {
+                  // Custom staff channel
+                  displayName = channel.name.replace(/-/g, ' ');
+                  description = 'Staff channel';
+                }
+                
+                return (
+                  <button
+                    key={channel.id}
+                    onClick={() => setSelectedChannel(channel)}
+                    className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-left transition-colors ${
+                      isSelected 
+                        ? 'bg-indigo-100 text-indigo-700' 
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Hash className="h-4 w-4" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{displayName}</p>
+                      <p className="text-xs text-gray-500 truncate">{description}</p>
+                    </div>
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  </button>
+                );
+              })
+          )}
         </div>
       </div>
     </div>
@@ -275,47 +313,7 @@ const ChatPage: React.FC = () => {
     <div className="h-[calc(100vh-8rem)] flex bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       <ChannelList />
       
-      {/* Create Channel Modal */}
-      {showCreateChannel && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Create New Channel</h3>
-            <form onSubmit={handleCreateChannel}>
-              <div className="mb-4">
-                <label htmlFor="channelName" className="block text-sm font-medium text-gray-700 mb-2">
-                  Channel Name
-                </label>
-                <input
-                  type="text"
-                  id="channelName"
-                  value={newChannelName}
-                  onChange={(e) => setNewChannelName(e.target.value)}
-                  placeholder="Enter channel name..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  disabled={creatingChannel}
-                />
-              </div>
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateChannel(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
-                  disabled={creatingChannel}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!newChannelName.trim() || creatingChannel}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {creatingChannel ? 'Creating...' : 'Create Channel'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+
       
       {selectedChannel ? (
         <div className="flex-1 flex flex-col">
@@ -388,13 +386,64 @@ const ChatPage: React.FC = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   disabled={sending}
                 />
+                
+                {/* Emoji Picker */}
+                {showEmojiPicker && (
+                  <div ref={emojiPickerRef} className="absolute bottom-full right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-10">
+                    <div className="grid grid-cols-8 gap-1">
+                      {['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏'].map((emoji, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => handleEmojiSelect(emoji)}
+                          className="p-1 hover:bg-gray-100 rounded text-lg"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* GIF Picker */}
+                {showGifPicker && (
+                  <div ref={gifPickerRef} className="absolute bottom-full right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-10 w-64">
+                    <div className="text-sm font-medium text-gray-700 mb-2">Popular GIFs</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        'https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif',
+                        'https://media.giphy.com/media/26u4cqi2I30juCOGY/giphy.gif',
+                        'https://media.giphy.com/media/l2Je66jG6mAAZxgqI/giphy.gif',
+                        'https://media.giphy.com/media/3o7TKDEqg6OvOWzLtC/giphy.gif'
+                      ].map((gif, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => handleGifSelect(gif)}
+                          className="w-full h-20 bg-gray-100 rounded overflow-hidden hover:opacity-75"
+                        >
+                          <img src={gif} alt="GIF" className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               
               <button
                 type="button"
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                 className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
               >
                 <Smile className="h-5 w-5" />
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setShowGifPicker(!showGifPicker)}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+              >
+                <Zap className="h-5 w-5" />
               </button>
               
               <button
@@ -415,6 +464,48 @@ const ChatPage: React.FC = () => {
             <p className="mt-1 text-sm text-gray-500">
               Choose a channel from the sidebar to start chatting.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Create Channel Modal */}
+      {showCreateChannel && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Create New Channel</h3>
+            <form onSubmit={handleCreateChannel}>
+              <div className="mb-4">
+                <label htmlFor="channelName" className="block text-sm font-medium text-gray-700 mb-2">
+                  Channel Name
+                </label>
+                <input
+                  type="text"
+                  id="channelName"
+                  value={newChannelName}
+                  onChange={(e) => setNewChannelName(e.target.value)}
+                  placeholder="Enter channel name..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  disabled={creatingChannel}
+                />
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateChannel(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors whitespace-nowrap"
+                  disabled={creatingChannel}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!newChannelName.trim() || creatingChannel}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                  {creatingChannel ? 'Creating...' : 'Create Channel'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

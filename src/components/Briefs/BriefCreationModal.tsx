@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Brief, BriefStage } from '../../types';
-import { X, Plus, Trash2, Calendar, DollarSign, Clock, User } from 'lucide-react';
+import { X, Plus, Trash2, Calendar, PoundSterling, Clock } from 'lucide-react';
 import { capitalizeWords } from '../../lib/capitalizeWords';
 
 interface BriefCreationModalProps {
@@ -10,7 +10,7 @@ interface BriefCreationModalProps {
 }
 
 const BriefCreationModal: React.FC<BriefCreationModalProps> = ({ isOpen, onClose }) => {
-  const { clients, staff, addBrief, addNotification, loading, error, clearError } = useApp();
+  const { clients, addBrief, addNotification, loading, error, clearError } = useApp();
   const [formData, setFormData] = useState({
     clientId: '',
     title: '',
@@ -119,7 +119,7 @@ const BriefCreationModal: React.FC<BriefCreationModalProps> = ({ isOpen, onClose
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.clientId) newErrors.clientId = 'Client is required';
+    if (!formData.clientId) newErrors.clientId = 'Company is required';
     if (!formData.title.trim()) newErrors.title = 'Title is required';
     if (formData.projectValue <= 0) newErrors.projectValue = 'Project value must be greater than 0';
     if (!formData.dueDate) newErrors.dueDate = 'Due date is required';
@@ -173,25 +173,11 @@ const BriefCreationModal: React.FC<BriefCreationModalProps> = ({ isOpen, onClose
 
       await addBrief(briefData);
 
-      // Add notification for assigned staff
-      if (formData.assignedStaff.length > 0) {
-        formData.assignedStaff.forEach(staffId => {
-          addNotification({
-            userId: staffId,
-            title: 'New Brief Assigned',
-            message: `You've been assigned to "${formData.title}" for ${client.name}`,
-            type: 'info',
-            read: false,
-            actionUrl: '/briefs'
-          });
-        });
-      }
-
       // Add admin notification
       addNotification({
         userId: '1', // Admin
         title: 'New Brief Created',
-        message: `"${formData.title}" has been created for ${client.name}`,
+        message: `"${formData.title}" has been created for ${client.companyName || client.name}`,
         type: 'success',
         read: false,
         actionUrl: '/briefs'
@@ -226,7 +212,7 @@ const BriefCreationModal: React.FC<BriefCreationModalProps> = ({ isOpen, onClose
 
   return (
     <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-xl">
           <h2 className="text-xl font-semibold text-gray-900">Create New Brief</h2>
           <button
@@ -258,7 +244,7 @@ const BriefCreationModal: React.FC<BriefCreationModalProps> = ({ isOpen, onClose
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Client *
+                Company *
               </label>
               <select
                 value={formData.clientId}
@@ -266,10 +252,10 @@ const BriefCreationModal: React.FC<BriefCreationModalProps> = ({ isOpen, onClose
                 className={`input ${errors.clientId ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : ''}`}
                 disabled={isSubmitting}
               >
-                <option value="">Select a client...</option>
+                <option value="">Select a company...</option>
                 {clients.map(client => (
                   <option key={client.id} value={client.id}>
-                    {client.name} ({client.type})
+                    {client.companyName || client.name}
                   </option>
                 ))}
               </select>
@@ -313,7 +299,6 @@ const BriefCreationModal: React.FC<BriefCreationModalProps> = ({ isOpen, onClose
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                <DollarSign className="inline h-4 w-4 mr-1" />
                 Project Value (£) *
               </label>
               <input
@@ -394,48 +379,6 @@ const BriefCreationModal: React.FC<BriefCreationModalProps> = ({ isOpen, onClose
                 className="input"
                 disabled={isSubmitting}
               />
-            </div>
-          </div>
-
-          {/* Staff Assignment */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              <User className="inline h-4 w-4 mr-1" />
-              Assign Staff
-            </label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {staff.map(member => (
-                <label key={member.id} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={formData.assignedStaff.includes(member.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setFormData({
-                          ...formData,
-                          assignedStaff: [...formData.assignedStaff, member.id]
-                        });
-                      } else {
-                        setFormData({
-                          ...formData,
-                          assignedStaff: formData.assignedStaff.filter(id => id !== member.id)
-                        });
-                      }
-                    }}
-                    className="rounded border-gray-300 text-gray-900 focus:ring-gray-900"
-                    disabled={isSubmitting}
-                  />
-                  <img
-                    src={member.avatar}
-                    alt={capitalizeWords(member.name)}
-                    className="h-8 w-8 rounded-full"
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{capitalizeWords(member.name)}</p>
-                    <p className="text-xs text-gray-500">{member.skills.join(', ')}</p>
-                  </div>
-                </label>
-              ))}
             </div>
           </div>
 

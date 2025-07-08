@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../../context/AppContext';
+import { useAuth } from '../../context/AuthContext';
 import { Invoice } from '../../types';
 import { BillingService } from '../../lib/billingService';
 import LoadingSpinner from '../LoadingSpinner';
@@ -9,7 +10,7 @@ import {
   DollarSign, FileText, Calendar, AlertTriangle, 
   CheckCircle, Clock, Download, Send, Plus, Filter,
   Zap, Users, FileText as FileTextIcon, Bug, Trash2,
-  TrendingUp, CreditCard
+  TrendingUp, CreditCard, X
 } from 'lucide-react';
 
 interface MonthlyStats {
@@ -31,8 +32,10 @@ const BillingPage: React.FC = () => {
   const [debugLoading, setDebugLoading] = useState(false);
   const [deletingInvoice, setDeletingInvoice] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStats[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [hoveredStatusInvoice, setHoveredStatusInvoice] = useState<string | null>(null);
 
   // Group invoices by month
   useEffect(() => {
@@ -154,6 +157,43 @@ const BillingPage: React.FC = () => {
     }
   };
 
+  const handleDownloadInvoice = async (invoice: Invoice) => {
+    try {
+      // This would typically generate and download a PDF
+      console.log('Downloading invoice:', invoice.invoiceNumber);
+      alert(`Downloading invoice ${invoice.invoiceNumber}`);
+      // TODO: Implement actual PDF generation and download
+    } catch (error) {
+      console.error('Failed to download invoice:', error);
+      alert('Failed to download invoice');
+    }
+  };
+
+  const handleSendInvoice = async (invoice: Invoice) => {
+    try {
+      // This would typically send the invoice via email
+      console.log('Sending invoice:', invoice.invoiceNumber);
+      alert(`Sending invoice ${invoice.invoiceNumber} to client`);
+      // TODO: Implement actual email sending
+    } catch (error) {
+      console.error('Failed to send invoice:', error);
+      alert('Failed to send invoice');
+    }
+  };
+
+  const handleUpdateInvoiceStatus = async (invoice: Invoice, newStatus: Invoice['status']) => {
+    try {
+      // This would update the invoice status in the database
+      console.log(`Updating invoice ${invoice.invoiceNumber} status to ${newStatus}`);
+      alert(`Invoice status updated to ${newStatus}`);
+      // TODO: Implement actual status update
+      await refreshInvoices(); // Refresh invoices after status change
+    } catch (error) {
+      console.error('Failed to update invoice status:', error);
+      alert('Failed to update invoice status');
+    }
+  };
+
   const getStatusColor = (status: Invoice['status']) => {
     switch (status) {
       case 'draft': return 'badge-neutral';
@@ -174,101 +214,138 @@ const BillingPage: React.FC = () => {
     }
   };
 
-  const InvoiceCard: React.FC<{ invoice: Invoice }> = ({ invoice }) => {
+  const InvoiceRow: React.FC<{ invoice: Invoice }> = ({ invoice }) => {
     const client = clients.find(c => c.id === invoice.clientId);
     const brief = briefs.find(b => b.id === invoice.briefId);
+    const { user } = useAuth();
+    const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+    const statusDropdownTimeout = useRef<NodeJS.Timeout | null>(null);
+
+    const handleStatusMouseEnter = () => {
+      if (statusDropdownTimeout.current) clearTimeout(statusDropdownTimeout.current);
+      setStatusDropdownOpen(true);
+    };
+    const handleStatusMouseLeave = () => {
+      statusDropdownTimeout.current = setTimeout(() => setStatusDropdownOpen(false), 120);
+    };
 
     return (
-      <div className="card card-hover p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">{invoice.invoiceNumber}</h3>
-            <p className="text-sm text-gray-600">{client?.name}</p>
-            {brief && (
-              <p className="text-xs text-gray-500 mt-1">{brief.title}</p>
-            )}
-          </div>
-          <div className="text-right">
-            <p className="text-2xl font-bold text-gray-900">
-              £{invoice.totalAmount.toLocaleString()}
-            </p>
-            <span className={`badge ${getStatusColor(invoice.status)} mt-2`}>
-              {getStatusIcon(invoice.status)}
-              <span className="ml-1 capitalize">{invoice.status}</span>
-            </span>
-          </div>
-        </div>
-
-        <div className="space-y-2 mb-4">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Amount:</span>
-            <span className="text-gray-900">£{invoice.amount.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">VAT:</span>
-            <span className="text-gray-900">£{invoice.vatAmount.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between text-sm font-medium border-t pt-2">
-            <span className="text-gray-900">Total:</span>
-            <span className="text-gray-900">£{invoice.totalAmount.toLocaleString()}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-          <div className="flex items-center space-x-1">
-            <Calendar className="h-4 w-4" />
-            <span>Due: {new Date(invoice.dueDate).toLocaleDateString()}</span>
-          </div>
-          {invoice.paidDate && (
-            <div className="flex items-center space-x-1 text-green-600">
-              <CheckCircle className="h-4 w-4" />
-              <span>Paid: {new Date(invoice.paidDate).toLocaleDateString()}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-          <div className="flex space-x-2">
-            <button className="btn-ghost text-sm">
-              <Download className="h-4 w-4 mr-1" />
-              Download
-            </button>
-            {invoice.status === 'draft' && (
-              <button className="btn-ghost text-sm text-blue-600 hover:text-blue-700">
-                <Send className="h-4 w-4 mr-1" />
-                Send
-              </button>
-            )}
-            <button
-              onClick={() => setShowDeleteConfirm(invoice.id)}
-              disabled={deletingInvoice === invoice.id}
-              className="btn-ghost text-sm text-red-600 hover:text-red-700"
-            >
-              {deletingInvoice === invoice.id ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                  </svg>
-                  Deleting...
+      <div 
+        className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer relative z-10"
+        onClick={() => setSelectedInvoice(invoice)}
+        style={{ overflow: 'visible' }}
+      >
+        <div className="flex items-center space-x-6 flex-1">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center space-x-3">
+              <h3 className="text-sm font-semibold text-gray-900 truncate">{invoice.invoiceNumber}</h3>
+              <div className="relative z-30" style={{ overflow: 'visible' }}>
+                <span 
+                  className={`badge ${getStatusColor(invoice.status)} ${user?.role === 'admin' ? 'cursor-pointer hover:bg-opacity-80' : ''}`}
+                  onMouseEnter={user?.role === 'admin' ? handleStatusMouseEnter : undefined}
+                  onMouseLeave={user?.role === 'admin' ? handleStatusMouseLeave : undefined}
+                >
+                  {getStatusIcon(invoice.status)}
+                  <span className="ml-1 capitalize">{invoice.status}</span>
                 </span>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Delete
-                </>
-              )}
-            </button>
-          </div>
-          
-          {invoice.status === 'overdue' && (
-            <div className="flex items-center space-x-1 text-red-600">
-              <AlertTriangle className="h-4 w-4" />
-              <span className="text-sm font-medium">
-                {Math.ceil((new Date().getTime() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24))} days overdue
+                {user?.role === 'admin' && statusDropdownOpen && (
+                  <div
+                    className="absolute top-full mt-2 left-0 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-[120px]"
+                    style={{ overflow: 'visible' }}
+                    onMouseEnter={handleStatusMouseEnter}
+                    onMouseLeave={handleStatusMouseLeave}
+                  >
+                    <div className="text-xs font-medium text-gray-900 mb-2">Update Status</div>
+                    {(['draft', 'sent', 'paid', 'overdue'] as const).map(status => (
+                      <button
+                        key={status}
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleUpdateInvoiceStatus(invoice, status);
+                          setStatusDropdownOpen(false);
+                        }}
+                        className={`block w-full text-left text-xs py-1 px-2 rounded hover:bg-gray-50 transition-colors ${
+                          invoice.status === status ? 'bg-gray-100 font-medium' : ''
+                        }`}
+                      >
+                        {status === 'draft' ? 'Draft' :
+                         status === 'sent' ? 'Sent' :
+                         status === 'paid' ? 'Paid' :
+                         status === 'overdue' ? 'Overdue' : status}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <span className="text-xs text-blue-700 bg-blue-100 px-2 py-1 rounded font-medium">
+                {client?.companyName || client?.name}
               </span>
+              <span className={`text-xs px-2 py-1 rounded font-medium ${
+                invoice.billingType === 'retainer' 
+                  ? 'text-purple-700 bg-purple-100' 
+                  : 'text-green-700 bg-green-100'
+              }`}>
+                {invoice.billingType === 'retainer' ? 'Retainer' : 'Project'}
+              </span>
+              {brief?.poNumber && (
+                <span className="text-xs text-orange-700 bg-orange-100 px-2 py-1 rounded font-medium">
+                  PO: {brief.poNumber}
+                </span>
+              )}
+              {client?.companyName && client?.name && client.companyName !== client.name && (
+                <span className="text-sm text-gray-600">{client.name}</span>
+              )}
             </div>
+            {brief && (
+              <p className="text-xs text-gray-500 mt-1 truncate">{brief.title}</p>
+            )}
+          </div>
+          <div className="text-right min-w-0">
+            <p className="text-lg font-bold text-gray-900">£{invoice.totalAmount.toLocaleString()}</p>
+            <p className="text-xs text-gray-500">Due: {new Date(invoice.dueDate).toLocaleDateString()}</p>
+            {invoice.paidDate && (
+              <p className="text-xs text-green-600">Paid: {new Date(invoice.paidDate).toLocaleDateString()}</p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center space-x-2 ml-4">
+          <button 
+            className="btn-ghost text-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDownloadInvoice(invoice);
+            }}
+          >
+            <Download className="h-4 w-4" />
+          </button>
+          {invoice.status === 'draft' && (
+            <button 
+              className="btn-ghost text-sm text-blue-600 hover:text-blue-700"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSendInvoice(invoice);
+              }}
+            >
+              <Send className="h-4 w-4" />
+            </button>
           )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDeleteConfirm(invoice.id);
+            }}
+            disabled={deletingInvoice === invoice.id}
+            className="btn-ghost text-sm text-red-600 hover:text-red-700"
+          >
+            {deletingInvoice === invoice.id ? (
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+              </svg>
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+          </button>
         </div>
       </div>
     );
@@ -298,49 +375,29 @@ const BillingPage: React.FC = () => {
       {/* Overall Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="card p-4">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <DollarSign className="h-6 w-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-gray-900">£{totalRevenue.toLocaleString()}</p>
-            </div>
+          <div>
+            <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+            <p className="text-2xl font-bold text-gray-900">£{totalRevenue.toLocaleString()}</p>
           </div>
         </div>
         <div className="card p-4">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Clock className="h-6 w-6 text-blue-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Pending</p>
-              <p className="text-2xl font-bold text-gray-900">£{pendingAmount.toLocaleString()}</p>
-            </div>
+          <div>
+            <p className="text-sm font-medium text-gray-600">Pending</p>
+            <p className="text-2xl font-bold text-gray-900">£{pendingAmount.toLocaleString()}</p>
           </div>
         </div>
-        <div className="card p-4">
-          <div className="flex items-center">
-            <div className="p-2 bg-red-100 rounded-lg">
-              <AlertTriangle className="h-6 w-6 text-red-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Overdue</p>
-              <p className="text-2xl font-bold text-gray-900">£{overdueAmount.toLocaleString()}</p>
-            </div>
+        <div className="card p-4 bg-red-50 border-red-200">
+          <div>
+            <p className="text-sm font-medium text-red-600">Overdue</p>
+            <p className="text-2xl font-bold text-red-900">£{overdueAmount.toLocaleString()}</p>
           </div>
         </div>
-        <div className="card p-4">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <CreditCard className="h-6 w-6 text-purple-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total VAT Liability</p>
-              <p className="text-2xl font-bold text-gray-900">
-                £{(invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.vatAmount, 0)).toLocaleString()}
-              </p>
-            </div>
+        <div className="card p-4 bg-purple-50 border-purple-200">
+          <div>
+            <p className="text-sm font-medium text-purple-600">Total VAT Liability</p>
+            <p className="text-2xl font-bold text-purple-900">
+              £{(invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.vatAmount, 0)).toLocaleString()}
+            </p>
           </div>
         </div>
       </div>
@@ -380,10 +437,9 @@ const BillingPage: React.FC = () => {
 
       {activeTab === 'invoices' && (
         <div className="space-y-6">
-          {/* Monthly Breakdown */}
-          <div className="card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Monthly Breakdown</h2>
+          {/* Invoice Filters */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
@@ -395,50 +451,6 @@ const BillingPage: React.FC = () => {
                   </option>
                 ))}
               </select>
-            </div>
-
-            {/* Monthly Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-green-50 p-4 rounded-lg">
-                <div className="flex items-center">
-                  <TrendingUp className="h-5 w-5 text-green-600 mr-2" />
-                  <div>
-                    <p className="text-sm font-medium text-green-600">Revenue</p>
-                    <p className="text-lg font-bold text-green-900">£{currentMonthStats.totalRevenue.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <div className="flex items-center">
-                  <Clock className="h-5 w-5 text-blue-600 mr-2" />
-                  <div>
-                    <p className="text-sm font-medium text-blue-600">Pending</p>
-                    <p className="text-lg font-bold text-blue-900">£{currentMonthStats.totalPending.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-red-50 p-4 rounded-lg">
-                <div className="flex items-center">
-                  <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />
-                  <div>
-                    <p className="text-sm font-medium text-red-600">Overdue</p>
-                    <p className="text-lg font-bold text-red-900">£{currentMonthStats.totalOverdue.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <div className="flex items-center">
-                  <CreditCard className="h-5 w-5 text-purple-600 mr-2" />
-                  <div>
-                    <p className="text-sm font-medium text-purple-600">VAT Liability</p>
-                    <p className="text-lg font-bold text-purple-900">£{currentMonthStats.vatLiability.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Invoice Filters */}
-            <div className="flex items-center space-x-4 mb-4">
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value as any)}
@@ -450,18 +462,53 @@ const BillingPage: React.FC = () => {
                 <option value="paid">Paid</option>
                 <option value="overdue">Overdue</option>
               </select>
-              <span className="text-sm text-gray-500">
-                {filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? 's' : ''} in {selectedMonth}
-              </span>
             </div>
+            <span className="text-sm text-gray-500">
+              {filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? 's' : ''} in {selectedMonth}
+            </span>
           </div>
 
-          {/* Invoices Grid */}
+          {/* Invoices by Month */}
           {filteredInvoices.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredInvoices.map((invoice) => (
-                <InvoiceCard key={invoice.id} invoice={invoice} />
-              ))}
+            <div className="space-y-6">
+              {(() => {
+                // Group invoices by month
+                const groupedInvoices = filteredInvoices.reduce((groups, invoice) => {
+                  const month = new Date(invoice.dueDate).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long' 
+                  });
+                  if (!groups[month]) {
+                    groups[month] = [];
+                  }
+                  groups[month].push(invoice);
+                  return groups;
+                }, {} as Record<string, Invoice[]>);
+
+                return Object.entries(groupedInvoices).map(([month, monthInvoices]) => {
+                  const monthTotal = monthInvoices.reduce((sum, invoice) => sum + invoice.totalAmount, 0);
+                  return (
+                    <div key={month} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-gray-900">{month}</h3>
+                        <div className="flex items-center space-x-4">
+                          <span className="text-sm text-gray-500">
+                            {monthInvoices.length} invoice{monthInvoices.length !== 1 ? 's' : ''}
+                          </span>
+                          <span className="text-sm font-semibold text-gray-900">
+                            <span className="bg-[#682dba] text-white rounded-full px-4 py-1 font-semibold">Monthly total: £{monthTotal.toLocaleString()}</span>
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {monthInvoices.map((invoice) => (
+                          <InvoiceRow key={invoice.id} invoice={invoice} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           ) : (
             <EmptyState
@@ -502,6 +549,163 @@ const BillingPage: React.FC = () => {
                 </pre>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Invoice Detail Modal */}
+      {selectedInvoice && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900">Invoice Details</h2>
+                <button
+                  onClick={() => setSelectedInvoice(null)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              {(() => {
+                const client = clients.find(c => c.id === selectedInvoice.clientId);
+                const brief = briefs.find(b => b.id === selectedInvoice.briefId);
+                
+                return (
+                  <div className="space-y-6">
+                    {/* Header Info */}
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900">{selectedInvoice.invoiceNumber}</h3>
+                        <p className="text-sm text-gray-600 mt-1">{client?.name}</p>
+                        {client?.companyName && client.companyName !== client.name && (
+                          <p className="text-sm text-gray-500">{client.companyName}</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-gray-900">£{selectedInvoice.totalAmount.toLocaleString()}</p>
+                        <span className={`badge ${getStatusColor(selectedInvoice.status)} mt-2`}>
+                          {getStatusIcon(selectedInvoice.status)}
+                          <span className="ml-1 capitalize">{selectedInvoice.status}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Project Info */}
+                    {brief && (
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="font-medium text-gray-900 mb-2">Project Details</h4>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-500">Project:</span>
+                            <p className="font-medium">{brief.title}</p>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Work Type:</span>
+                            <p className="font-medium capitalize">{brief.workType}</p>
+                          </div>
+                          {brief.poNumber && (
+                            <div>
+                              <span className="text-gray-500">PO Number:</span>
+                              <p className="font-medium">{brief.poNumber}</p>
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-gray-500">Project Value:</span>
+                            <p className="font-medium">£{brief.projectValue.toLocaleString()}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Invoice Details */}
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="font-medium text-gray-900 mb-2">Invoice Details</h4>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Subtotal:</span>
+                          <span className="font-medium">£{selectedInvoice.amount.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">VAT:</span>
+                          <span className="font-medium">£{selectedInvoice.vatAmount.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-sm font-semibold border-t pt-2">
+                          <span>Total:</span>
+                          <span>£{selectedInvoice.totalAmount.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Dates */}
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Important Dates</h4>
+                        <div className="space-y-2 text-sm">
+                          <div>
+                            <span className="text-gray-500">Due Date:</span>
+                            <p className="font-medium">{new Date(selectedInvoice.dueDate).toLocaleDateString()}</p>
+                          </div>
+                          {selectedInvoice.paidDate && (
+                            <div>
+                              <span className="text-gray-500">Paid Date:</span>
+                              <p className="font-medium text-green-600">{new Date(selectedInvoice.paidDate).toLocaleDateString()}</p>
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-gray-500">Created:</span>
+                            <p className="font-medium">{new Date(selectedInvoice.createdAt).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-2">Billing Info</h4>
+                        <div className="space-y-2 text-sm">
+                          <div>
+                            <span className="text-gray-500">Billing Type:</span>
+                            <p className="font-medium capitalize">{selectedInvoice.billingType}</p>
+                          </div>
+                          {selectedInvoice.billingStage && (
+                            <div>
+                              <span className="text-gray-500">Billing Stage:</span>
+                              <p className="font-medium capitalize">{selectedInvoice.billingStage}</p>
+                            </div>
+                          )}
+                          {selectedInvoice.billingPercentage && (
+                            <div>
+                              <span className="text-gray-500">Percentage:</span>
+                              <p className="font-medium">{selectedInvoice.billingPercentage}%</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                      <button 
+                        className="btn-secondary"
+                        onClick={() => handleDownloadInvoice(selectedInvoice)}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
+                      </button>
+                      {selectedInvoice.status === 'draft' && (
+                        <button 
+                          className="btn-primary"
+                          onClick={() => handleSendInvoice(selectedInvoice)}
+                        >
+                          <Send className="h-4 w-4 mr-2" />
+                          Send Invoice
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         </div>
       )}

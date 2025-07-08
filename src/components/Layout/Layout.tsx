@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { 
   Home, Users, Briefcase, Calendar, MessageCircle, 
-  Receipt, Settings, Bell, Search, Menu, X, LogOut 
+  CreditCard, Settings, Bell, Menu, X, LogOut, FileText 
 } from 'lucide-react';
 import Logo from '../Logo';
 
@@ -14,20 +14,39 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
-  const { notifications } = useApp();
+  const { notifications, markAllNotificationsRead, clearAllNotifications } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
   const unreadNotifications = notifications.filter(n => !n.read).length;
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (notifRef.current && !notifRef.current.contains(event.target as Node)) {
+        setNotifOpen(false);
+      }
+    }
+    if (notifOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [notifOpen]);
+
   const navigation = [
     { name: 'Dashboard', href: '/', icon: Home },
-    { name: 'Clients', href: '/clients', icon: Users, adminOnly: true },
-    { name: 'Briefs', href: '/briefs', icon: Briefcase },
+    { name: 'Briefs', href: '/briefs', icon: FileText },
     { name: 'Calendar', href: '/calendar', icon: Calendar },
     { name: 'Chat', href: '/chat', icon: MessageCircle },
-    { name: 'Billing', href: '/billing', icon: Receipt, adminOnly: true },
+    { name: 'Clients', href: '/clients', icon: Users, adminOnly: true },
     { name: 'Staff', href: '/staff', icon: Users, adminOnly: true },
+    { name: 'Billing', href: '/billing', icon: CreditCard, adminOnly: true },
   ];
 
   const filteredNavigation = navigation.filter(item => 
@@ -80,29 +99,64 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <div className="flex-shrink-0 lg:hidden">
                   <Logo size="md" />
                 </div>
-                <div className="hidden lg:block">
-                  <div className="ml-4 flex items-center space-x-4">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                      <input
-                        type="text"
-                        placeholder="Search briefs, clients..."
-                        className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-gray-900 w-64 transition-colors"
-                      />
-                    </div>
-                  </div>
-                </div>
               </div>
               
               <div className="flex items-center space-x-4">
-                <button className="relative p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors">
-                  <Bell className="h-5 w-5" />
-                  {unreadNotifications > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {unreadNotifications}
-                    </span>
+                <div className="relative" ref={notifRef}>
+                  <button
+                    className="relative p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                    onClick={() => setNotifOpen((open) => !open)}
+                  >
+                    <Bell className="h-5 w-5" />
+                    {unreadNotifications > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                        {unreadNotifications}
+                      </span>
+                    )}
+                  </button>
+                  {notifOpen && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                      <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                        <span className="font-semibold text-gray-900">Notifications</span>
+                        {unreadNotifications > 0 && (
+                          <button
+                            className="text-xs text-indigo-600 hover:underline whitespace-nowrap"
+                            onClick={() => { markAllNotificationsRead && markAllNotificationsRead(); setNotifOpen(false); }}
+                          >
+                            Mark all as read
+                          </button>
+                        )}
+                      </div>
+                      <ul className="max-h-64 overflow-y-auto divide-y divide-gray-100">
+                        {notifications.length === 0 && (
+                          <li className="p-4 text-sm text-gray-500 text-center">No notifications</li>
+                        )}
+                        {notifications.slice(0, 8).map((n) => (
+                          <li
+                            key={n.id}
+                            className={`px-4 py-3 text-sm cursor-pointer ${n.read ? 'bg-white text-gray-700' : 'bg-indigo-50 text-gray-900 font-semibold'}`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{n.title}</span>
+                              {n.type === 'error' && <span className="ml-2 text-xs text-red-500">Error</span>}
+                              {n.type === 'warning' && <span className="ml-2 text-xs text-yellow-500">Warning</span>}
+                              {n.type === 'success' && <span className="ml-2 text-xs text-green-500">Success</span>}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">{n.message}</div>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="p-2 border-t border-gray-100 text-center">
+                        <button
+                          className="text-xs text-red-600 hover:text-red-800 font-semibold whitespace-nowrap"
+                          onClick={() => { clearAllNotifications && clearAllNotifications(); setNotifOpen(false); }}
+                        >
+                          Clear all
+                        </button>
+                      </div>
+                    </div>
                   )}
-                </button>
+                </div>
                 
                 <div className="flex items-center space-x-3">
                   <img
