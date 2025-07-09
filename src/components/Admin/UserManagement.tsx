@@ -14,7 +14,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    role: 'staff' as 'admin' | 'staff'
+    role: 'staff' as 'admin' | 'staff',
+    password: '', // Add password to form state
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,26 +32,32 @@ const UserManagement: React.FC<UserManagementProps> = ({ isOpen, onClose }) => {
     setError(null);
     setSuccess(null);
 
+    if (!supabase) {
+      setError('Database connection error');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      // Generate a temporary password
-      const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).toUpperCase().slice(-4) + '!1';
-      
-      // Create user in Supabase Auth
-      const { data, error: signUpError } = await supabase.auth.admin.createUser({
+      // Use entered password or generate a temporary one
+      const password = formData.password || (
+        Math.random().toString(36).slice(-8) + Math.random().toString(36).toUpperCase().slice(-4) + '!1'
+      );
+      // Create user in Supabase Auth (frontend-safe)
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
-        password: tempPassword,
-        email_confirm: true, // Auto-confirm email
-        user_metadata: {
-          name: formData.name,
-          role: formData.role
+        password,
+        options: {
+          data: {
+            name: formData.name,
+            role: formData.role
+          }
         }
       });
-
       if (signUpError) {
         setError(signUpError.message);
         return;
       }
-
       if (data.user) {
         // Create user profile in profiles table
         const { error: profileError } = await supabase
@@ -66,15 +73,15 @@ const UserManagement: React.FC<UserManagementProps> = ({ isOpen, onClose }) => {
               updated_at: new Date().toISOString()
             }
           ]);
-
         if (profileError) {
           console.error('Error creating user profile:', profileError);
           setError('User created but profile creation failed. Please contact support.');
           return;
         }
-
-        setSuccess(`User created successfully! Temporary password: ${tempPassword}`);
-        setFormData({ name: '', email: '', role: 'staff' });
+        setSuccess(`User created successfully! Password: ${password}`);
+        setFormData({ name: '', email: '', role: 'staff', password: '' });
+      } else {
+        setSuccess('User created! They must confirm their email before logging in.');
       }
     } catch (error) {
       console.error('Error creating user:', error);
@@ -190,6 +197,25 @@ const UserManagement: React.FC<UserManagementProps> = ({ isOpen, onClose }) => {
               </div>
               <p className="mt-1 text-xs text-gray-500">
                 Choose the user's role in the organization
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Password (optional)
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={formData.password}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  className="input pl-3"
+                  placeholder="Enter password or leave blank for random"
+                  disabled={isSubmitting}
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Leave blank to auto-generate a secure password
               </p>
             </div>
 

@@ -8,6 +8,7 @@ import {
   DollarSign, Clock, Star, Mail, Phone, AlertTriangle, Users, User
 } from 'lucide-react';
 import { capitalizeWords } from '../../lib/capitalizeWords';
+import UserManagement from '../Admin/UserManagement';
 
 const StaffPage: React.FC = () => {
   const { user, refreshUser } = useAuth();
@@ -20,6 +21,7 @@ const StaffPage: React.FC = () => {
   const [deletingStaff, setDeletingStaff] = useState<Staff | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showUserManagement, setShowUserManagement] = useState(false);
 
   const allSkills = Array.from(new Set(staff.flatMap(s => s.skills)));
 
@@ -662,12 +664,11 @@ const StaffPage: React.FC = () => {
           <p className="text-gray-600">Manage your team members and their schedules</p>
         </div>
         <button
-          onClick={() => setShowAddModal(true)}
-          className="btn-primary"
-          disabled={loading}
+          className="btn-primary flex items-center space-x-2"
+          onClick={() => setShowUserManagement(true)}
         >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Staff
+          <Plus className="h-5 w-5" />
+          <span>Add Staff</span>
         </button>
       </div>
 
@@ -786,7 +787,7 @@ const StaffPage: React.FC = () => {
           </p>
           {!searchTerm && filterSkill === 'all' && (
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={() => setShowUserManagement(true)}
               className="mt-4 btn-primary"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -822,6 +823,12 @@ const StaffPage: React.FC = () => {
           onClose={() => setShowProfileModal(false)} 
         />
       )}
+
+      {/* User Management Modal */}
+      <UserManagement
+        isOpen={showUserManagement}
+        onClose={() => setShowUserManagement(false)}
+      />
     </div>
   );
 };
