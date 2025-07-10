@@ -9,9 +9,16 @@ const ResetPassword: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Supabase sends the access_token in the URL hash
+  // Supabase sends the access_token in the URL hash or query string
   const params = new URLSearchParams(location.hash.replace('#', '?'));
-  const access_token = params.get('access_token');
+  const queryParams = new URLSearchParams(location.search);
+  
+  const access_token = params.get('access_token') || queryParams.get('access_token');
+  
+  console.log('ResetPassword component loaded');
+  console.log('Location hash:', location.hash);
+  console.log('Location search:', location.search);
+  console.log('Access token:', access_token);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

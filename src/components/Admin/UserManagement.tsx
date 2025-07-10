@@ -20,6 +20,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ isOpen, onClose }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  // Add state for password reset
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetUserId, setResetUserId] = useState('');
+  const [resetStatus, setResetStatus] = useState('');
 
   // Only allow admin users to access this component
   if (user?.role !== 'admin') {
@@ -88,6 +92,31 @@ const UserManagement: React.FC<UserManagementProps> = ({ isOpen, onClose }) => {
       setError('Failed to create user. Please try again.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Function to handle password reset
+  const handleResetPassword = async (userId: string) => {
+    setResetStatus('');
+    if (!resetPassword) {
+      setResetStatus('Please enter a new password.');
+      return;
+    }
+    if (!supabase) {
+      setResetStatus('Supabase client not initialized.');
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.admin.updateUserById(userId, { password: resetPassword });
+      if (error) {
+        setResetStatus('Failed to reset password: ' + error.message);
+      } else {
+        setResetStatus('Password reset successfully!');
+        setResetPassword('');
+        setResetUserId('');
+      }
+    } catch (err: any) {
+      setResetStatus('Unexpected error: ' + err.message);
     }
   };
 

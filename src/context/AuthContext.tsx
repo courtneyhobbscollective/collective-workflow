@@ -266,6 +266,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (!data.user) {
         setError('Login failed - no user data');
+        return;
+      }
+      // Always ensure a profile exists for the user
+      let profile = await fetchUserProfile(data.user.id);
+      if (!profile) {
+        // Create profile if missing
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            {
+              id: data.user.id,
+              name: data.user.user_metadata?.name || data.user.email || '',
+              email: data.user.email || '',
+              role: data.user.user_metadata?.role || 'staff',
+              avatar_url: '',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          ]);
+        if (profileError) {
+          setError('Login succeeded but failed to create user profile: ' + profileError.message);
+          return;
+        }
+        profile = await fetchUserProfile(data.user.id);
+      }
+      if (profile) {
+        setUser({
+          id: profile.id,
+          name: profile.name || data.user.email || '',
+          email: profile.email || data.user.email || '',
+          role: profile.role || 'staff',
+          avatar: profile.avatar_url || '',
+          createdAt: new Date(profile.created_at),
+          updatedAt: new Date(profile.updated_at)
+        });
       }
     } catch (error) {
       setError('Login failed');
