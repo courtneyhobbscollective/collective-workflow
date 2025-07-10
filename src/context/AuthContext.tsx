@@ -354,6 +354,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Don't throw error here as the user was created successfully in auth
           // The profile can be created later if needed
         }
+
+        // Also insert into staff table if role is 'staff'
+        if (role === 'staff') {
+          const { error: staffError } = await supabase
+            .from('staff')
+            .insert([
+              {
+                name,
+                email,
+                role,
+                avatar_url: '',
+                status: 'active',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }
+            ]);
+          if (staffError) {
+            console.error('Error creating staff record:', staffError);
+            // Do not throw, just log
+          }
+        }
       }
     } catch (error) {
       console.error('Signup error:', error);
