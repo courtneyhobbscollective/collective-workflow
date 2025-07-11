@@ -790,17 +790,16 @@ const BriefWorkflow: React.FC = () => {
                         }}
                       >
                         <div className="text-xs font-medium text-gray-900 mb-1">{capitalizeWords(member.name)}</div>
-                        {user?.role === 'admin' && (
-                          <button
-                            onClick={() => handleUnassignStaff(brief, member.id)}
-                            disabled={unassigningStaff.has(member.id)}
-                            className={`text-xs text-red-600 hover:text-red-700 font-medium transition-colors w-full text-left py-1 px-1 rounded hover:bg-red-50 whitespace-nowrap ${
-                              unassigningStaff.has(member.id) ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
-                          >
-                            {unassigningStaff.has(member.id) ? 'Unassigning...' : 'Unassign'}
-                          </button>
-                        )}
+                        {/* Allow both admin and staff to unassign staff from briefs */}
+                        <button
+                          onClick={() => handleUnassignStaff(brief, member.id)}
+                          disabled={unassigningStaff.has(member.id)}
+                          className={`text-xs text-red-600 hover:text-red-700 font-medium transition-colors w-full text-left py-1 px-1 rounded hover:bg-red-50 whitespace-nowrap ${
+                            unassigningStaff.has(member.id) ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
+                        >
+                          {unassigningStaff.has(member.id) ? 'Unassigning...' : 'Unassign'}
+                        </button>
                       </div>
                     )}
                   </div>
@@ -1029,22 +1028,21 @@ const BriefWorkflow: React.FC = () => {
                   {brief.contractSigned ? 'Contract Signed' : 'Mark Contract Signed'}
                 </button>
               )}
-              {user?.role === 'admin' && (
-                <button
-                  className={`text-xs px-3 py-1 rounded border transition-colors
-                    ${assignedStaffMembers.length > 0
-                      ? 'bg-green-100 text-green-700 border-green-300'
-                      : 'btn-ghost'
-                    }
-                  `}
-                  onClick={() => {
-                    setAssigningBrief(brief);
-                    setAssignStaffIds(brief.assignedStaff || []);
-                  }}
-                >
-                  {assignedStaffMembers.length > 0 ? 'Staff Assigned' : 'Assign Staff'}
-                </button>
-              )}
+              {/* Allow both admin and staff to assign staff to briefs */}
+              <button
+                className={`text-xs px-3 py-1 rounded border transition-colors
+                  ${assignedStaffMembers.length > 0
+                    ? 'bg-green-100 text-green-700 border-green-300'
+                    : 'btn-ghost'
+                  }
+                `}
+                onClick={() => {
+                  setAssigningBrief(brief);
+                  setAssignStaffIds(brief.assignedStaff || []);
+                }}
+              >
+                {assignedStaffMembers.length > 0 ? 'Staff Assigned' : 'Assign Staff'}
+              </button>
             </div>
 
             {/* Calendar Booking Status */}
@@ -1393,6 +1391,7 @@ const BriefWorkflow: React.FC = () => {
                             <p className="text-xs text-gray-500">{member.skills.join(', ')}</p>
                           </div>
                         </div>
+                        {/* Allow both admin and staff to unassign staff from briefs */}
                         <button
                           onClick={() => handleUnassignStaff(assigningBrief, member.id)}
                           disabled={unassigningStaff.has(member.id)}

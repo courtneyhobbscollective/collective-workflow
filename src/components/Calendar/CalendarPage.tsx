@@ -26,6 +26,8 @@ const STAFF_COLORS = [
 const CalendarPage: React.FC = () => {
   const { staff, briefs, clients, updateStaff } = useApp();
   const { user } = useAuth();
+  
+
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [selectedStaff, setSelectedStaff] = useState<string>('all');
@@ -437,6 +439,7 @@ const CalendarPage: React.FC = () => {
               </div>
             );
           }
+
           return (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
               <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-0 relative border border-gray-200">
@@ -477,7 +480,8 @@ const CalendarPage: React.FC = () => {
                 {otherEventError && (
                   <div className="px-6 text-red-600 text-xs mb-2">{otherEventError}</div>
                 )}
-                {(user && (user.role === 'admin' || user.id === selectedEntry.staffId)) && (
+                {/* Allow both admin and staff to delete calendar bookings */}
+                {(user && (user.role === 'admin' || user.role === 'staff')) && (
                   <div className="px-6 pb-5 pt-2 flex justify-end">
                     <button
                       className="px-3 py-1.5 text-xs rounded-md bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 hover:text-red-900 transition-colors font-medium shadow-sm whitespace-nowrap"
