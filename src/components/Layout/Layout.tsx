@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { 
   Home, Users, Briefcase, Calendar, MessageCircle, 
-  CreditCard, Settings, Bell, Menu, X, LogOut, FileText 
+  CreditCard, Settings, Bell, Menu, X, LogOut, FileText, RefreshCw
 } from 'lucide-react';
 import Logo from '../Logo';
 
@@ -13,7 +13,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { notifications, markAllNotificationsRead, clearAllNotifications } = useApp();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -179,6 +179,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     );
                   })()}
                   <span className="text-sm font-medium text-gray-700">{user?.name}</span>
+                  <button
+                    onClick={refreshUser}
+                    className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                    title="Refresh profile data"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             </div>

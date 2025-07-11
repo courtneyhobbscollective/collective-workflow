@@ -413,7 +413,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         console.log('refreshUser: Setting user to:', updatedUser);
         setUser(updatedUser);
-              } else {
+      } else {
           console.log('refreshUser: No profile found, creating one...');
           // Try to create a profile for the user
           try {
