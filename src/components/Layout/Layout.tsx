@@ -159,11 +159,25 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
                 
                 <div className="flex items-center space-x-3">
-                  <img
-                    src={user?.avatar || `https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=50&h=50&dpr=1`}
-                    alt={user?.name}
-                    className="h-8 w-8 rounded-full"
-                  />
+                  {(() => {
+                    // Debug logging
+                    console.log('Layout - User avatar debug:', {
+                      userId: user?.id,
+                      userName: user?.name,
+                      userAvatar: user?.avatar,
+                      hasAvatar: !!user?.avatar
+                    });
+                    
+                    const avatarSrc = user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=6366f1&color=fff&size=32`;
+                    
+                    return (
+                      <img
+                        src={avatarSrc}
+                        alt={user?.name}
+                        className="h-8 w-8 rounded-full"
+                      />
+                    );
+                  })()}
                   <span className="text-sm font-medium text-gray-700">{user?.name}</span>
                 </div>
               </div>
@@ -226,7 +240,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({ navigation, user, logou
         <div className="flex-shrink-0 p-4 border-t border-gray-100">
           <div className="flex items-center space-x-3">
             <img
-              src={user?.avatar || `https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=50&h=50&dpr=1`}
+              src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=6366f1&color=fff&size=32`}
               alt={user?.name}
               className="h-8 w-8 rounded-full"
             />
