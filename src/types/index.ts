@@ -50,7 +50,7 @@ export interface Brief {
   clientId: string;
   title: string;
   description?: string;
-  workType: 'photography' | 'videography' | 'design' | 'marketing';
+  workType: 'photography' | 'videography' | 'design' | 'marketing' | 'web-design-development' | 'app-design-development' | 'social-content' | 'motion-design' | 'event';
   projectValue: number;
   poNumber?: string;
   dueDate: Date;

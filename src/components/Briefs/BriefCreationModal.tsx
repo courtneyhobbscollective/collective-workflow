@@ -14,7 +14,7 @@ const BriefCreationModal: React.FC<BriefCreationModalProps> = ({ isOpen, onClose
   const [formData, setFormData] = useState({
     clientId: '',
     title: '',
-    workType: 'photography' as 'photography' | 'videography' | 'design' | 'marketing',
+    workType: 'photography' as 'photography' | 'videography' | 'design' | 'marketing' | 'web-design-development' | 'app-design-development' | 'social-content' | 'motion-design' | 'event',
     projectValue: 0,
     poNumber: '',
     dueDate: '',
@@ -44,32 +44,72 @@ const BriefCreationModal: React.FC<BriefCreationModalProps> = ({ isOpen, onClose
         { title: 'Raw Photos', type: 'photo' as const },
         { title: 'Edited Photos', type: 'photo' as const },
         { title: 'Final Gallery', type: 'photo' as const }
-      ],
-      estimatedHours: { shoot: 8, edit: 12 }
+      ]
     },
     videography: {
       deliverables: [
         { title: 'Raw Footage', type: 'video' as const },
         { title: 'Rough Cut', type: 'video' as const },
         { title: 'Final Video', type: 'video' as const }
-      ],
-      estimatedHours: { shoot: 12, edit: 24 }
+      ]
     },
     design: {
       deliverables: [
         { title: 'Initial Concepts', type: 'design' as const },
         { title: 'Design Revisions', type: 'design' as const },
         { title: 'Final Assets', type: 'design' as const }
-      ],
-      estimatedHours: { shoot: 0, edit: 20 }
+      ]
     },
     marketing: {
       deliverables: [
         { title: 'Strategy Document', type: 'document' as const },
         { title: 'Campaign Assets', type: 'design' as const },
         { title: 'Performance Report', type: 'document' as const }
-      ],
-      estimatedHours: { shoot: 0, edit: 30 }
+      ]
+    },
+    'web-design-development': {
+      deliverables: [
+        { title: 'Wireframes', type: 'design' as const },
+        { title: 'Design Mockups', type: 'design' as const },
+        { title: 'Frontend Development', type: 'document' as const },
+        { title: 'Backend Development', type: 'document' as const },
+        { title: 'Testing & Launch', type: 'document' as const }
+      ]
+    },
+    'app-design-development': {
+      deliverables: [
+        { title: 'App Wireframes', type: 'design' as const },
+        { title: 'UI/UX Design', type: 'design' as const },
+        { title: 'Frontend Development', type: 'document' as const },
+        { title: 'Backend API', type: 'document' as const },
+        { title: 'Testing & App Store Submission', type: 'document' as const }
+      ]
+    },
+    'social-content': {
+      deliverables: [
+        { title: 'Content Strategy', type: 'document' as const },
+        { title: 'Visual Assets', type: 'design' as const },
+        { title: 'Copywriting', type: 'document' as const },
+        { title: 'Scheduled Posts', type: 'document' as const },
+        { title: 'Performance Report', type: 'document' as const }
+      ]
+    },
+    'motion-design': {
+      deliverables: [
+        { title: 'Storyboard', type: 'design' as const },
+        { title: 'Animation Concepts', type: 'video' as const },
+        { title: 'Final Animation', type: 'video' as const },
+        { title: 'Export Files', type: 'video' as const }
+      ]
+    },
+    event: {
+      deliverables: [
+        { title: 'Event Strategy', type: 'document' as const },
+        { title: 'Event Design', type: 'design' as const },
+        { title: 'Event Photography', type: 'photo' as const },
+        { title: 'Event Video', type: 'video' as const },
+        { title: 'Post-Event Report', type: 'document' as const }
+      ]
     }
   };
 
@@ -78,7 +118,6 @@ const BriefCreationModal: React.FC<BriefCreationModalProps> = ({ isOpen, onClose
     setFormData(prev => ({
       ...prev,
       workType,
-      estimatedHours: template.estimatedHours,
       deliverables: template.deliverables.map(d => ({
         ...d,
         dueDate: prev.dueDate
@@ -276,6 +315,11 @@ const BriefCreationModal: React.FC<BriefCreationModalProps> = ({ isOpen, onClose
                 <option value="videography">Videography</option>
                 <option value="design">Design</option>
                 <option value="marketing">Marketing</option>
+                <option value="web-design-development">Web Design & Development</option>
+                <option value="app-design-development">App Design & Development</option>
+                <option value="social-content">Social Content</option>
+                <option value="motion-design">Motion Design</option>
+                <option value="event">Event</option>
               </select>
             </div>
           </div>
