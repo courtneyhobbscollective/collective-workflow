@@ -160,25 +160,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 
                 <div className="flex items-center space-x-3">
                   {(() => {
-                    // Debug logging
-                    console.log('Layout - User avatar debug:', {
-                      userId: user?.id,
-                      userName: user?.name,
-                      userAvatar: user?.avatar,
-                      hasAvatar: !!user?.avatar
-                    });
-                    
-                    const avatarSrc = user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=6366f1&color=fff&size=32`;
-                    
+                    const displayName = user?.name || user?.email || 'User';
+                    const avatarSrc = user?.avatar && user.avatar.trim() !== ''
+                      ? user.avatar
+                      : `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=6366f1&color=fff&size=32`;
                     return (
                       <img
                         src={avatarSrc}
-                        alt={user?.name}
+                        alt={displayName}
                         className="h-8 w-8 rounded-full"
                       />
                     );
                   })()}
-                  <span className="text-sm font-medium text-gray-700">{user?.name}</span>
+                  <span className="text-sm font-medium text-gray-700">{user?.name || user?.email || 'User'}</span>
                   <button
                     onClick={refreshUser}
                     className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"

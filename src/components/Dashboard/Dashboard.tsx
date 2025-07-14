@@ -109,10 +109,12 @@ const Dashboard: React.FC = () => {
           title="Active Briefs"
           value={dashboardStats?.activeBriefs || 0}
         />
-        <StatCard
-          title="Monthly Revenue"
-          value={`£${(dashboardStats?.monthlyRevenue || 0).toLocaleString()}`}
-        />
+        {user?.role === 'admin' && (
+          <StatCard
+            title="Monthly Revenue"
+            value={`£${(dashboardStats?.monthlyRevenue || 0).toLocaleString()}`}
+          />
+        )}
         <StatCard
           title="Staff Utilisation"
           value={`${dashboardStats?.staffUtilisation || 0}%`}
@@ -188,12 +190,14 @@ const Dashboard: React.FC = () => {
                         <p className="text-sm text-gray-500">{client?.name}</p>
                       </div>
                       <div className="flex items-center space-x-3">
-                        <span className={`badge ${statusColors[brief.stage]}`}>
+                        <span className={`badge ${statusColors[brief.stage]}`}> 
                           {brief.stage.replace('-', ' ')}
                         </span>
-                        <span className="text-sm font-medium text-gray-900">
-                          £{brief.projectValue.toLocaleString()}
-                        </span>
+                        {user?.role === 'admin' && (
+                          <span className="text-sm font-medium text-gray-900">
+                            £{brief.projectValue.toLocaleString()}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
