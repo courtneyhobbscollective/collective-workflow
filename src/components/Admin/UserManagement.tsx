@@ -55,7 +55,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ isOpen, onClose }) => {
           data: {
             name: formData.name,
             role: formData.role
-          }
+          },
+          emailRedirectTo: 'https://collectiveflow.co.uk/reset-password'
         }
       });
       if (signUpError) {
@@ -82,6 +83,28 @@ const UserManagement: React.FC<UserManagementProps> = ({ isOpen, onClose }) => {
           setError('User created but profile creation failed. Please contact support.');
           return;
         }
+
+        // Also create staff record if role is 'staff'
+        if (formData.role === 'staff') {
+          const { error: staffError } = await supabase
+            .from('staff')
+            .insert([
+              {
+                name: formData.name,
+                email: formData.email,
+                role: formData.role,
+                avatar_url: '',
+                status: 'active',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }
+            ]);
+          if (staffError) {
+            console.error('Error creating staff record:', staffError);
+            // Don't fail the whole operation, just log the error
+          }
+        }
+
         setSuccess(`User created successfully! Password: ${password}`);
         setFormData({ name: '', email: '', role: 'staff', password: '' });
       } else {
