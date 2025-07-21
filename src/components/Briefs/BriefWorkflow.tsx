@@ -1222,9 +1222,8 @@ const BriefWorkflow: React.FC = () => {
                   />
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-medium text-gray-900 truncate">{capitalizeWords(member.name)}</h3>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs text-gray-500 truncate">{member.skills.join(', ')}</span>
-                      <span className="text-xs font-medium text-gray-700 ml-2">
+                    <div className="flex items-center justify-end mt-1">
+                      <span className="text-xs font-medium text-gray-700">
                         {utilizationPercentage.toFixed(0)}%
                       </span>
                     </div>
