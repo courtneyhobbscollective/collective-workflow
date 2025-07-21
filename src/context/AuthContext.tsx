@@ -35,20 +35,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!supabase) return null;
     
     try {
-      const { data, error } = await supabase
+      // First try to get profile from profiles table
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
       
-      if (error) {
-        console.error('Error fetching user profile:', error);
-        // If the table doesn't exist or there's no profile, return null
-        // This will trigger the fallback user creation
-        return null;
+      if (profileData) {
+        // If profile exists, also check staff table for avatar
+        const { data: staffData, error: staffError } = await supabase
+          .from('staff')
+          .select('avatar_url')
+          .eq('email', profileData.email)
+          .single();
+        
+        if (staffData && staffData.avatar_url) {
+          // Merge staff avatar with profile data
+          return {
+            ...profileData,
+            avatar_url: staffData.avatar_url
+          };
+        }
+        
+        return profileData;
       }
       
-      return data;
+      if (profileError) {
+        console.error('Error fetching user profile:', profileError);
+        // If the table doesn't exist or there's no profile, return null
+        // This will trigger the fallback user creation
+      }
+      
+      return null;
     } catch (error) {
       console.error('Exception fetching user profile:', error);
       return null;
